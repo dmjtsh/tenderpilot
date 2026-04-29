@@ -1,0 +1,11 @@
+-r base.txt
+
+django-extensions>=3.2
+ipython>=8.0
+Werkzeug>=3.0
+
+black>=24.0
+ruff>=0.4
+mypy>=1.10
+django-stubs>=5.0
+djangorestframework-stubs>=3.15

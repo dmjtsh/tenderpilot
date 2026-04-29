@@ -1,0 +1,60 @@
+"""
+Singleton-обёртка над fastembed для генерации векторов.
+
+multilingual-e5-large требует префиксы:
+  "query: <text>"   — для поисковых запросов
+  "passage: <text>" — для индексируемых документов
+"""
+import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastembed import TextEmbedding
+
+logger = logging.getLogger(__name__)
+
+MODEL_NAME = "intfloat/multilingual-e5-large"
+EMBEDDING_DIM = 1024
+
+
+class Embedder:
+    _instance: "Embedder | None" = None
+    _model: "TextEmbedding | None" = None
+
+    def __new__(cls) -> "Embedder":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def _get_model(self) -> "TextEmbedding":
+        if self._model is None:
+            from fastembed import TextEmbedding  # lazy import — тяжёлая зависимость
+            logger.info("Loading embedding model %s...", MODEL_NAME)
+            self._model = TextEmbedding(model_name=MODEL_NAME)
+            logger.info("Embedding model loaded.")
+        return self._model
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        """Векторизация документов для индексации."""
+        prefixed = [f"passage: {t}" for t in texts]
+        model = self._get_model()
+        return [v.tolist() for v in model.embed(prefixed)]
+
+    def embed_query(self, text: str) -> list[float]:
+        """Векторизация поискового запроса."""
+        model = self._get_model()
+        result = list(model.embed([f"query: {text}"]))
+        return result[0].tolist()
+
+
+embedder = Embedder()
+
+
+def tender_text(title: str, okpd_codes: list, customer_name: str = "") -> str:
+    """Формирует текст тендера для embedding."""
+    parts = [title]
+    if okpd_codes:
+        parts.append(" ".join(str(c) for c in okpd_codes))
+    if customer_name:
+        parts.append(customer_name)
+    return " ".join(parts)
