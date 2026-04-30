@@ -70,6 +70,16 @@ export interface Tender {
   matched_direction?: string | null
 }
 
+export interface TenderDoc {
+  id: number
+  filename: string
+  file_type: string
+  parse_status: "pending" | "processing" | "done" | "failed" | "skipped" | "cleaned"
+  file_size: number
+  is_scanned: boolean
+  content_priority: number
+}
+
 export const tendersApi = {
   list: (page = 1) =>
     client.get("/tenders/", { params: { page } }).then((r) => r.data),
@@ -80,8 +90,14 @@ export const tendersApi = {
   regions: () =>
     client.get("/tenders/regions/").then((r) => r.data.data as string[]),
 
-  getSummary: (id: number) =>
-    client.get(`/tenders/${id}/summary/`).then((r) => r.data.data as TenderSummary),
+  getSummary: (id: number, refresh = false) =>
+    client.get(`/tenders/${id}/summary/`, { params: refresh ? { refresh: "true" } : {} }).then((r) => r.data.data as TenderSummary),
+
+  getDocs: (id: number) =>
+    client.get(`/tenders/${id}/docs/`).then((r) => r.data.data as TenderDoc[]),
+
+  downloadDocs: (id: number) =>
+    client.post(`/tenders/${id}/download-docs/`).then((r) => r.data.data),
 }
 
 // Search

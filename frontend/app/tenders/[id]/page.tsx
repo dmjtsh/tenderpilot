@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { tendersApi, type Tender, type TenderSummary } from "@/lib/api"
-import { AlertTriangle, ChevronLeft, ExternalLink, FileText, Loader2, MessageSquare, Sparkles, X } from "lucide-react"
+import { tendersApi, type Tender, type TenderSummary, type TenderDoc } from "@/lib/api"
+import { AlertTriangle, Check, ChevronLeft, Download, ExternalLink, FileText, Loader2, MessageSquare, Minus, Sparkles, X, XCircle } from "lucide-react"
 import Link from "next/link"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -129,6 +129,278 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
   )
 }
 
+function fmtSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const DOC_STATUS_ICON: Record<string, React.ReactNode> = {
+  pending: <div className="w-3.5 h-3.5 rounded-full border border-muted-foreground/30" />,
+  processing: <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />,
+  done: <Check className="w-3.5 h-3.5 text-emerald-400" />,
+  failed: <XCircle className="w-3.5 h-3.5 text-red-400" />,
+  skipped: <Minus className="w-3.5 h-3.5 text-yellow-400" />,
+  cleaned: <Minus className="w-3.5 h-3.5 text-muted-foreground/30" />,
+}
+
+const DOC_STATUS_LABEL: Record<string, string> = {
+  pending: "Ожидает",
+  processing: "Обработка...",
+  failed: "Ошибка",
+  skipped: "Пропущен",
+  cleaned: "Очищен",
+}
+
+function DocRow({ doc }: { doc: TenderDoc }) {
+  return (
+    <div className="flex items-center gap-3 py-2 px-3 rounded-md hover:bg-secondary/50 transition-colors">
+      {DOC_STATUS_ICON[doc.parse_status] ?? DOC_STATUS_ICON.pending}
+      <FileText className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+      <span className="text-sm text-foreground/80 truncate flex-1">{doc.filename}</span>
+      {doc.is_scanned && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400">Скан</span>
+      )}
+      {DOC_STATUS_LABEL[doc.parse_status] && !doc.is_scanned && (
+        <span className="text-[10px] text-muted-foreground">{DOC_STATUS_LABEL[doc.parse_status]}</span>
+      )}
+      <span className="text-[10px] text-muted-foreground/50 tabular-nums">{fmtSize(doc.file_size)}</span>
+    </div>
+  )
+}
+
+function useDocsQuery(tenderId: number, downloading: boolean) {
+  return useQuery<TenderDoc[]>({
+    queryKey: ["tender-docs", tenderId],
+    queryFn: () => tendersApi.getDocs(tenderId),
+    refetchInterval: (query) => {
+      const d = query.state.data
+      if (!d || d.length === 0) return downloading ? 2000 : false
+      return d.some((doc) => doc.parse_status === "pending" || doc.parse_status === "processing")
+        ? 2000
+        : false
+    },
+  })
+}
+
+function docsAreReady(docs: TenderDoc[]): boolean {
+  return docs.length > 0 && docs.every((d) =>
+    d.parse_status !== "pending" && d.parse_status !== "processing"
+  )
+}
+
+function docsAreProcessing(docs: TenderDoc[]): boolean {
+  return docs.some((d) => d.parse_status === "pending" || d.parse_status === "processing")
+}
+
+function DocumentsBlock({ tenderId }: { tenderId: number }) {
+  const queryClient = useQueryClient()
+  const [downloading, setDownloading] = useState(false)
+  const { data: docs = [], isLoading } = useDocsQuery(tenderId, downloading)
+
+  const isProcessing = docsAreProcessing(docs)
+
+  async function handleDownload() {
+    setDownloading(true)
+    try {
+      await tendersApi.downloadDocs(tenderId)
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
+      }, 1500)
+    } catch {
+      setDownloading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (docs.length > 0 && !isProcessing) setDownloading(false)
+  }, [docs.length, isProcessing])
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Документы</p>
+        {docs.length > 0 && (
+          <span className="text-[10px] text-muted-foreground/50">{docs.length}</span>
+        )}
+        {docs.length > 0 && !isProcessing && !downloading && (
+          <button
+            onClick={handleDownload}
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            обновить
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+        </div>
+      ) : docs.length === 0 && !downloading ? (
+        <button
+          onClick={handleDownload}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+        >
+          <Download className="w-4 h-4 group-hover:text-primary transition-colors" />
+          Загрузить документы
+        </button>
+      ) : (
+        <div className="rounded-lg border border-border bg-card/50 overflow-hidden divide-y divide-border/50">
+          {downloading && docs.length === 0 && (
+            <div className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+              Загружаем документы с ЕИС...
+            </div>
+          )}
+          {docs.map((doc) => (
+            <DocRow key={doc.id} doc={doc} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DocsProgressInline({ docs, downloading }: { docs: TenderDoc[]; downloading: boolean }) {
+  if (downloading && docs.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+        Загружаем документы с ЕИС...
+      </div>
+    )
+  }
+  if (docs.length > 0) {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+          Обрабатываем документы... ({docs.filter((d) => d.parse_status === "done" || d.parse_status === "skipped").length}/{docs.length})
+        </div>
+        <div className="rounded-lg border border-border bg-card/50 overflow-hidden divide-y divide-border/50">
+          {docs.map((doc) => (
+            <DocRow key={doc.id} doc={doc} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
+type SummaryPhase = "idle" | "downloading" | "analyzing"
+
+function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initialSummary: TenderSummary | null }) {
+  const queryClient = useQueryClient()
+  const [summary, setSummary] = useState<TenderSummary | null>(initialSummary)
+  const [phase, setPhase] = useState<SummaryPhase>("idle")
+  const [error, setError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
+
+  const { data: docs = [] } = useDocsQuery(tenderId, downloading)
+
+  useEffect(() => {
+    if (initialSummary) setSummary(initialSummary)
+  }, [initialSummary])
+
+  async function generateSummary() {
+    setPhase("analyzing")
+    setError(null)
+    try {
+      const data = await tendersApi.getSummary(tenderId, true)
+      setSummary(data)
+      setPhase("idle")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка генерации")
+      setPhase("idle")
+    }
+  }
+
+  useEffect(() => {
+    if (phase !== "downloading") return
+    if (docsAreReady(docs)) {
+      setDownloading(false)
+      generateSummary()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, docs])
+
+  async function handleGenerate(refresh = false) {
+    setError(null)
+
+    if (refresh) {
+      setSummary(null)
+    }
+
+    const currentDocs = queryClient.getQueryData<TenderDoc[]>(["tender-docs", tenderId])
+    const noDocs = !currentDocs || currentDocs.length === 0
+
+    if (noDocs) {
+      setPhase("downloading")
+      setDownloading(true)
+      try {
+        await tendersApi.downloadDocs(tenderId)
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
+        }, 1500)
+      } catch {
+        setError("Не удалось загрузить документы")
+        setPhase("idle")
+        setDownloading(false)
+      }
+      return
+    }
+
+    await generateSummary()
+  }
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">AI-резюме</p>
+        {summary && phase === "idle" && (
+          <button
+            onClick={() => handleGenerate(true)}
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            обновить
+          </button>
+        )}
+      </div>
+
+      {summary && phase === "idle" ? (
+        <SummaryBlock s={summary} />
+      ) : phase === "downloading" ? (
+        <DocsProgressInline docs={docs} downloading={downloading} />
+      ) : phase === "analyzing" ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Анализируем тендер...
+        </div>
+      ) : error ? (
+        <div className="space-y-2">
+          <p className="text-sm text-red-400/80">{error}</p>
+          <button
+            onClick={() => handleGenerate()}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => handleGenerate()}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+        >
+          <Sparkles className="w-4 h-4 group-hover:text-primary transition-colors" />
+          Сгенерировать резюме
+        </button>
+      )}
+    </div>
+  )
+}
+
 function MetaRow({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border/50">
@@ -149,9 +421,6 @@ export default function TenderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [showQuestion, setShowQuestion] = useState(false)
   const [question, setQuestion] = useState("")
-  const [summary, setSummary] = useState<TenderSummary | null>(null)
-  const [summaryLoading, setSummaryLoading] = useState(false)
-  const [summaryError, setSummaryError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
@@ -163,28 +432,10 @@ export default function TenderDetailPage() {
     enabled: !!id,
   })
 
-  useEffect(() => {
-    if (!tender?.ai_summary) return
-    try {
-      setSummary(JSON.parse(tender.ai_summary))
-    } catch {
-      // plain text legacy — не отображаем как структуру
-    }
-  }, [tender?.ai_summary])
-
-  async function handleGenerateSummary() {
-    setSummaryLoading(true)
-    setSummaryError(null)
-    try {
-      const data = await tendersApi.getSummary(Number(id))
-      setSummary(data)
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Ошибка генерации"
-      setSummaryError(msg)
-    } finally {
-      setSummaryLoading(false)
-    }
-  }
+  const initialSummary: TenderSummary | null = (() => {
+    if (!tender?.ai_summary) return null
+    try { return JSON.parse(tender.ai_summary) } catch { return null }
+  })()
 
   if (isLoading) {
     return (
@@ -305,47 +556,11 @@ export default function TenderDetailPage() {
             </div>
           )}
 
+          {/* Documents */}
+          <DocumentsBlock tenderId={tender.id} />
+
           {/* AI summary */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">AI-резюме</p>
-              {summary && (
-                <button
-                  onClick={handleGenerateSummary}
-                  disabled={summaryLoading}
-                  className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors disabled:opacity-40"
-                >
-                  обновить
-                </button>
-              )}
-            </div>
-            {summary ? (
-              <SummaryBlock s={summary} />
-            ) : summaryLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Анализируем тендер...
-              </div>
-            ) : summaryError ? (
-              <div className="space-y-2">
-                <p className="text-sm text-red-400/80">{summaryError}</p>
-                <button
-                  onClick={handleGenerateSummary}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Попробовать снова
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleGenerateSummary}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
-              >
-                <Sparkles className="w-4 h-4 group-hover:text-primary transition-colors" />
-                Сгенерировать резюме
-              </button>
-            )}
-          </div>
+          <AiSummaryBlock tenderId={tender.id} initialSummary={initialSummary} />
 
           {/* Question */}
           <div className="mb-8">

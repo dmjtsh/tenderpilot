@@ -65,7 +65,38 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
     def summary(self, request, pk=None):
         tender = self.get_object()
         try:
+            if request.query_params.get("refresh") == "true":
+                tender.ai_summary = ""
+                tender.save(update_fields=["ai_summary"])
             data = get_or_create_summary(tender)
             return Response({"data": data, "error": None})
         except Exception as e:
             return Response({"data": None, "error": str(e)}, status=500)
+
+    @action(detail=True, methods=["get"], url_path="docs")
+    def docs(self, request, pk=None):
+        from apps.documents.models import TenderDocument
+        tender = self.get_object()
+        docs = TenderDocument.objects.filter(
+            tender=tender, parent_document__isnull=True,
+        ).order_by("content_priority", "filename")
+        data = [
+            {
+                "id": d.id,
+                "filename": d.filename,
+                "file_type": d.file_type,
+                "parse_status": d.parse_status,
+                "file_size": d.file_size,
+                "is_scanned": d.is_scanned,
+                "content_priority": d.content_priority,
+            }
+            for d in docs
+        ]
+        return Response({"data": data, "error": None})
+
+    @action(detail=True, methods=["post"], url_path="download-docs")
+    def download_docs(self, request, pk=None):
+        from apps.documents.tasks import download_and_parse_documents
+        tender = self.get_object()
+        download_and_parse_documents.delay(tender.id)
+        return Response({"data": {"started": True}, "error": None})
