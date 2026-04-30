@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
@@ -241,7 +241,7 @@ function MatchTab() {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function TendersPage() {
+function TendersPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [tab, setTab] = useState<Tab>(() =>
@@ -280,5 +280,13 @@ export default function TendersPage() {
 
       {tab === "all" ? <AllTab /> : <MatchTab />}
     </div>
+  )
+}
+
+export default function TendersPage() {
+  return (
+    <Suspense>
+      <TendersPageInner />
+    </Suspense>
   )
 }

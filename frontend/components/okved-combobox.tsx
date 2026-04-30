@@ -66,7 +66,7 @@ export function OkvedCombobox({ value, onChange }: OkvedComboboxProps) {
 
   const options: OkvedOption[] = query.length === 0 ? POPULAR : searchResults
 
-  function toggle(code: string, name: string) {
+  function toggle(code: string) {
     if (value.includes(code)) {
       onChange(value.filter((c) => c !== code))
     } else {
@@ -145,7 +145,7 @@ export function OkvedCombobox({ value, onChange }: OkvedComboboxProps) {
                     <button
                       key={opt.code}
                       type="button"
-                      onClick={() => toggle(opt.code, opt.name)}
+                      onClick={() => toggle(opt.code)}
                       className={`w-full flex items-start gap-2.5 px-3 py-2 text-left hover:bg-secondary/60 transition-colors ${selected ? "bg-primary/5" : ""}`}
                     >
                       <Check className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${selected ? "text-primary opacity-100" : "opacity-0"}`} />
