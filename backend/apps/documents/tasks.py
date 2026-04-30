@@ -12,6 +12,7 @@ from apps.documents.models import TenderDocument
 from apps.documents.parsers import (
     can_parse,
     detect_file_type,
+    detect_file_type_by_content,
     extract_archive,
     is_archive,
     parse_docx,
@@ -39,11 +40,11 @@ def download_and_parse_documents(self, tender_id: int) -> str:
     for link in links:
         url = link["url"]
         filename = link["filename"]
-        file_type = detect_file_type(filename)
-
         data = download_file_from_url(url)
         if not data:
             continue
+
+        file_type = detect_file_type(filename) or detect_file_type_by_content(data)
 
         file_hash = hashlib.md5(data).hexdigest()
 
@@ -82,6 +83,12 @@ def parse_document(self, document_id: int) -> str:
     try:
         from apps.documents.storage import download_file
         data = download_file(doc.s3_key)
+
+        if not doc.file_type:
+            doc.file_type = detect_file_type_by_content(data)
+            if doc.file_type:
+                doc.save(update_fields=["file_type"])
+                logger.info("Detected file type %s for %s by content", doc.file_type, doc.filename)
 
         if is_archive(doc.file_type):
             _handle_archive(doc, data)

@@ -21,6 +21,36 @@ def detect_file_type(filename: str) -> str:
     return ext
 
 
+def detect_file_type_by_content(data: bytes) -> str:
+    if data[:4] == b"%PDF":
+        return "pdf"
+    if data[:4] == b"PK\x03\x04":
+        if _is_docx(data):
+            return "docx"
+        if _is_xlsx(data):
+            return "xlsx"
+        return "zip"
+    if data[:7] == b"Rar!\x1a\x07\x00" or data[:8] == b"Rar!\x1a\x07\x01\x00":
+        return "rar"
+    return ""
+
+
+def _is_docx(data: bytes) -> bool:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            return "word/document.xml" in zf.namelist()
+    except zipfile.BadZipFile:
+        return False
+
+
+def _is_xlsx(data: bytes) -> bool:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            return "xl/workbook.xml" in zf.namelist()
+    except zipfile.BadZipFile:
+        return False
+
+
 def can_parse(file_type: str) -> bool:
     return file_type in PARSABLE_TYPES
 
