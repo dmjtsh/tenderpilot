@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fastembed import TextEmbedding
+    from apps.tenders.models import Tender
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +51,18 @@ class Embedder:
 embedder = Embedder()
 
 
-def tender_text(title: str, okpd_codes: list, customer_name: str = "") -> str:
-    """Формирует текст тендера для embedding."""
-    parts = [title]
-    if okpd_codes:
-        parts.append(" ".join(str(c) for c in okpd_codes))
-    if customer_name:
-        parts.append(customer_name)
-    return " ".join(parts)
+def tender_text(tender: "Tender") -> str:
+    from apps.tenders.okved import okved_to_text
+
+    okpd_names = okved_to_text(tender.okpd_codes or [])
+    ai_summary = (tender.ai_summary or "")[:500]
+
+    parts = [
+        tender.title + ".",
+        ai_summary,
+        f"Вид работ: {okpd_names}." if okpd_names else "",
+        f"Заказчик: {tender.customer.name}." if tender.customer_id else "",
+        f"Регион: {tender.region}." if tender.region else "",
+        f"Закон: {tender.law_type}." if tender.law_type else "",
+    ]
+    return " ".join(p for p in parts if p)

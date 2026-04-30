@@ -98,16 +98,37 @@ def _field_after(tree: etree._Element, label: str) -> str:
 # Поиск тендеров (список)
 # ---------------------------------------------------------------------------
 
+# Коды субъектов РФ для ЕИС (параметр subjectRF)
+REGION_CODES: dict[str, str] = {
+    "Самарская область": "63",
+    "Ульяновская область": "73",
+    "Пензенская область": "58",
+    "Оренбургская область": "56",
+    "Саратовская область": "64",
+    "Татарстан": "16",
+    "Башкортостан": "2",
+    "Пермский край": "59",
+    "Нижегородская область": "52",
+    "Мордовия": "13",
+    "Чувашия": "21",
+    "Московская область": "50",
+    "Москва": "77",
+    "Санкт-Петербург": "78",
+}
+
+
 def search_tenders(
     date_from: date,
     date_to: date,
     page: int = 1,
     fz44: bool = True,
     fz223: bool = True,
+    region_code: str | None = None,
+    search_string: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Возвращает список карточек тендеров со страницы поиска ЕИС.
-    Каждая карточка содержит базовые поля без дополнительных HTTP-запросов.
+    search_string — ключевые слова для поиска по тексту тендера.
     """
     params: dict[str, Any] = {
         "morphology": "on",
@@ -127,6 +148,8 @@ def search_tenders(
         params["fz44"] = "on"
     if fz223:
         params["fz223"] = "on"
+    if search_string:
+        params["searchString"] = search_string
 
     html = _fetch_html(SEARCH_URL, params=params)
     if not html:

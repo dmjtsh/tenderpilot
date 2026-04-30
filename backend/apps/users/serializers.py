@@ -1,6 +1,6 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from .models import User, CompanyProfile
+from .models import User, CompanyProfile, CompanyDirection
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -50,3 +50,16 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         model = CompanyProfile
         fields = ["id", "name", "inn", "description", "okved_codes", "regions", "keywords", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+
+class CompanyDirectionSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(allow_blank=True, default="")
+
+    class Meta:
+        model = CompanyDirection
+        fields = [
+            "id", "name", "okved_codes", "keywords", "regions",
+            "nmck_min", "nmck_max", "law_types",
+            "vector_updated_at", "created_at",
+        ]
+        read_only_fields = ["id", "vector_updated_at", "created_at"]

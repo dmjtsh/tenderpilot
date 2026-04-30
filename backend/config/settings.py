@@ -124,6 +124,7 @@ CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:
 
 # JWT
 from datetime import timedelta
+from celery.schedules import crontab
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
@@ -144,6 +145,12 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_BEAT_SCHEDULE = {
+    "cleanup-old-documents": {
+        "task": "apps.documents.tasks.cleanup_old_documents",
+        "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),
+    },
+}
 
 # Qdrant
 QDRANT_URL = config("QDRANT_URL", default="http://localhost:6333")
@@ -157,8 +164,14 @@ MINIO_BUCKET_DOCUMENTS = "documents"
 # Anthropic
 ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 
+# OpenAI
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+
 # Telegram
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
+
+# DaData
+DADATA_TOKEN = config("DADATA_TOKEN", default="")
 
 if DEBUG:
     INSTALLED_APPS += ["django_extensions"]

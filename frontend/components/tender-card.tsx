@@ -47,9 +47,16 @@ export function TenderCard({ tender }: { tender: Tender }) {
           {tender.number ? tender.number.replace(/^0+/, "").slice(-8) : `#${tender.id}`}
         </span>
 
-        {/* Title */}
-        <span className="flex-1 text-[13px] text-foreground/90 truncate min-w-0 group-hover:text-foreground transition-colors">
-          {tender.title}
+        {/* Title + direction badge */}
+        <span className="flex-1 flex items-center gap-2 min-w-0">
+          <span className="text-[13px] text-foreground/90 truncate group-hover:text-foreground transition-colors">
+            {tender.title}
+          </span>
+          {tender.matched_direction && (
+            <span className="hidden md:inline-block shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary/80 border border-primary/20 font-medium max-w-[140px] truncate">
+              {tender.matched_direction}
+            </span>
+          )}
         </span>
 
         {/* Right metadata */}

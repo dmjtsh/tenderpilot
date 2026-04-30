@@ -1,157 +1,212 @@
 # Tender SaaS — Claude Code Instructions
 
 ## Project overview
-AI-powered tender discovery platform for Russian public procurement (44-ФЗ, 223-ФЗ).
-Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + Redis · Claude API
+AI-powered tender discovery platform for Russian public procurement (44-ФЗ, 223-ФЗ, 615-ПП).
+Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + Redis · OpenAI API
 
 ## Architecture
 ```
-/backend          — Django project
+/backend
   /apps
-    /tenders      — парсинг, модели тендеров
-    /search       — embedding, Qdrant интеграция
-    /documents    — PDF парсинг, OCR, RAG
-    /users        — авторизация, профили компаний
-    /billing      — тарифы, ЮКасса
-    /alerts       — Celery tasks, Telegram bot
-  /config         — settings, urls, celery config
-/frontend         — Next.js app
-  /app            — App Router pages
+    /tenders      — парсинг ЕИС, модели тендеров, справочник ОКВЭД
+    /search       — embedding, Qdrant, HyDE, матчинг
+    /documents    — PDF парсинг, RAG, очистка
+    /users        — авторизация, CompanyProfile, CompanyDirection
+    /billing      — тарифы, ЮКасса (не реализовано)
+    /alerts       — Celery tasks, Telegram bot (не реализовано)
+  /config         — settings, urls, celery
+/frontend
+  /app            — Next.js App Router pages
   /components     — UI компоненты
-  /lib            — API клиент, утилиты
+  /lib            — API клиент, типы
 /infra            — docker-compose, nginx, .env.example
 ```
 
+---
+
+## Что сделано
+
+### Бэкенд
+
+- **Парсер ЕИС** (`apps/tenders/eis_client.py`)
+  - `search_tenders()` — список тендеров: `--days`, `--fz`, `--query`, `--max-pages`
+  - `fetch_tender_detail()` — детальное обогащение одного тендера
+  - Команда: `python manage.py parse_eis --days=30 --query="кровля" --enrich`
+  - **Важно**: фильтрация по региону через GET НЕ РАБОТАЕТ (AJAX-виджет). Обход: `--query` с ключевым словом региона.
+
+- **Справочник ОКВЭД** (`apps/tenders/okved.py`)
+  - `OKVED_NAMES` — dict 2773 кодов
+  - `okved_to_text(codes)` — коды → читаемые названия через запятую
+
+- **Семантический поиск** (`apps/search/`)
+  - Embedding: `multilingual-e5-large` через fastembed (ONNX, CPU, ~450MB, singleton)
+  - `tender_text(tender)` — title + ai_summary + ОКВЭД названия + регион + закон
+  - Qdrant коллекция `tenders`, cosine similarity
+  - `POST /api/v1/search/` — семантический поиск
+  - `GET /api/v1/search/match/` — матчинг под профиль
+
+- **HyDE** (`apps/search/hyde.py`)
+  - GPT-4o-mini → 3 текста → усреднение эмбеддингов → profile_vector
+  - GPT может возвращать JSON в ```json``` блоке — парсинг обходит это
+
+- **CompanyDirection** (`apps/users/models.py`)
+  - okved_codes, keywords, regions, nmck_min/max, law_types
+  - content_hash + needs_reindex() для debounce
+  - post_save → Celery task rebuild_direction_vector (countdown=30, фиксированный task_id)
+
+- **match_profile** (`apps/search/services.py`)
+  - Итерирует по направлениям с profile_vector
+  - Payload-фильтры Qdrant: region, nmck, law_type
+  - Берёт max score среди направлений, поддерживает direction_ids
+
+- **DaData** (`apps/users/dadata.py`)
+  - `enrich_company_by_inn(inn)` → name, region, okved_main, okved_list
+  - `POST /api/v1/users/lookup-inn/`
+  - Примечание: okveds в DaData часто пустой, только основной ОКВЭД
+
+- **ОКВЭД поиск**: `GET /api/v1/tenders/okved/?q=` — до 20 результатов
+
+- **Авторизация**: JWT, `/api/v1/users/auth/token/`, `/api/v1/users/register/`
+
+### Фронтенд
+
+- Linear.app-стиль, always-dark, Tailwind v3
+- `/login`, `/tenders` (Все / Для вас), `/tenders/[id]`, `/profile`
+- Таб "Для вас" персистится в URL (`?tab=match`)
+- Фильтр по направлениям (чипы, если направлений > 1)
+- `TenderCard` — бейдж matched_direction
+- `OkvedCombobox` — топ-20 популярных при открытии, поиск без минимума символов
+- `InnSuggestPanel` — автозаполнение по ИНН + чекбоксы направлений
+- `DirectionCard` — форма направления с ОКВЭД combobox, НМЦ presets, 44/223/615
+
+### Данные
+- ~3400+ тендеров, ~700+ обогащено
+- Темы: кровля, благоустройство, капремонт
+- Регионы: Дальний Восток (случайная выборка), Самарская обл
+
+---
+
+## Не трогать — работает
+- `apps/tenders/eis_client.py` — не рефакторить
+- `apps/search/embedder.py` — singleton намеренный (модель ~450MB)
+- `frontend/app/providers.tsx` — `useState(() => new QueryClient())` намеренно
+- `frontend/components/Shell.tsx` — `mounted` state намеренный (hydration fix)
+- Tailwind v3 — не обновлять (shadcn генерирует v4-синтаксис)
+
+---
+
 ## MCP Tools
 
-Активные MCP серверы в этом проекте. Используй их проактивно —
-не пиши код вслепую если можешь проверить реальное состояние системы.
-
 ### postgres-mcp ✓
-Прямой доступ к Postgres БД.
-```
-Когда использовать:
-- перед написанием любого Django ORM запроса — проверь реальную схему
-- когда нужно проверить что данные сохранились правильно
-- когда дебажишь N+1 запросы
-```
+Использовать перед любым ORM запросом — проверить реальную схему.
 
 ### qdrant ✓
-Доступ к Qdrant векторной БД (http://localhost:6333).
-```
-Когда использовать:
-- проверить что коллекция создана и содержит векторы
-- посмотреть payload конкретного вектора
-- проверить результаты поиска напрямую
-
-Коллекции проекта:
-- tenders       — векторы тендеров (название + описание + ОКПД)
-- doc_chunks    — чанки тендерных документов для RAG
-```
+http://localhost:6333
+Коллекции: `tenders` (векторы тендеров), `doc_chunks` (RAG чанки документов).
+doc_chunks payload: {tender_id, document_id, chunk_index, text, filename, content_priority}
 
 ### sequential-thinking ✓
-Claude думает пошагово перед тем как писать код.
-```
-Когда использовать — ОБЯЗАТЕЛЬНО для:
-- проектирования новых модулей (RAG пайплайн, embedding логика)
-- архитектурных решений (как структурировать Celery tasks)
-- сложных багов которые не очевидны с первого взгляда
-- любой задачи где есть несколько подходов
-
-Как вызвать: начни промпт с "Используй sequential thinking. Задача: ..."
-```
+Обязательно для проектирования, архитектурных решений, сложных багов.
+Вызов: "Используй sequential thinking. Задача: ..."
 
 ### filesystem ✓
-Чтение и запись файлов проекта.
-Путь: /Users/dmitriyshutov/Desktop/tender_pilot
-```
-Когда использовать:
-- читать существующий код перед тем как его менять
-- проверять структуру проекта
-- писать новые файлы
-
-Правило: всегда читай файл перед редактированием — не пиши вслепую.
-```
+`/Users/dmitriyshutov/Desktop/tender_pilot`
+Всегда читать файл перед редактированием.
 
 ### memory ✓
-Сохраняет важные решения между сессиями.
-```
-Что сохранять:
-- архитектурные решения ("решили использовать chunk_size=512")
-- найденные баги и их причины
-- договорённости команды по именованию
-- нестандартные конфигурации окружения
-```
+Сохранять важные архитектурные решения между сессиями.
 
 ### fetch (опционально)
 Чтение внешних URL — документация, API specs.
-```
-Когда использовать:
-- читать документацию ЕИС API
-- смотреть актуальные доки LlamaIndex / Qdrant
-- проверять формат данных внешних источников
-```
 
-## Critical rules — ALWAYS follow
+---
 
-### Перед написанием кода
-1. Прочитай существующий файл через filesystem если он уже есть
-2. Проверь схему БД через postgres-mcp если пишешь ORM запросы
-3. Для сложных задач — сначала sequential thinking, потом код
+## Critical rules
+
+### Перед кодом
+1. Прочитай файл через filesystem
+2. Проверь схему через postgres-mcp
+3. Для сложных задач — sequential thinking сначала
 
 ### Django
-- Все API через Django REST Framework, не Django views
-- Модели только в /apps/*/models.py, никогда в других файлах
-- Бизнес-логику в services.py, не в views и не в models
-- Celery tasks в tasks.py, импортировать через app.task декоратор
-- Все секреты через os.environ.get(), никогда хардкодить
-- Миграции генерировать через python manage.py makemigrations, не вручную
-- Типизация везде — использовать type hints
+- API только через DRF
+- Модели только в `apps/*/models.py`
+- Бизнес-логика только в `services.py`
+- Celery tasks только в `tasks.py`
+- Секреты через `django.conf.settings`
+- Миграции только через `makemigrations`
+- Type hints везде
+- venv: `backend/.venv/bin/python`
 
-### API design
-- REST endpoints: /api/v1/...
-- Всегда возвращать {data: ..., error: null} или {data: null, error: "..."}
-- Пагинация на всех list endpoints (page_size=20 по умолчанию)
-- Аутентификация: JWT Bearer token в заголовке
+### API
+- Endpoints: `/api/v1/...`
+- Ответ: `{data: ..., error: null}` или `{data: null, error: "..."}`
+- Пагинация: page_size=20
+- Auth: JWT Bearer token
 
-### AI / ML компоненты
-- Все LLM вызовы через backend/apps/documents/llm_client.py — единая точка входа
-- Кэшировать результаты LLM в Postgres (поле ai_summary в модели)
-- Rate limiting на AI endpoints: max 10 req/min на пользователя
-- Логировать все LLM вызовы: токены, время, стоимость
-- Embedding модель: multilingual-e5-large (основная), deepvk/USER-bge-m3 (альтернатива)
-- Chunk size: 512 токенов, overlap: 50 токенов
+### AI / ML
+- HyDE вызовы через `apps/search/hyde.py`
+- GPT JSON — всегда зачищать ```json``` блок перед json.loads
+- LLM результаты кэшировать в Postgres
+- Embedding: `multilingual-e5-large` через fastembed (не менять)
+- Debounce векторов: countdown=30, фиксированный task_id
+
+### Documents (см. DOCUMENTS_ARCHITECTURE.md)
+- Режим А (резюме): get_summary_context() из parsed_text, НЕ через Qdrant
+- Режим Б (вопросы): RAG через Qdrant doc_chunks с filter(tender_id)
+- document_id в каждом Qdrant payload — для точечного удаления
+- Инвалидация ai_summary при новом документе (post_save сигнал)
+- Очистка: еженедельный Celery beat, тендеры старше 730 дней
+- ai_summary НЕ удалять при очистке (500 байт, историческая ценность)
 
 ### Frontend
 - App Router (не Pages Router)
-- Компоненты на shadcn/ui — не изобретать велосипед
-- Данные через React Query (tanstack/query)
-- Типы генерировать из Django DRF схемы
+- Tailwind v3 (не v4)
+- React Query v5: `isLoading = isPending && isFetching`
+- Типы из `frontend/lib/api.ts`
+- DRF ListCreateAPIView: `r.data.results ?? r.data`
 
-### Что НИКОГДА не делать
-- Не писать бизнес-логику в Django views
-- Не делать синхронные HTTP запросы внутри Celery tasks
-- Не хранить PDF файлы локально — только MinIO
-- Не делать N+1 запросы — всегда select_related/prefetch_related
-- Не коммитить .env файлы
-- Не писать код не прочитав существующий файл
+### Никогда
+- Бизнес-логику в views
+- Синхронные HTTP в Celery tasks
+- PDF локально — только MinIO
+- N+1 запросы — select_related/prefetch_related
+- Коммитить .env
+- Писать код не прочитав файл
+
+---
 
 ## Key models
 
 ```python
 Tender: id, number, title, nmck, customer, region, okpd_codes,
-        published_at, deadline_at, status, source_url, raw_json, ai_summary
+        published_at, deadline_at, auction_date, status,
+        law_type, trading_platform, trading_platform_url,
+        bid_security_amount, bid_security_required,
+        contract_security_amount, contract_security_percent,
+        source_url, raw_json, ai_summary, embedding_id
 
 Customer: id, inn, name, region, full_name
 
-Document: id, tender, filename, s3_key, parsed_text, ocr_quality, chunks_indexed
-
 CompanyProfile: id, user, name, inn, description, okved_codes, regions, keywords
 
-TenderMatch: id, profile, tender, score, notified_at
+CompanyDirection: id, profile, name, okved_codes, keywords,
+                  nmck_min, nmck_max, law_types,
+                  hyde_texts, profile_vector, content_hash,
+                  vector_updated_at, created_at
 
+TenderDocument: id, tender, filename, file_type, s3_key, file_size,
+                parent_document (FK self, nullable), archive_path,
+                parsed_text, is_scanned, file_hash,
+                parse_status (pending/processing/done/failed/skipped/cleaned),
+                parse_error, content_priority (0-99),
+                created_at, parsed_at
+
+TenderMatch: id, profile, tender, score, notified_at
 Subscription: id, user, plan (free/solo/team), expires_at
 ```
+
+---
 
 ## Environment variables
 ```
@@ -161,50 +216,95 @@ MINIO_ENDPOINT=localhost:9000
 MINIO_ACCESS_KEY=tender_admin
 MINIO_SECRET_KEY=tender_secret_123
 REDIS_URL=redis://localhost:6379
-ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...         # HyDE + AI резюме + RAG
+DADATA_TOKEN=...           # автозаполнение по ИНН
 TELEGRAM_BOT_TOKEN=...
 YUKASSA_SHOP_ID=...
 YUKASSA_SECRET_KEY=...
 ```
 
+---
+
 ## Commands
 
-### Локальная разработка
 ```bash
-docker compose up -d             # запустить инфраструктуру
+# Инфраструктура
+docker compose up -d
+
+# Бэкенд
 cd backend
-python manage.py migrate         # применить миграции
-python manage.py runserver       # Django dev server
-celery -A config worker -l info  # воркер задач
-celery -A config beat -l info    # планировщик
+.venv/bin/python manage.py migrate
+.venv/bin/python manage.py runserver 8080
+DJANGO_SETTINGS_MODULE=config.settings .venv/bin/celery -A config worker -l info
 
-cd frontend
-npm run dev                      # Next.js dev server
+# Фронтенд
+cd frontend && npm run dev
+
+# Парсинг
+python manage.py parse_eis --days=30 --query="кровля" --max-pages=20 --enrich
+
+# Индексация тендеров в Qdrant
+python manage.py index_tenders
+
+# Принудительная переиндексация направлений
+python manage.py shell -c "
+from apps.search.tasks import rebuild_direction_vector
+from apps.users.models import CompanyDirection
+for d in CompanyDirection.objects.filter(profile_vector__isnull=True):
+    rebuild_direction_vector(d.id)
+    print(f'rebuilt {d.id} {d.name}')
+"
+
+# Обогащение тендеров без Celery
+python manage.py shell -c "
+import time
+from apps.tenders.models import Tender
+from apps.tenders.eis_client import fetch_tender_detail
+from apps.tenders.services import upsert_tender
+for pk, num, url in Tender.objects.filter(trading_platform='').values_list('pk','number','source_url'):
+    d = fetch_tender_detail(num, url)
+    if d: d['raw_json']=d.copy(); upsert_tender(d)
+    time.sleep(0.4)
+"
 ```
 
-### Полезные команды
-```bash
-python manage.py shell_plus          # Django shell с автоимпортом моделей
-python manage.py index_tenders       # переиндексировать тендеры в Qdrant
-python manage.py parse_eis --days=7  # спарсить последние 7 дней
-```
+---
 
 ## Custom commands (.claude/commands/)
 ```
-/new-endpoint       — создать новый Django REST endpoint
-/new-celery-task    — создать новую Celery задачу
-/debug              — режим отладки: логи + БД + очередь
+/new-endpoint       — новый Django REST endpoint
+/new-celery-task    — новая Celery задача
+/debug              — отладка: логи + БД + очередь
+/review             — code review на нарушения правил
 ```
 
-## Current sprint
-- [ ] День 1–2: инфраструктура + парсер + загрузка данных
-- [ ] День 3: embedding индекс в Qdrant
-- [ ] День 4: авторизация + профиль компании
-- [ ] День 5: алерты + Telegram bot
-- [ ] День 6–7: PDF парсинг + RAG
-- [ ] День 8: резюме тендера + аналитика заказчика
-- [ ] День 9: черновик заявки
-- [ ] День 10: pipeline управление (kanban)
-- [ ] День 11–12: монетизация (ЮКасса, тарифы)
-- [ ] День 13: стабильность (rate limiting, Sentry)
-- [ ] День 14: запуск
+---
+
+## Roadmap
+
+### Сделано
+- [x] Справочник ОКВЭД (2773 кода)
+- [x] Обогащённый tender_text()
+- [x] CompanyDirection + HyDE + debounce
+- [x] Payload фильтры Qdrant (НМЦ, регион, закон)
+- [x] Фронт — направления, ОКВЭД combobox, НМЦ presets
+- [x] DaData автозаполнение по ИНН
+- [x] Фильтр по направлениям в "Для вас"
+
+### Приоритет 1 — до первых пользователей
+- [ ] AI-резюме тендера (GPT-4o-mini) — суть, требования, риски, рекомендация
+- [ ] PDF парсинг текстовых + DOCX (для резюме, без RAG)
+- [ ] Telegram bot алерты
+- [ ] Монетизация (ЮКасса) — free/solo/team
+
+### Приоритет 2 — после первых платящих
+- [ ] RAG — вопросы по документации (POST /tenders/{id}/ask/)
+- [ ] Rate limiting на AI endpoints + Sentry
+- [ ] Cross-encoder reranking
+
+### Приоритет 3 — по фидбеку
+- [ ] Черновик заявки (LLM)
+- [ ] Pipeline / kanban
+- [ ] OCR для сканов
+- [ ] История победителей заказчика
+- [ ] Фильтры в UI: площадка, дата торгов

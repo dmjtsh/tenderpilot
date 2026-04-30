@@ -47,14 +47,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"\nГотово: проиндексировано {processed} тендеров"))
 
     def _index_batch(self, tenders: list[Tender]) -> int:
-        texts = [
-            tender_text(
-                title=t.title,
-                okpd_codes=t.okpd_codes,
-                customer_name=t.customer.name if t.customer else "",
-            )
-            for t in tenders
-        ]
+        texts = [tender_text(t) for t in tenders]
         vectors = embedder.embed_passages(texts)
 
         items = []
@@ -65,6 +58,7 @@ class Command(BaseCommand):
                 "nmck": float(t.nmck) if t.nmck else None,
                 "customer_name": t.customer.name if t.customer else "",
                 "region": t.region,
+                "law_type": t.law_type,
                 "status": t.status,
                 "published_at": t.published_at.isoformat() if t.published_at else None,
             }

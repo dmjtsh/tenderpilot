@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "write_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/dmitriyshutov/Desktop/tender_pilot/backend && python -m ruff check . --fix --quiet 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/dmitriyshutov/Desktop/tender_pilot/backend && python -m pytest tests/ -q --tb=short 2>&1 | tail -30 || true"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "bash(python manage.py *)",
+      "bash(docker compose *)",
+      "bash(pip install *)",
+      "bash(npm *)",
+      "bash(git add *)",
+      "bash(git commit *)",
+      "bash(pytest *)",
+      "bash(ruff *)",
+      "bash(celery *)"
+    ],
+    "deny": [
+      "bash(rm -rf *)",
+      "bash(git push --force*)"
+    ]
+  }
+}

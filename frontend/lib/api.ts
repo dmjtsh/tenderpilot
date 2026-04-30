@@ -32,6 +32,18 @@ export const authApi = {
 }
 
 // Tenders
+export interface TenderSummary {
+  essence: string
+  requirements: string[]
+  days_left: number | null
+  urgency: "low" | "medium" | "high" | "critical"
+  finances: string
+  red_flags: string[]
+  verdict: "go" | "maybe" | "pass"
+  verdict_reason: string
+  has_docs?: boolean
+}
+
 export interface Tender {
   id: number
   number: string
@@ -55,6 +67,7 @@ export interface Tender {
   source_url: string
   ai_summary?: string
   score?: number
+  matched_direction?: string | null
 }
 
 export const tendersApi = {
@@ -66,6 +79,9 @@ export const tendersApi = {
 
   regions: () =>
     client.get("/tenders/regions/").then((r) => r.data.data as string[]),
+
+  getSummary: (id: number) =>
+    client.get(`/tenders/${id}/summary/`).then((r) => r.data.data as TenderSummary),
 }
 
 // Search
@@ -75,9 +91,9 @@ export const searchApi = {
       .post("/search/", { query, limit: 20, ...filters })
       .then((r) => r.data.data as Tender[]),
 
-  match: (limit = 20) =>
+  match: (limit = 20, directionIds?: number[]) =>
     client
-      .get("/search/match/", { params: { limit } })
+      .get("/search/match/", { params: { limit, ...(directionIds?.length ? { direction_ids: directionIds.join(",") } : {}) } })
       .then((r) => r.data as { data: Tender[]; error: string | null }),
 }
 
@@ -92,9 +108,54 @@ export interface CompanyProfile {
   keywords: string[]
 }
 
+export interface CompanyDirection {
+  id: number
+  name: string
+  okved_codes: string[]
+  keywords: string[]
+  regions: string[]
+  nmck_min: number | null
+  nmck_max: number | null
+  law_types: string[]
+  vector_updated_at: string | null
+  created_at: string
+}
+
+export interface InnLookupResult {
+  name: string
+  full_name: string
+  inn: string
+  region: string
+  okved_main: string
+  okved_list: string[]
+  suggested_directions: { okved_code: string; name: string }[]
+}
+
 export const profileApi = {
   getMe: () => client.get("/users/me/").then((r) => r.data),
   getCompany: () => client.get("/users/me/company/").then((r) => r.data),
   updateCompany: (data: Partial<CompanyProfile>) =>
     client.patch("/users/me/company/", data).then((r) => r.data),
+  lookupInn: (inn: string) =>
+    client
+      .post("/users/lookup-inn/", { inn })
+      .then((r) => r.data as { data: InnLookupResult | null; error: string | null }),
+}
+
+export const okvedApi = {
+  search: (q: string) =>
+    client
+      .get("/tenders/okved/", { params: { q } })
+      .then((r) => r.data.data as { code: string; name: string }[]),
+}
+
+export const directionsApi = {
+  list: () =>
+    client.get("/users/me/directions/").then((r) => (r.data.results ?? r.data) as CompanyDirection[]),
+  create: (data: Omit<CompanyDirection, "id" | "vector_updated_at" | "created_at">) =>
+    client.post("/users/me/directions/", data).then((r) => r.data as CompanyDirection),
+  update: (id: number, data: Partial<CompanyDirection>) =>
+    client.patch(`/users/me/directions/${id}/`, data).then((r) => r.data as CompanyDirection),
+  remove: (id: number) =>
+    client.delete(`/users/me/directions/${id}/`),
 }

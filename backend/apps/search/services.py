@@ -80,6 +80,52 @@ class QdrantService:
         ).points
         return [{"id": r.id, "score": r.score, **r.payload} for r in results]
 
+    def match_profile(self, profile: Any, limit: int = 20, direction_ids: list[int] | None = None) -> list[dict[str, Any]]:
+        qs = profile.directions.filter(profile_vector__isnull=False)
+        if direction_ids:
+            qs = qs.filter(id__in=direction_ids)
+        directions = list(qs)
+        if not directions:
+            return []
+
+        all_results: dict[int, dict[str, Any]] = {}
+
+        for direction in directions:
+            conditions = []
+            if direction.regions:
+                conditions.append(
+                    FieldCondition(key="region", match=MatchAny(any=direction.regions))
+                )
+            if direction.nmck_min is not None or direction.nmck_max is not None:
+                conditions.append(
+                    FieldCondition(key="nmck", range=Range(gte=direction.nmck_min, lte=direction.nmck_max))
+                )
+            if direction.law_types:
+                conditions.append(
+                    FieldCondition(key="law_type", match=MatchAny(any=direction.law_types))
+                )
+
+            results = self.client.query_points(
+                collection_name=COLLECTION_TENDERS,
+                query=direction.profile_vector,
+                query_filter=Filter(must=conditions) if conditions else None,
+                limit=100,
+                with_payload=True,
+            ).points
+
+            for r in results:
+                existing = all_results.get(r.id)
+                if existing is None or r.score > existing["score"]:
+                    all_results[r.id] = {
+                        "id": r.id,
+                        "score": r.score,
+                        "matched_direction": direction.name,
+                        **r.payload,
+                    }
+
+        sorted_results = sorted(all_results.values(), key=lambda x: x["score"], reverse=True)
+        return sorted_results[:limit * 5]
+
     def delete_tender(self, tender_id: int) -> None:
         self.client.delete(
             collection_name=COLLECTION_TENDERS,

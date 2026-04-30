@@ -21,3 +21,4 @@ class SearchResultItemSerializer(serializers.Serializer):
     status = serializers.CharField()
     source_url = serializers.CharField()
     score = serializers.FloatField()
+    matched_direction = serializers.CharField(allow_null=True, required=False)

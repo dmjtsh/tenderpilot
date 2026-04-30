@@ -1,4 +1,5 @@
 import logging
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -23,9 +24,10 @@ class TenderSearchView(APIView):
 
         query_vector = embedder.embed_query(params["query"])
 
+        want = params["limit"]
         hits = qdrant.search_tenders(
             vector=query_vector,
-            limit=params["limit"],
+            limit=want * 5,
             region=params.get("region") or None,
             status=params.get("status"),
             nmck_min=params.get("nmck_min"),
@@ -38,9 +40,10 @@ class TenderSearchView(APIView):
         hit_ids = [h["id"] for h in hits]
         score_map = {h["id"]: h["score"] for h in hits}
 
+        now = timezone.now()
         tenders = {
             t.pk: t
-            for t in Tender.objects.filter(pk__in=hit_ids).select_related("customer")
+            for t in Tender.objects.filter(pk__in=hit_ids, deadline_at__gt=now).select_related("customer")
         }
 
         results = []
@@ -60,6 +63,8 @@ class TenderSearchView(APIView):
                 "source_url": tender.source_url,
                 "score": round(score_map[hit_id], 4),
             })
+            if len(results) >= want:
+                break
 
         out = SearchResultItemSerializer(results, many=True)
         return Response({"data": out.data, "error": None})
@@ -70,35 +75,31 @@ class TenderMatchView(APIView):
 
     def get(self, request: Request) -> Response:
         profile, _ = CompanyProfile.objects.get_or_create(user=request.user)
+        want = int(request.query_params.get("limit", 20))
 
-        parts: list[str] = []
-        if profile.description:
-            parts.append(profile.description)
-        if profile.keywords:
-            parts.extend(profile.keywords)
+        direction_ids_raw = request.query_params.get("direction_ids", "")
+        direction_ids = [int(x) for x in direction_ids_raw.split(",") if x.strip().isdigit()]
 
-        if not parts:
-            return Response({"data": [], "error": "Заполните профиль компании: добавьте описание или ключевые слова"})
+        has_directions = profile.directions.filter(profile_vector__isnull=False).exists()
+        if not has_directions:
+            pending = profile.directions.exists()
+            if pending:
+                return Response({"data": [], "error": "Направления индексируются, подождите ~30 секунд"})
+            return Response({"data": [], "error": "Добавьте направления поиска в профиле"})
 
-        query = " ".join(parts)
-        query_vector = embedder.embed_query(query)
-        limit = int(request.query_params.get("limit", 20))
-
-        hits = qdrant.search_tenders(
-            vector=query_vector,
-            limit=limit,
-            regions=profile.regions if profile.regions else None,
-        )
+        hits = qdrant.match_profile(profile, limit=want, direction_ids=direction_ids or None)
 
         if not hits:
             return Response({"data": [], "error": None})
 
         hit_ids = [h["id"] for h in hits]
         score_map = {h["id"]: h["score"] for h in hits}
+        direction_map = {h["id"]: h.get("matched_direction") for h in hits}
 
+        now = timezone.now()
         tenders = {
             t.pk: t
-            for t in Tender.objects.filter(pk__in=hit_ids).select_related("customer")
+            for t in Tender.objects.filter(pk__in=hit_ids, deadline_at__gt=now).select_related("customer")
         }
 
         results = []
@@ -117,7 +118,10 @@ class TenderMatchView(APIView):
                 "status": tender.status,
                 "source_url": tender.source_url,
                 "score": round(score_map[hit_id], 4),
+                "matched_direction": direction_map.get(hit_id),
             })
+            if len(results) >= want:
+                break
 
         out = SearchResultItemSerializer(results, many=True)
         return Response({"data": out.data, "error": None})

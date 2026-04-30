@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { tendersApi, type Tender } from "@/lib/api"
-import { ChevronLeft, ExternalLink, MessageSquare, X } from "lucide-react"
+import { tendersApi, type Tender, type TenderSummary } from "@/lib/api"
+import { AlertTriangle, ChevronLeft, ExternalLink, FileText, Loader2, MessageSquare, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -32,6 +32,103 @@ function fmtDate(s: string | null) {
   return new Date(s).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
 }
 
+const URGENCY_BADGE: Record<string, string> = {
+  low: "bg-secondary text-secondary-foreground",
+  medium: "bg-yellow-500/15 text-yellow-400",
+  high: "bg-orange-500/15 text-orange-400",
+  critical: "bg-red-500/15 text-red-400",
+}
+
+const URGENCY_LABEL: Record<string, string> = {
+  low: "Не срочно",
+  medium: "Умеренно",
+  high: "Срочно",
+  critical: "Критично",
+}
+
+const VERDICT_BADGE: Record<string, string> = {
+  go: "bg-emerald-500/15 text-emerald-400",
+  maybe: "bg-yellow-500/15 text-yellow-400",
+  pass: "bg-red-500/15 text-red-400",
+}
+
+const VERDICT_LABEL: Record<string, string> = {
+  go: "Участвовать",
+  maybe: "Рассмотреть",
+  pass: "Пропустить",
+}
+
+function SummaryBlock({ s }: { s: TenderSummary }) {
+  return (
+    <div className="space-y-4">
+      {/* Verdict + has_docs badge */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${VERDICT_BADGE[s.verdict] ?? "bg-secondary text-secondary-foreground"}`}>
+          {VERDICT_LABEL[s.verdict] ?? s.verdict}
+        </span>
+        {s.has_docs && (
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400">
+            <FileText className="w-3 h-3" />
+            На основе документов
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground">{s.verdict_reason}</span>
+      </div>
+
+      {/* Essence */}
+      <p className="text-sm leading-relaxed text-foreground/80">{s.essence}</p>
+
+      {/* Requirements */}
+      {s.requirements?.length > 0 && (
+        <div>
+          <p className="text-xs text-muted-foreground mb-1.5">Требования</p>
+          <ul className="space-y-1">
+            {s.requirements.map((r, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-foreground/75">
+                <span className="text-muted-foreground/50 mt-0.5 shrink-0">·</span>
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Finances */}
+      {s.finances && (
+        <div>
+          <p className="text-xs text-muted-foreground mb-1.5">Финансы</p>
+          <p className="text-sm text-foreground/75">{s.finances}</p>
+        </div>
+      )}
+
+      {/* Deadline urgency */}
+      <div className="flex items-center gap-2">
+        <span className={`text-xs px-2 py-0.5 rounded-full ${URGENCY_BADGE[s.urgency] ?? "bg-secondary text-secondary-foreground"}`}>
+          {URGENCY_LABEL[s.urgency] ?? s.urgency}
+        </span>
+        {s.days_left != null && (
+          <span className="text-xs text-muted-foreground">{s.days_left} дней до дедлайна</span>
+        )}
+      </div>
+
+      {/* Red flags */}
+      {s.red_flags?.length > 0 && (
+        <div>
+          <p className="text-xs text-muted-foreground mb-1.5">Красные флаги</p>
+          <ul className="space-y-1">
+            {s.red_flags.map((f, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-amber-400/90">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MetaRow({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border/50">
@@ -52,6 +149,9 @@ export default function TenderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [showQuestion, setShowQuestion] = useState(false)
   const [question, setQuestion] = useState("")
+  const [summary, setSummary] = useState<TenderSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
@@ -62,6 +162,29 @@ export default function TenderDetailPage() {
     queryFn: () => tendersApi.get(Number(id)),
     enabled: !!id,
   })
+
+  useEffect(() => {
+    if (!tender?.ai_summary) return
+    try {
+      setSummary(JSON.parse(tender.ai_summary))
+    } catch {
+      // plain text legacy — не отображаем как структуру
+    }
+  }, [tender?.ai_summary])
+
+  async function handleGenerateSummary() {
+    setSummaryLoading(true)
+    setSummaryError(null)
+    try {
+      const data = await tendersApi.getSummary(Number(id))
+      setSummary(data)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Ошибка генерации"
+      setSummaryError(msg)
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -184,13 +307,43 @@ export default function TenderDetailPage() {
 
           {/* AI summary */}
           <div className="mb-8">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">AI-резюме</p>
-            {tender.ai_summary ? (
-              <p className="text-sm leading-relaxed text-foreground/80">{tender.ai_summary}</p>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">AI-резюме</p>
+              {summary && (
+                <button
+                  onClick={handleGenerateSummary}
+                  disabled={summaryLoading}
+                  className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors disabled:opacity-40"
+                >
+                  обновить
+                </button>
+              )}
+            </div>
+            {summary ? (
+              <SummaryBlock s={summary} />
+            ) : summaryLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Анализируем тендер...
+              </div>
+            ) : summaryError ? (
+              <div className="space-y-2">
+                <p className="text-sm text-red-400/80">{summaryError}</p>
+                <button
+                  onClick={handleGenerateSummary}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Попробовать снова
+                </button>
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground/60 italic">
-                Резюме появится после анализа документов
-              </p>
+              <button
+                onClick={handleGenerateSummary}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+              >
+                <Sparkles className="w-4 h-4 group-hover:text-primary transition-colors" />
+                Сгенерировать резюме
+              </button>
             )}
           </div>
 

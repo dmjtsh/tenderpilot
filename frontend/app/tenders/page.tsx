@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { tendersApi, searchApi, type Tender } from "@/lib/api"
+import { tendersApi, searchApi, directionsApi, type Tender } from "@/lib/api"
 import { TenderCard } from "@/components/tender-card"
 import { Search, X, Sparkles } from "lucide-react"
 import Link from "next/link"
@@ -123,47 +123,103 @@ function AllTab() {
 // ─── Match tab ────────────────────────────────────────────────────────────────
 
 function MatchTab() {
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+
+  const { data: directions = [] } = useQuery({
+    queryKey: ["directions"],
+    queryFn: () => directionsApi.list(),
+  })
+
+  const activeIds = selectedIds.length > 0 ? selectedIds : undefined
+
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["match"],
-    queryFn: () => searchApi.match(20),
+    queryKey: ["match", activeIds],
+    queryFn: () => searchApi.match(20, activeIds),
     retry: false,
   })
+
+  function toggleDirection(id: number) {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
 
   const tenders = data?.data ?? []
   const error = data?.error
 
+  const directionFilter = directions.length > 1 ? (
+    <div className="flex items-center gap-1.5 px-6 py-2 border-b border-border/50 shrink-0 flex-wrap">
+      {directions.map((d) => {
+        const active = selectedIds.includes(d.id)
+        return (
+          <button
+            key={d.id}
+            type="button"
+            onClick={() => toggleDirection(d.id)}
+            className={`h-6 px-2.5 text-xs rounded-md border transition-colors ${
+              active
+                ? "bg-primary/15 border-primary/40 text-primary"
+                : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+            }`}
+          >
+            {d.name || "Без названия"}
+          </button>
+        )
+      })}
+      {selectedIds.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setSelectedIds([])}
+          className="h-6 px-2 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  ) : null
+
   if (isFetching) {
     return (
-      <div className="flex items-center justify-center flex-1 h-32">
-        <span className="text-xs text-muted-foreground">Подбираем тендеры...</span>
-      </div>
+      <>
+        {directionFilter}
+        <div className="flex items-center justify-center flex-1 h-32">
+          <span className="text-xs text-muted-foreground">Подбираем тендеры...</span>
+        </div>
+      </>
     )
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 h-48 gap-3">
-        <Sparkles className="w-8 h-8 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground text-center max-w-xs">{error}</p>
-        <Link href="/profile" className="text-xs text-primary hover:underline">
-          Заполнить профиль →
-        </Link>
-      </div>
+      <>
+        {directionFilter}
+        <div className="flex flex-col items-center justify-center flex-1 h-48 gap-3">
+          <Sparkles className="w-8 h-8 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground text-center max-w-xs">{error}</p>
+          <Link href="/profile" className="text-xs text-primary hover:underline">
+            Заполнить профиль →
+          </Link>
+        </div>
+      </>
     )
   }
 
   if (tenders.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 h-48 gap-3">
-        <Sparkles className="w-8 h-8 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">Подходящих тендеров не найдено</p>
-        <button onClick={() => refetch()} className="text-xs text-primary hover:underline">Обновить</button>
-      </div>
+      <>
+        {directionFilter}
+        <div className="flex flex-col items-center justify-center flex-1 h-48 gap-3">
+          <Sparkles className="w-8 h-8 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">Подходящих тендеров не найдено</p>
+          <button onClick={() => refetch()} className="text-xs text-primary hover:underline">Обновить</button>
+        </div>
+      </>
     )
   }
 
   return (
     <>
+      {directionFilter}
       {/* Column headers */}
       <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border/50 shrink-0">
         <span className="w-3.5" />
@@ -187,7 +243,16 @@ function MatchTab() {
 
 export default function TendersPage() {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>("all")
+  const searchParams = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() =>
+    searchParams.get("tab") === "match" ? "match" : "all"
+  )
+
+  function handleTabChange(t: Tab) {
+    setTab(t)
+    const url = t === "match" ? "/tenders?tab=match" : "/tenders"
+    router.replace(url, { scroll: false })
+  }
 
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
@@ -200,7 +265,7 @@ export default function TendersPage() {
         {([["all", "Все тендеры"], ["match", "Для вас"]] as const).map(([id, label]) => (
           <button
             key={id}
-            onClick={() => setTab(id)}
+            onClick={() => handleTabChange(id)}
             className={`h-7 px-3 text-xs rounded-md font-medium transition-colors ${
               tab === id
                 ? "bg-secondary text-foreground"
