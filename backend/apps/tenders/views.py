@@ -77,22 +77,51 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
     def docs(self, request, pk=None):
         from apps.documents.models import TenderDocument
         tender = self.get_object()
-        docs = TenderDocument.objects.filter(
+        top_level = TenderDocument.objects.filter(
             tender=tender, parent_document__isnull=True,
         ).order_by("content_priority", "filename")
-        data = [
-            {
-                "id": d.id,
-                "filename": d.filename,
-                "file_type": d.file_type,
-                "parse_status": d.parse_status,
-                "file_size": d.file_size,
-                "is_scanned": d.is_scanned,
-                "content_priority": d.content_priority,
-            }
-            for d in docs
-        ]
-        return Response({"data": data, "error": None})
+
+        result: list[dict] = []
+        for d in top_level:
+            if d.parse_status == TenderDocument.ParseStatus.SKIPPED:
+                continue
+            children = list(d.children.order_by("content_priority", "filename"))
+            if children:
+                for child in children:
+                    if child.parse_status == TenderDocument.ParseStatus.SKIPPED:
+                        continue
+                    result.append(self._doc_to_dict(child, archive_name=d.filename))
+            else:
+                result.append(self._doc_to_dict(d))
+        return Response({"data": result, "error": None})
+
+    @staticmethod
+    def _doc_to_dict(d, archive_name: str = "") -> dict:
+        return {
+            "id": d.id,
+            "filename": d.filename,
+            "file_type": d.file_type,
+            "parse_status": d.parse_status,
+            "file_size": d.file_size,
+            "is_scanned": d.is_scanned,
+            "content_priority": d.content_priority,
+            "archive_name": archive_name,
+        }
+
+    @action(detail=True, methods=["get"], url_path=r"docs/(?P<doc_id>\d+)/download")
+    def download_doc(self, request, pk=None, doc_id=None):
+        from django.http import HttpResponse
+        from apps.documents.models import TenderDocument
+        from apps.documents.storage import download_file
+        tender = self.get_object()
+        try:
+            doc = TenderDocument.objects.get(id=doc_id, tender=tender)
+        except TenderDocument.DoesNotExist:
+            return Response({"data": None, "error": "not found"}, status=404)
+        data = download_file(doc.s3_key)
+        response = HttpResponse(data, content_type="application/octet-stream")
+        response["Content-Disposition"] = f'attachment; filename="{doc.filename}"'
+        return response
 
     @action(detail=True, methods=["post"], url_path="download-docs")
     def download_docs(self, request, pk=None):

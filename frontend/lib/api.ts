@@ -37,11 +37,18 @@ export interface TenderSummary {
   requirements: string[]
   days_left: number | null
   urgency: "low" | "medium" | "high" | "critical"
+  execution_period?: string | null
   finances: string
+  financials?: {
+    bid_security_rub: number | null
+    contract_security_pct: number | null
+    contract_security_note: string | null
+  }
   red_flags: string[]
   verdict: "go" | "maybe" | "pass"
   verdict_reason: string
   has_docs?: boolean
+  tender_type?: string
 }
 
 export interface Tender {
@@ -78,6 +85,7 @@ export interface TenderDoc {
   file_size: number
   is_scanned: boolean
   content_priority: number
+  archive_name?: string
 }
 
 export const tendersApi = {

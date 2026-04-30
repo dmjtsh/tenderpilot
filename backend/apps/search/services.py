@@ -126,6 +126,61 @@ class QdrantService:
         sorted_results = sorted(all_results.values(), key=lambda x: x["score"], reverse=True)
         return sorted_results[:limit * 5]
 
+    def search_doc_chunks(
+        self,
+        vector: list[float],
+        tender_id: int,
+        limit: int = 2,
+        score_threshold: float = 0.3,
+    ) -> list[dict[str, Any]]:
+        results = self.client.query_points(
+            collection_name=COLLECTION_DOC_CHUNKS,
+            query=vector,
+            query_filter=Filter(must=[
+                FieldCondition(key="tender_id", match=MatchValue(value=tender_id)),
+            ]),
+            limit=limit,
+            score_threshold=score_threshold,
+            with_payload=True,
+        ).points
+        return [{"score": r.score, **(r.payload or {})} for r in results]
+
+    def upsert_doc_chunks(
+        self, points: list[tuple[str, list[float], dict[str, Any]]],
+    ) -> None:
+        if not points:
+            return
+        self.client.upsert(
+            collection_name=COLLECTION_DOC_CHUNKS,
+            points=[
+                PointStruct(id=pid, vector=vec, payload=payload)
+                for pid, vec, payload in points
+            ],
+        )
+
+    def scroll_doc_chunks(
+        self,
+        document_id: int,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        results, _ = self.client.scroll(
+            collection_name=COLLECTION_DOC_CHUNKS,
+            scroll_filter=Filter(must=[
+                FieldCondition(key="document_id", match=MatchValue(value=document_id)),
+            ]),
+            limit=limit,
+            with_payload=True,
+        )
+        return [{**(r.payload or {})} for r in results]
+
+    def delete_doc_chunks(self, document_id: int) -> None:
+        self.client.delete(
+            collection_name=COLLECTION_DOC_CHUNKS,
+            points_selector=Filter(must=[
+                FieldCondition(key="document_id", match=MatchValue(value=document_id)),
+            ]),
+        )
+
     def delete_tender(self, tender_id: int) -> None:
         self.client.delete(
             collection_name=COLLECTION_TENDERS,

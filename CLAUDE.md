@@ -10,7 +10,7 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
   /apps
     /tenders      — парсинг ЕИС, модели тендеров, справочник ОКВЭД
     /search       — embedding, Qdrant, HyDE, матчинг
-    /documents    — PDF парсинг, RAG, очистка
+    /documents    — PDF парсинг, RAG, очистка (см. DOCUMENTS_ARCHITECTURE.md)
     /users        — авторизация, CompanyProfile, CompanyDirection
     /billing      — тарифы, ЮКасса (не реализовано)
     /alerts       — Celery tasks, Telegram bot (не реализовано)
@@ -68,6 +68,21 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
 
 - **Авторизация**: JWT, `/api/v1/users/auth/token/`, `/api/v1/users/register/`
 
+- **Модуль documents** (`apps/documents/`) — см. DOCUMENTS_ARCHITECTURE.md
+  - TenderDocument модель — хранение файлов, статусы парсинга
+  - MinIO интеграция — upload/download/delete
+  - Парсеры: pymupdf (PDF), python-docx (DOCX), rarfile/zipfile (архивы)
+  - Celery pipeline: download → parse → classify → index → invalidate
+  - get_summary_context() — RAG выборка через Qdrant для AI резюме
+  - classify_documents_priority() — GPT определяет приоритет по имени файла
+  - cleanup_old_documents() — Celery beat каждое воскресенье
+
+- **AI резюме** (`apps/tenders/services.py`)
+  - generate_tender_summary(tender) — GPT-4o-mini с RAG контекстом
+  - get_or_create_summary(tender) — кэш в tender.ai_summary
+  - Промпт: чеклист по категориям, конкретные значения, универсальный тип
+  - `GET /api/v1/tenders/{id}/summary/`
+
 ### Фронтенд
 
 - Linear.app-стиль, always-dark, Tailwind v3
@@ -78,6 +93,10 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
 - `OkvedCombobox` — топ-20 популярных при открытии, поиск без минимума символов
 - `InnSuggestPanel` — автозаполнение по ИНН + чекбоксы направлений
 - `DirectionCard` — форма направления с ОКВЭД combobox, НМЦ presets, 44/223/615
+- Страница тендера:
+  - DocumentsBlock — загрузка документов, polling статусов, список файлов
+  - AiSummaryBlock — генерация резюме, прогресс загрузки если нет доков,
+    бейдж "На основе документов" если has_docs=true
 
 ### Данные
 - ~3400+ тендеров, ~700+ обогащено
@@ -102,8 +121,10 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
 
 ### qdrant ✓
 http://localhost:6333
-Коллекции: `tenders` (векторы тендеров), `doc_chunks` (RAG чанки документов).
-doc_chunks payload: {tender_id, document_id, chunk_index, text, filename, content_priority}
+Коллекции:
+- `tenders` — векторы тендеров для матчинга
+- `doc_chunks` — RAG чанки документов
+  payload: {tender_id, document_id, chunk_index, text, filename, content_priority}
 
 ### sequential-thinking ✓
 Обязательно для проектирования, архитектурных решений, сложных багов.
@@ -151,13 +172,26 @@ doc_chunks payload: {tender_id, document_id, chunk_index, text, filename, conten
 - Embedding: `multilingual-e5-large` через fastembed (не менять)
 - Debounce векторов: countdown=30, фиксированный task_id
 
-### Documents (см. DOCUMENTS_ARCHITECTURE.md)
-- Режим А (резюме): get_summary_context() из parsed_text, НЕ через Qdrant
-- Режим Б (вопросы): RAG через Qdrant doc_chunks с filter(tender_id)
+### Documents (полная архитектура в DOCUMENTS_ARCHITECTURE.md)
+- Документы качаются ТОЛЬКО по явному запросу пользователя — не автоматически
+- Режим А (резюме): get_summary_context() → RAG через Qdrant doc_chunks
+  Fallback на parsed_text если чанков нет
+  Fallback на метаданные если документов нет (пометить source="none" в промпте)
+- Режим Б (вопросы): answer_question() → RAG через Qdrant с filter(tender_id)
+- SUMMARY_QUERIES универсальные — без привязки к конкретной сфере
+- classify_documents_priority() — один GPT вызов на весь тендер
 - document_id в каждом Qdrant payload — для точечного удаления
 - Инвалидация ai_summary при новом документе (post_save сигнал)
-- Очистка: еженедельный Celery beat, тендеры старше 730 дней
-- ai_summary НЕ удалять при очистке (500 байт, историческая ценность)
+- ai_summary НЕ удалять при очистке — 500 байт, историческая ценность
+- Очистка: тендеры старше 730 дней → Qdrant + MinIO + parsed_text
+
+### AI резюме промпт — ключевые правила
+- Чеклист с □ по категориям, не плоский список
+- Конкретные значения: "Гарантия 5 лет", не "гарантийные обязательства"
+- Тип тендера GPT определяет сам по названию и ОКВЭД
+- Обеспечение > 15% → явный красный флаг с процентом
+- Если source="none" → указать в промпте что анализ только по метаданным
+- Не придумывать то чего нет в документах
 
 ### Frontend
 - App Router (не Pages Router)
@@ -165,6 +199,7 @@ doc_chunks payload: {tender_id, document_id, chunk_index, text, filename, conten
 - React Query v5: `isLoading = isPending && isFetching`
 - Типы из `frontend/lib/api.ts`
 - DRF ListCreateAPIView: `r.data.results ?? r.data`
+- DocumentsBlock и AiSummaryBlock используют один React Query ключ для /docs/
 
 ### Никогда
 - Бизнес-логику в views
@@ -173,6 +208,7 @@ doc_chunks payload: {tender_id, document_id, chunk_index, text, filename, conten
 - N+1 запросы — select_related/prefetch_related
 - Коммитить .env
 - Писать код не прочитав файл
+- Автоматически качать документы при парсинге ЕИС
 
 ---
 
@@ -290,21 +326,24 @@ for pk, num, url in Tender.objects.filter(trading_platform='').values_list('pk',
 - [x] Фронт — направления, ОКВЭД combobox, НМЦ presets
 - [x] DaData автозаполнение по ИНН
 - [x] Фильтр по направлениям в "Для вас"
+- [x] TenderDocument модель + MinIO + парсеры PDF/DOCX/RAR/ZIP
+- [x] Celery pipeline: download → parse → classify → index → invalidate
+- [x] AI резюме с RAG контекстом (GPT-4o-mini)
+- [x] DocumentsBlock + AiSummaryBlock на странице тендера
+- [x] Очистка старых документов (Celery beat)
 
 ### Приоритет 1 — до первых пользователей
-- [ ] AI-резюме тендера (GPT-4o-mini) — суть, требования, риски, рекомендация
-- [ ] PDF парсинг текстовых + DOCX (для резюме, без RAG)
+- [ ] RAG вопросы по тендеру (POST /tenders/{id}/ask/) + UI чат
 - [ ] Telegram bot алерты
 - [ ] Монетизация (ЮКасса) — free/solo/team
 
 ### Приоритет 2 — после первых платящих
-- [ ] RAG — вопросы по документации (POST /tenders/{id}/ask/)
 - [ ] Rate limiting на AI endpoints + Sentry
 - [ ] Cross-encoder reranking
+- [ ] OCR для сканированных PDF
 
 ### Приоритет 3 — по фидбеку
 - [ ] Черновик заявки (LLM)
 - [ ] Pipeline / kanban
-- [ ] OCR для сканов
 - [ ] История победителей заказчика
 - [ ] Фильтры в UI: площадка, дата торгов

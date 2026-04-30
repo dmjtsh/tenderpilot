@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { tendersApi, type Tender, type TenderSummary, type TenderDoc } from "@/lib/api"
+import { client, tendersApi, type Tender, type TenderSummary, type TenderDoc } from "@/lib/api"
 import { AlertTriangle, Check, ChevronLeft, Download, ExternalLink, FileText, Loader2, MessageSquare, Minus, Sparkles, X, XCircle } from "lucide-react"
 import Link from "next/link"
 
@@ -72,6 +72,11 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
             На основе документов
           </span>
         )}
+        {s.tender_type && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+            {s.tender_type}
+          </span>
+        )}
         <span className="text-xs text-muted-foreground">{s.verdict_reason}</span>
       </div>
 
@@ -109,6 +114,9 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
         {s.days_left != null && (
           <span className="text-xs text-muted-foreground">{s.days_left} дней до дедлайна</span>
         )}
+        {s.execution_period && (
+          <span className="text-xs text-muted-foreground">· Срок: {s.execution_period}</span>
+        )}
       </div>
 
       {/* Red flags */}
@@ -144,27 +152,42 @@ const DOC_STATUS_ICON: Record<string, React.ReactNode> = {
   cleaned: <Minus className="w-3.5 h-3.5 text-muted-foreground/30" />,
 }
 
-const DOC_STATUS_LABEL: Record<string, string> = {
-  pending: "Ожидает",
-  processing: "Обработка...",
-  failed: "Ошибка",
-  skipped: "Пропущен",
-  cleaned: "Очищен",
-}
+function DocRow({ doc, tenderId }: { doc: TenderDoc; tenderId: number }) {
+  async function handleDownloadFile() {
+    try {
+      const response = await client.get(`/tenders/${tenderId}/docs/${doc.id}/download/`, {
+        responseType: "blob",
+      })
+      const url = window.URL.createObjectURL(response.data)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = doc.filename
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch { /* ignore */ }
+  }
 
-function DocRow({ doc }: { doc: TenderDoc }) {
   return (
     <div className="flex items-center gap-3 py-2 px-3 rounded-md hover:bg-secondary/50 transition-colors">
       {DOC_STATUS_ICON[doc.parse_status] ?? DOC_STATUS_ICON.pending}
       <FileText className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-      <span className="text-sm text-foreground/80 truncate flex-1">{doc.filename}</span>
+      <div className="flex flex-col min-w-0 flex-1">
+        <span className="text-sm text-foreground/80 truncate">{doc.filename}</span>
+        {doc.archive_name && (
+          <span className="text-[10px] text-muted-foreground/50 truncate">из {doc.archive_name}</span>
+        )}
+      </div>
       {doc.is_scanned && (
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400">Скан</span>
       )}
-      {DOC_STATUS_LABEL[doc.parse_status] && !doc.is_scanned && (
-        <span className="text-[10px] text-muted-foreground">{DOC_STATUS_LABEL[doc.parse_status]}</span>
-      )}
       <span className="text-[10px] text-muted-foreground/50 tabular-nums">{fmtSize(doc.file_size)}</span>
+      <button
+        onClick={handleDownloadFile}
+        className="text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0"
+        title="Скачать"
+      >
+        <Download className="w-3.5 h-3.5" />
+      </button>
     </div>
   )
 }
@@ -254,7 +277,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
             </div>
           )}
           {docs.map((doc) => (
-            <DocRow key={doc.id} doc={doc} />
+            <DocRow key={doc.id} doc={doc} tenderId={tenderId} />
           ))}
         </div>
       )}
@@ -262,7 +285,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
   )
 }
 
-function DocsProgressInline({ docs, downloading }: { docs: TenderDoc[]; downloading: boolean }) {
+function DocsProgressInline({ docs, downloading, tenderId }: { docs: TenderDoc[]; downloading: boolean; tenderId: number }) {
   if (downloading && docs.length === 0) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -280,7 +303,7 @@ function DocsProgressInline({ docs, downloading }: { docs: TenderDoc[]; download
         </div>
         <div className="rounded-lg border border-border bg-card/50 overflow-hidden divide-y divide-border/50">
           {docs.map((doc) => (
-            <DocRow key={doc.id} doc={doc} />
+            <DocRow key={doc.id} doc={doc} tenderId={tenderId} />
           ))}
         </div>
       </div>
@@ -372,7 +395,7 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
       {summary && phase === "idle" ? (
         <SummaryBlock s={summary} />
       ) : phase === "downloading" ? (
-        <DocsProgressInline docs={docs} downloading={downloading} />
+        <DocsProgressInline docs={docs} downloading={downloading} tenderId={tenderId} />
       ) : phase === "analyzing" ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" />

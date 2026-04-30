@@ -6,8 +6,12 @@ from django.utils import timezone
 
 from .models import Customer, Tender
 
-SUMMARY_PROMPT = """Ты эксперт по госзакупкам России. Проанализируй тендер.
+SUMMARY_PROMPT = """Ты эксперт по госзакупкам России.
+Определи тип тендера по названию и ОКВЭД:
+строительство / поставка / услуги / проектирование / IT / другое.
+Адаптируй анализ под тип.
 
+ДАННЫЕ ТЕНДЕРА:
 Название: {title}
 НМЦК: {nmck}
 Дней до дедлайна: {days_left}
@@ -17,20 +21,73 @@ SUMMARY_PROMPT = """Ты эксперт по госзакупкам России
 Тип закупки: {law_type}
 Обеспечение заявки: {bid_security}
 Обеспечение контракта: {contract_security}
-{docs_section}
-Если предоставлены документы — извлеки из них конкретные требования: лицензии, СРО, опыт, штрафы, сроки выполнения.
 
-Верни ТОЛЬКО JSON без пояснений:
+{docs_section}
+
+Проверь каждый пункт и извлеки конкретные значения:
+
+□ Требования к участнику: допуски, лицензии, аттестации, квалификация, опыт
+□ Сроки: срок выполнения (конкретная дата или период), этапы
+□ Гарантия: срок (конкретно: "5 лет", "24 месяца"), условия
+□ Финансы: обеспечение заявки, обеспечение контракта (% и сумма)
+□ Ответственность: штрафы и пени (размер, условия)
+□ Ограничения: запреты, особые условия заказчика
+□ Приёмка: особые условия, дополнительные согласования
+
+Верни JSON без markdown:
 {{
-  "essence": "2-3 предложения — суть тендера и что нужно сделать",
-  "requirements": ["требование 1", "требование 2"],
-  "days_left": {days_left_val},
-  "urgency": "low|medium|high|critical",
-  "finances": "описание финансовых условий одним абзацем",
-  "red_flags": ["флаг 1"],
-  "verdict": "go|maybe|pass",
-  "verdict_reason": "1 предложение — почему"
-}}"""
+  "essence": "одно предложение что конкретно нужно сделать",
+  "requirements": ["конкретное требование с цифрами если есть"],
+  "deadlines": {{
+    "execution_period": "конкретный срок или null",
+    "urgency": "нормально | сжато | очень сжато"
+  }},
+  "financials": {{
+    "bid_security_rub": 0,
+    "contract_security_pct": 0
+  }},
+  "red_flags": ["конкретный риск с цифрами"],
+  "verdict": "участвовать | изучить | пропустить",
+  "verdict_reason": "одно предложение",
+  "tender_type": "строительство | поставка | услуги | проектирование | IT | другое"
+}}
+
+Правила:
+- извлекай ВСЕ конкретные требования из документов
+- requirements: допуски, лицензии, сертификаты на материалы, акты скрытых работ,
+  журнал работ, квалификация, гарантийные сроки, согласования с заказчиком
+  Пример: "Сертификаты на все строительные материалы", "Акты на скрытые работы обязательны",
+  "Материалы должны быть новыми, не б/у", "Гарантия 5 лет"
+- red_flags: штрафы с размером, сжатые сроки, запрет субподряда, необычные условия
+  Пример: "Пеня 1/300 ключевой ставки ЦБ за каждый день просрочки",
+  "Штраф 1% цены контракта за каждый факт нарушения"
+- обеспечение контракта НЕ является красным флагом если <= 15%
+- обеспечение контракта > 15% → добавь в red_flags с точным процентом
+- НЕ придумывай то чего нет в документах
+- НЕ пиши общие фразы типа "соответствие нормативам" — пиши конкретно"""
+
+VERDICT_MAP: dict[str, str] = {
+    "участвовать": "go",
+    "изучить": "maybe",
+    "пропустить": "pass",
+}
+
+URGENCY_MAP: dict[str, str] = {
+    "нормально": "low",
+    "сжато": "medium",
+    "очень сжато": "high",
+}
+
+
+def _format_finances(financials: dict) -> str:
+    parts: list[str] = []
+    bid = financials.get("bid_security_rub")
+    if bid:
+        parts.append(f"Обеспечение заявки: {bid:,.0f} ₽".replace(",", " "))
+    pct = financials.get("contract_security_pct")
+    if pct:
+        parts.append(f"Обеспечение контракта: {pct}%")
+    return ". ".join(parts) if parts else ""
 
 
 def generate_tender_summary(tender: Tender) -> dict:
@@ -54,9 +111,18 @@ def generate_tender_summary(tender: Tender) -> dict:
         else "не указано"
     )
 
-    docs_context = get_summary_context(tender)
-    has_docs = bool(docs_context)
-    docs_section = f"Документы тендера:\n{docs_context}" if has_docs else ""
+    ctx = get_summary_context(tender)
+    source = ctx["source"]
+    has_docs = source in ("rag", "text", "full_tz")
+
+    if source == "full_tz":
+        docs_section = f"ДОКУМЕНТАЦИЯ (техзадание целиком + релевантные разделы других документов):\n{ctx['context']}"
+    elif source == "rag":
+        docs_section = f"ДОКУМЕНТАЦИЯ (релевантные разделы):\n{ctx['context']}"
+    elif source == "text":
+        docs_section = f"ДОКУМЕНТАЦИЯ (полный текст):\n{ctx['context']}"
+    else:
+        docs_section = "ВНИМАНИЕ: документы не загружены, анализ только по метаданным."
 
     prompt = SUMMARY_PROMPT.format(
         title=tender.title,
@@ -68,7 +134,6 @@ def generate_tender_summary(tender: Tender) -> dict:
         law_type=tender.law_type or "не указан",
         bid_security=bid_security,
         contract_security=contract_security,
-        days_left_val=days_left if days_left is not None else "null",
         docs_section=docs_section,
     )
 
@@ -86,9 +151,36 @@ def generate_tender_summary(tender: Tender) -> dict:
             raw = raw[4:]
         raw = raw.strip()
 
-    result = json.loads(raw)
-    result["has_docs"] = has_docs
-    return result
+    gpt_result = json.loads(raw)
+
+    deadlines = gpt_result.get("deadlines") or {}
+    financials = gpt_result.get("financials") or {}
+    verdict_raw = gpt_result.get("verdict", "изучить")
+    urgency_raw = deadlines.get("urgency", "нормально")
+
+    red_flags = gpt_result.get("red_flags", [])
+    contract_pct = tender.contract_security_percent
+    if contract_pct is not None:
+        has_security_flag = any("обеспечен" in f.lower() for f in red_flags)
+        if contract_pct > 15 and not has_security_flag:
+            red_flags.append(f"Обеспечение контракта {contract_pct}% (выше 15%)")
+        elif contract_pct <= 15:
+            red_flags = [f for f in red_flags if "обеспечен" not in f.lower()]
+
+    return {
+        "essence": gpt_result.get("essence", ""),
+        "requirements": gpt_result.get("requirements", []),
+        "days_left": days_left,
+        "urgency": URGENCY_MAP.get(urgency_raw, urgency_raw),
+        "execution_period": deadlines.get("execution_period"),
+        "finances": _format_finances(financials),
+        "financials": financials,
+        "red_flags": red_flags,
+        "verdict": VERDICT_MAP.get(verdict_raw, verdict_raw),
+        "verdict_reason": gpt_result.get("verdict_reason", ""),
+        "has_docs": has_docs,
+        "tender_type": gpt_result.get("tender_type", "другое"),
+    }
 
 
 def get_or_create_summary(tender: Tender) -> dict:

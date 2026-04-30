@@ -18,7 +18,7 @@ from apps.documents.parsers import (
     parse_docx,
     parse_pdf,
 )
-from apps.documents.services import detect_content_priority
+from apps.documents.services import classify_documents_priority, detect_content_priority
 from apps.documents.storage import delete_prefix, upload_file
 from apps.tenders.models import Tender
 
@@ -36,7 +36,7 @@ def download_and_parse_documents(self, tender_id: int) -> str:
     if not links:
         return f"no documents for tender {tender.number}"
 
-    created = 0
+    created_ids: list[int] = []
     for link in links:
         url = link["url"]
         filename = link["filename"]
@@ -64,10 +64,23 @@ def download_and_parse_documents(self, tender_id: int) -> str:
             file_hash=file_hash,
             content_priority=detect_content_priority(filename),
         )
-        created += 1
-        parse_document.delay(doc.id)
+        created_ids.append(doc.id)
 
-    return f"tender {tender.number}: {created} documents queued"
+    if created_ids:
+        all_docs = TenderDocument.objects.filter(tender=tender)
+        filenames = list(all_docs.values_list("filename", flat=True))
+        priorities = classify_documents_priority(filenames)
+        for doc in all_docs:
+            if doc.filename in priorities:
+                new_p = priorities[doc.filename]
+                if new_p != doc.content_priority:
+                    doc.content_priority = new_p
+                    doc.save(update_fields=["content_priority"])
+
+        for doc_id in created_ids:
+            parse_document.delay(doc_id)
+
+    return f"tender {tender.number}: {len(created_ids)} documents queued"
 
 
 @shared_task(bind=True, max_retries=1, default_retry_delay=30)
@@ -117,6 +130,10 @@ def parse_document(self, document_id: int) -> str:
         doc.parse_status = TenderDocument.ParseStatus.DONE
         doc.parsed_at = timezone.now()
         doc.save(update_fields=["parsed_text", "parse_status", "parsed_at", "is_scanned"])
+
+        if doc.parsed_text:
+            index_document_chunks.delay(doc.id)
+
         return f"parsed {doc.filename} ({len(doc.parsed_text)} chars)"
 
     except Exception as exc:
@@ -129,6 +146,7 @@ def parse_document(self, document_id: int) -> str:
 
 def _handle_archive(parent_doc: TenderDocument, data: bytes) -> None:
     entries = extract_archive(data, parent_doc.file_type)
+    child_ids: list[int] = []
     for entry_filename, entry_data in entries:
         file_type = detect_file_type(entry_filename)
         file_hash = hashlib.md5(entry_data).hexdigest()
@@ -152,7 +170,72 @@ def _handle_archive(parent_doc: TenderDocument, data: bytes) -> None:
             archive_path=entry_filename,
             content_priority=detect_content_priority(entry_filename),
         )
-        parse_document.delay(child.id)
+        child_ids.append(child.id)
+
+    if child_ids:
+        children = TenderDocument.objects.filter(id__in=child_ids)
+        filenames = list(children.values_list("filename", flat=True))
+        priorities = classify_documents_priority(filenames)
+        for child in children:
+            if child.filename in priorities:
+                new_p = priorities[child.filename]
+                if new_p != child.content_priority:
+                    child.content_priority = new_p
+                    child.save(update_fields=["content_priority"])
+            parse_document.delay(child.id)
+
+
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 50
+
+
+@shared_task(bind=True, max_retries=1, default_retry_delay=30)
+def index_document_chunks(self, document_id: int) -> str:
+    try:
+        doc = TenderDocument.objects.get(id=document_id)
+    except TenderDocument.DoesNotExist:
+        return f"document {document_id} not found"
+
+    if not doc.parsed_text or doc.parsed_text.strip() == "":
+        return f"document {document_id} has no text"
+
+    from apps.documents.services import clean_text
+    from apps.search.embedder import Embedder
+    from apps.search.services import qdrant
+
+    qdrant.delete_doc_chunks(document_id)
+
+    text = clean_text(doc.parsed_text)
+    if not text:
+        return f"document {document_id} empty after cleaning"
+
+    words = text.split()
+    chunks: list[str] = []
+    i = 0
+    while i < len(words):
+        chunk = " ".join(words[i:i + CHUNK_SIZE])
+        chunks.append(chunk)
+        i += CHUNK_SIZE - CHUNK_OVERLAP
+
+    embedder = Embedder()
+    vectors = embedder.embed_passages(chunks)
+
+    import uuid
+    points = []
+    for idx, (chunk_text, vector) in enumerate(zip(chunks, vectors)):
+        point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"doc:{document_id}:chunk:{idx}"))
+        payload = {
+            "tender_id": doc.tender_id,
+            "document_id": document_id,
+            "chunk_index": idx,
+            "text": chunk_text,
+            "filename": doc.filename,
+            "content_priority": doc.content_priority,
+        }
+        points.append((point_id, vector, payload))
+
+    qdrant.upsert_doc_chunks(points)
+    return f"indexed {len(chunks)} chunks for document {document_id} ({doc.filename})"
 
 
 @shared_task
