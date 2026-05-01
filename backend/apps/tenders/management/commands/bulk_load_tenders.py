@@ -157,19 +157,23 @@ class Command(BaseCommand):
                     # Последняя страница ЕИС вернул меньше per_page записей
                     break
 
-                # Отслеживаем страницы без новых тендеров (ЕИС отдаёт дубликаты)
-                if page_new == 0:
-                    consecutive_no_new += 1
-                    if consecutive_no_new >= stop_after and page >= min_pages:
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f"  Стоп: {stop_after} страниц подряд без новых тендеров — "
-                                f"уникальный контент чанка исчерпан."
-                            )
-                        )
-                        break
-                else:
+                # Отслеживаем страницы без новых тендеров (ЕИС отдаёт дубликаты).
+                # Счётчик начинает считаться только после min_pages.
+                if page == min_pages:
                     consecutive_no_new = 0
+                elif page > min_pages:
+                    if page_new == 0:
+                        consecutive_no_new += 1
+                        if consecutive_no_new >= stop_after:
+                            self.stdout.write(
+                                self.style.WARNING(
+                                    f"  Стоп: {stop_after} страниц подряд без новых тендеров — "
+                                    f"уникальный контент чанка исчерпан."
+                                )
+                            )
+                            break
+                    else:
+                        consecutive_no_new = 0
 
                 if page < max_pages:
                     time.sleep(delay)
