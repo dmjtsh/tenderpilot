@@ -4,9 +4,13 @@
 Стратегия: разбиваем диапазон на чанки по CHUNK_DAYS дней и обходим каждый.
 Это обходит ограничение ЕИС на количество страниц пагинации (~50 стр. стабильно).
 
+ЕИС возвращает дубликаты после исчерпания уникальных записей, поэтому останов
+происходит не по `len < 50`, а по `--stop-after` последовательных страниц без
+новых тендеров.
+
 Пример:
     python manage.py bulk_load_tenders --days=90
-    python manage.py bulk_load_tenders --days=30 --chunk=3 --max-pages=200
+    python manage.py bulk_load_tenders --days=30 --chunk=3
 """
 import time
 from datetime import date, timedelta
@@ -16,6 +20,11 @@ from django.core.management.base import BaseCommand
 from apps.tenders.eis_client import search_tenders
 from apps.tenders.services import upsert_tender
 
+# Сколько страниц подряд без новых тендеров означает «контент исчерпан»
+DEFAULT_STOP_AFTER = 5
+# Страховочный лимит на случай зависания (ЕИС не должен выдавать 5000+ стр. на 7 дней)
+DEFAULT_MAX_PAGES = 500
+
 
 class Command(BaseCommand):
     help = "Первоначальная загрузка тендеров за N дней чанками"
@@ -23,7 +32,14 @@ class Command(BaseCommand):
     def add_arguments(self, parser) -> None:
         parser.add_argument("--days", type=int, default=90, help="Сколько дней назад охватить")
         parser.add_argument("--chunk", type=int, default=7, help="Размер чанка в днях")
-        parser.add_argument("--max-pages", type=int, default=100, help="Макс. страниц на чанк")
+        parser.add_argument(
+            "--max-pages", type=int, default=DEFAULT_MAX_PAGES,
+            help=f"Страховочный лимит страниц на чанк (default: {DEFAULT_MAX_PAGES})"
+        )
+        parser.add_argument(
+            "--stop-after", type=int, default=DEFAULT_STOP_AFTER,
+            help=f"Стоп после N страниц подряд без новых тендеров (default: {DEFAULT_STOP_AFTER})"
+        )
         parser.add_argument("--delay", type=float, default=0.5, help="Пауза между страницами (сек)")
         parser.add_argument(
             "--enrich", action="store_true", default=True,
@@ -38,6 +54,7 @@ class Command(BaseCommand):
         days: int = options["days"]
         chunk_days: int = options["chunk"]
         max_pages: int = options["max_pages"]
+        stop_after: int = options["stop_after"]
         delay: float = options["delay"]
         do_enrich: bool = options["enrich"]
 
@@ -57,7 +74,7 @@ class Command(BaseCommand):
             self.style.NOTICE(
                 f"Загрузка тендеров: {start_date} → {today} "
                 f"({days} дней, {total_chunks} чанков по {chunk_days} дней, "
-                f"макс. {max_pages} стр/чанк)"
+                f"лимит {max_pages} стр/чанк, стоп после {stop_after} пустых стр.)"
             )
         )
 
@@ -72,6 +89,7 @@ class Command(BaseCommand):
 
             chunk_fetched = 0
             chunk_new = 0
+            consecutive_no_new = 0
 
             # Предзагружаем номера тендеров за этот период для определения новых
             from apps.tenders.models import Tender
@@ -98,8 +116,10 @@ class Command(BaseCommand):
                     break
 
                 if not results:
+                    # ЕИС вернул пустую страницу — всё загружено
                     break
 
+                page_new = 0
                 for data in results:
                     try:
                         is_new = data["number"] not in existing_numbers
@@ -108,6 +128,7 @@ class Command(BaseCommand):
                         chunk_fetched += 1
 
                         if is_new:
+                            page_new += 1
                             chunk_new += 1
                             existing_numbers.add(data["number"])
                             if do_enrich:
@@ -128,8 +149,22 @@ class Command(BaseCommand):
                 )
 
                 if len(results) < 50:
-                    # Последняя страница — записей меньше чем per_page
+                    # Последняя страница ЕИС вернул меньше per_page записей
                     break
+
+                # Отслеживаем страницы без новых тендеров (ЕИС отдаёт дубликаты)
+                if page_new == 0:
+                    consecutive_no_new += 1
+                    if consecutive_no_new >= stop_after:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"  Стоп: {stop_after} страниц подряд без новых тендеров — "
+                                f"уникальный контент чанка исчерпан."
+                            )
+                        )
+                        break
+                else:
+                    consecutive_no_new = 0
 
                 if page < max_pages:
                     time.sleep(delay)
