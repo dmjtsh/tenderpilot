@@ -40,6 +40,10 @@ class Command(BaseCommand):
             "--stop-after", type=int, default=DEFAULT_STOP_AFTER,
             help=f"Стоп после N страниц подряд без новых тендеров (default: {DEFAULT_STOP_AFTER})"
         )
+        parser.add_argument(
+            "--min-pages", type=int, default=50,
+            help="Минимум страниц на чанк (защита от раннего стопа при прерванном прогоне, default: 50)"
+        )
         parser.add_argument("--delay", type=float, default=0.5, help="Пауза между страницами (сек)")
         parser.add_argument(
             "--enrich", action="store_true", default=True,
@@ -55,6 +59,7 @@ class Command(BaseCommand):
         chunk_days: int = options["chunk"]
         max_pages: int = options["max_pages"]
         stop_after: int = options["stop_after"]
+        min_pages: int = options["min_pages"]
         delay: float = options["delay"]
         do_enrich: bool = options["enrich"]
 
@@ -155,7 +160,7 @@ class Command(BaseCommand):
                 # Отслеживаем страницы без новых тендеров (ЕИС отдаёт дубликаты)
                 if page_new == 0:
                     consecutive_no_new += 1
-                    if consecutive_no_new >= stop_after:
+                    if consecutive_no_new >= stop_after and page >= min_pages:
                         self.stdout.write(
                             self.style.WARNING(
                                 f"  Стоп: {stop_after} страниц подряд без новых тендеров — "
