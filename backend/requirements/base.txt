@@ -20,3 +20,4 @@ anthropic>=0.28
 requests>=2.31
 lxml>=5.0
 fastembed>=0.3
+gunicorn

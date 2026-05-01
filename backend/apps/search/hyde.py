@@ -23,7 +23,7 @@ HYDE_PROMPT = """Ты эксперт по госзакупкам России.
 
 def _get_client() -> OpenAI:
     from django.conf import settings
-    return OpenAI(api_key=settings.OPENAI_API_KEY)
+    return OpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_BASE_URL or None)
 
 
 def generate_hyde_texts(direction, n: int = 3) -> list[str]:

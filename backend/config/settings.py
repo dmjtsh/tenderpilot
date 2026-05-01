@@ -170,6 +170,7 @@ ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 
 # OpenAI
 OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+OPENAI_BASE_URL = config("OPENAI_BASE_URL", default="")
 
 # Telegram
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")

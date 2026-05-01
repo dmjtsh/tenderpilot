@@ -94,7 +94,7 @@ def classify_documents_priority(filenames: list[str]) -> dict[str, int]:
 
     from openai import OpenAI
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    client = OpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_BASE_URL or None)
     prompt = CLASSIFY_PROMPT.format(filenames=json.dumps(filenames, ensure_ascii=False))
 
     try:
