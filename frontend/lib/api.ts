@@ -88,6 +88,18 @@ export interface TenderDoc {
   archive_name?: string
 }
 
+export interface TenderQASource {
+  filename: string
+  chunk_index: number
+  preview: string
+}
+
+export interface TenderQAResponse {
+  answer: string | null
+  has_docs: boolean
+  sources: TenderQASource[]
+}
+
 export const tendersApi = {
   list: (page = 1) =>
     client.get("/tenders/", { params: { page } }).then((r) => r.data),
@@ -106,6 +118,9 @@ export const tendersApi = {
 
   downloadDocs: (id: number) =>
     client.post(`/tenders/${id}/download-docs/`).then((r) => r.data.data),
+
+  askQuestion: (id: number, question: string) =>
+    client.post(`/tenders/${id}/ask/`, { question }).then((r) => r.data.data as TenderQAResponse),
 }
 
 // Search

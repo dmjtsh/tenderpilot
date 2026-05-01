@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { client, tendersApi, type Tender, type TenderSummary, type TenderDoc } from "@/lib/api"
-import { AlertTriangle, Check, ChevronLeft, Download, ExternalLink, FileText, Loader2, MessageSquare, Minus, Sparkles, X, XCircle } from "lucide-react"
+import { client, tendersApi, type Tender, type TenderSummary, type TenderDoc, type TenderQASource } from "@/lib/api"
+import { AlertTriangle, Check, ChevronLeft, Download, ExternalLink, FileText, Loader2, Minus, Send, Sparkles, XCircle } from "lucide-react"
 import Link from "next/link"
 
 const STATUS_LABEL: Record<string, string> = {
@@ -424,6 +424,124 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
   )
 }
 
+interface ChatMessage {
+  role: "user" | "assistant"
+  text: string
+  sources?: TenderQASource[]
+}
+
+function TenderChat({ tenderId }: { tenderId: number }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [noDocs, setNoDocs] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
+
+  async function handleSend() {
+    const q = input.trim()
+    if (!q || loading) return
+
+    setInput("")
+    setMessages((prev) => [...prev, { role: "user", text: q }])
+    setLoading(true)
+
+    try {
+      const res = await tendersApi.askQuestion(tenderId, q)
+      if (!res.has_docs) {
+        setNoDocs(true)
+        setMessages((prev) => prev.slice(0, -1))
+      } else if (res.answer) {
+        setMessages((prev) => [...prev, { role: "assistant", text: res.answer!, sources: res.sources }])
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", text: "Не удалось найти ответ в документах." }])
+      }
+    } catch {
+      setMessages((prev) => [...prev, { role: "assistant", text: "Ошибка при получении ответа." }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  return (
+    <div className="mb-8">
+      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Вопросы по тендеру</p>
+
+      {noDocs ? (
+        <p className="text-sm text-muted-foreground">
+          Загрузите документы тендера, чтобы задавать вопросы.
+        </p>
+      ) : (
+        <>
+          {messages.length > 0 && (
+            <div className="rounded-lg border border-border bg-card/50 mb-3 max-h-[400px] overflow-auto">
+              <div className="divide-y divide-border/50">
+                {messages.map((msg, i) => (
+                  <div key={i} className="px-3 py-2.5">
+                    {msg.role === "user" ? (
+                      <p className="text-sm text-foreground/90 font-medium">{msg.text}</p>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-foreground/75 whitespace-pre-wrap">{msg.text}</p>
+                        {msg.sources && msg.sources.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {msg.sources.map((s, j) => (
+                              <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground/60">
+                                {s.filename}, фрагмент {s.chunk_index}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {loading && (
+                  <div className="px-3 py-2.5 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Ищем в документах...
+                  </div>
+                )}
+              </div>
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 h-8 bg-secondary border border-border rounded-md px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+              placeholder="Спросите о требованиях, сроках, условиях..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={loading}
+              maxLength={500}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || loading}
+              className="h-8 w-8 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function MetaRow({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border/50">
@@ -442,9 +560,6 @@ function MetaRow({ label, value, href }: { label: string; value: string; href?: 
 export default function TenderDetailPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
-  const [showQuestion, setShowQuestion] = useState(false)
-  const [question, setQuestion] = useState("")
-
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
   }, [router])
@@ -585,44 +700,8 @@ export default function TenderDetailPage() {
           {/* AI summary */}
           <AiSummaryBlock tenderId={tender.id} initialSummary={initialSummary} />
 
-          {/* Question */}
-          <div className="mb-8">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Задать вопрос</p>
-            {!showQuestion ? (
-              <button
-                onClick={() => setShowQuestion(true)}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Спросить по тендеру...
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <textarea
-                  className="w-full h-20 bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-                  placeholder="Какие лицензии требуются? Каков порядок подачи заявки?"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => alert("RAG — в разработке")}
-                    disabled={!question.trim()}
-                    className="h-7 px-3 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
-                  >
-                    Отправить
-                  </button>
-                  <button
-                    onClick={() => { setShowQuestion(false); setQuestion("") }}
-                    className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Chat */}
+          <TenderChat tenderId={tender.id} />
 
           {/* EIS link */}
           <a

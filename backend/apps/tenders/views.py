@@ -8,6 +8,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Tender
 from .serializers import TenderListSerializer, TenderDetailSerializer
 from .services import get_or_create_summary
+from apps.documents.services import answer_question
 
 
 class RegionsListView(APIView):
@@ -122,6 +123,20 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         response = HttpResponse(data, content_type="application/octet-stream")
         response["Content-Disposition"] = f'attachment; filename="{doc.filename}"'
         return response
+
+    @action(detail=True, methods=["post"], url_path="ask")
+    def ask(self, request, pk=None):
+        tender = self.get_object()
+        question = (request.data.get("question") or "").strip()
+        if not question:
+            return Response({"data": None, "error": "Вопрос не может быть пустым"}, status=400)
+        if len(question) > 500:
+            return Response({"data": None, "error": "Вопрос слишком длинный (макс. 500 символов)"}, status=400)
+        try:
+            result = answer_question(tender.id, question)
+            return Response({"data": result, "error": None})
+        except Exception as e:
+            return Response({"data": None, "error": str(e)}, status=500)
 
     @action(detail=True, methods=["post"], url_path="download-docs")
     def download_docs(self, request, pk=None):
