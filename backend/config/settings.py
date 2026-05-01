@@ -146,6 +146,10 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_BEAT_SCHEDULE = {
+    "sync-active-tenders": {
+        "task": "apps.tenders.tasks.sync_active_tenders",
+        "schedule": crontab(minute=0),  # каждый час в :00
+    },
     "cleanup-old-documents": {
         "task": "apps.documents.tasks.cleanup_old_documents",
         "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),
