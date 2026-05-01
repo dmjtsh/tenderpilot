@@ -52,7 +52,7 @@ def sync_active_tenders() -> dict:
 
     DELAY_BETWEEN_PAGES = 0.7   # сек между страницами (чтобы не банили)
     MAX_PAGES = 20               # лимит страниц за один запуск
-    DAYS_LOOKBACK = 2            # смотрим за последние N дней (ЕИС даёт только по датам)
+    DAYS_LOOKBACK = 5            # смотрим за последние N дней (запас на простои ЕИС)
 
     stats = {"fetched": 0, "new": 0, "updated": 0, "expired": 0, "errors": 0}
 
@@ -117,15 +117,44 @@ def sync_active_tenders() -> dict:
         if page < MAX_PAGES:
             time.sleep(DELAY_BETWEEN_PAGES)
 
-    # --- 2. Помечаем просроченные тендеры как FINISHED ---
-    now = timezone.now()
-    expired_count = Tender.objects.filter(
-        deadline_at__lt=now,
-        deadline_at__isnull=False,
-        status=Tender.Status.ACTIVE,
-    ).update(status=Tender.Status.FINISHED)
+    # --- 2. Помечаем просроченные тендеры как FINISHED и удаляем из Qdrant ---
+    from apps.search.services import qdrant
 
-    stats["expired"] = expired_count
+    now = timezone.now()
+
+    expired_ids = list(
+        Tender.objects.filter(
+            deadline_at__lt=now,
+            deadline_at__isnull=False,
+            status=Tender.Status.ACTIVE,
+        ).values_list("pk", flat=True)
+    )
+    if expired_ids:
+        Tender.objects.filter(pk__in=expired_ids).update(status=Tender.Status.FINISHED)
+        for tender_id in expired_ids:
+            try:
+                qdrant.delete_tender(tender_id)
+            except Exception as exc:
+                logger.warning("qdrant delete_tender %d failed: %s", tender_id, exc)
+
+    stats["expired"] = len(expired_ids)
+
+    # --- 3. Тендеры без дедлайна, опубликованные > 180 дней назад ---
+    old_ids = list(
+        Tender.objects.filter(
+            deadline_at__isnull=True,
+            published_at__lt=now - timedelta(days=180),
+            status=Tender.Status.ACTIVE,
+        ).values_list("pk", flat=True)
+    )
+    if old_ids:
+        Tender.objects.filter(pk__in=old_ids).update(status=Tender.Status.FINISHED)
+        for tender_id in old_ids:
+            try:
+                qdrant.delete_tender(tender_id)
+            except Exception as exc:
+                logger.warning("qdrant delete_tender %d failed: %s", tender_id, exc)
+        logger.info("sync_active_tenders: removed %d old no-deadline tenders from Qdrant", len(old_ids))
 
     logger.info(
         "sync_active_tenders done: fetched=%d new=%d updated=%d expired=%d errors=%d",

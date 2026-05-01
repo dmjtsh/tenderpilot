@@ -91,7 +91,9 @@ class QdrantService:
         all_results: dict[int, dict[str, Any]] = {}
 
         for direction in directions:
-            conditions = []
+            conditions = [
+                FieldCondition(key="status", match=MatchValue(value="active")),
+            ]
             if direction.regions:
                 conditions.append(
                     FieldCondition(key="region", match=MatchAny(any=direction.regions))

@@ -18,6 +18,11 @@ def embed_tender(self, tender_id: int) -> None:
         logger.warning("Tender %d not found", tender_id)
         return
 
+    # Не индексируем неактивные тендеры — экономим память Qdrant
+    if tender.status != Tender.Status.ACTIVE:
+        logger.info("Skipping embed for non-active tender %d (status=%s)", tender_id, tender.status)
+        return
+
     text = tender_text(tender)
     vector = embedder.embed_passages([text])[0]
 
