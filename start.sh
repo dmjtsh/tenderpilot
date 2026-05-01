@@ -281,6 +281,54 @@ ufw allow 'Nginx Full' > /dev/null
 ufw --force enable > /dev/null
 success "Файрвол настроен (SSH + HTTP/HTTPS открыты)"
 
+
+# ─── Фронтенд (Next.js) ───────────────────────────────────────────────────────
+step "Фронтенд (Next.js)"
+FRONTEND_DIR="$APP_DIR/frontend"
+
+# Ставим Node.js если нет
+if ! command -v node &>/dev/null; then
+    info "Устанавливаем Node.js 20..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null
+    apt-get install -y -qq nodejs > /dev/null
+    success "Node.js $(node -v) установлен"
+else
+    success "Node.js уже есть: $(node -v)"
+fi
+
+# .env.local для фронта
+echo "NEXT_PUBLIC_API_URL=http://$DOMAIN/api/v1" > "$FRONTEND_DIR/.env.local"
+success ".env.local создан → NEXT_PUBLIC_API_URL=http://$DOMAIN/api/v1"
+
+# Зависимости и сборка
+info "npm install..."
+cd "$FRONTEND_DIR" && npm install --silent
+
+info "npm run build..."
+npm run build
+
+# Systemd сервис
+cat > /etc/systemd/system/tenderpilot-frontend.service << SVCEOF
+[Unit]
+Description=TenderPilot Next.js Frontend
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=$FRONTEND_DIR
+ExecStart=/usr/bin/node node_modules/.bin/next start -p 3000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+systemctl daemon-reload
+systemctl enable tenderpilot-frontend
+systemctl restart tenderpilot-frontend
+success "Фронтенд запущен на порту 3000"
+
 # ─── Первичная загрузка тендеров ─────────────────────────────────────────────
 step "Первичная загрузка тендеров из ЕИС"
 info "Загружаем тендеры за последние 3 дня (это займёт 2-5 минут)..."
