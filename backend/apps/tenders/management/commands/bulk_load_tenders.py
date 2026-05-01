@@ -1,16 +1,16 @@
 """
 Одноразовая команда для первоначальной загрузки тендеров за N дней.
 
-Стратегия: разбиваем диапазон на чанки по CHUNK_DAYS дней и обходим каждый.
-Это обходит ограничение ЕИС на количество страниц пагинации (~50 стр. стабильно).
-
-ЕИС возвращает дубликаты после исчерпания уникальных записей, поэтому останов
-происходит не по `len < 50`, а по `--stop-after` последовательных страниц без
-новых тендеров.
+Стратегия:
+- Разбиваем диапазон на однодневные чанки (по умолчанию).
+- Каждый день парсится ДВАЖДЫ: отдельно 44-ФЗ и отдельно 223-ФЗ.
+  Это обходит жёсткий лимит ЕИС — 100 страниц (5000 записей) на запрос.
+  При ~11к тендеров/день: 44-ФЗ ≈ 8к + 223-ФЗ ≈ 3к — каждый укладывается.
+- Останов: N страниц подряд без новых тендеров (ЕИС отдаёт дубликаты после исчерпания).
 
 Пример:
     python manage.py bulk_load_tenders --days=90
-    python manage.py bulk_load_tenders --days=30 --chunk=3
+    python manage.py bulk_load_tenders --days=30 --no-enrich
 """
 import time
 from datetime import date, timedelta
@@ -22,27 +22,28 @@ from apps.tenders.services import upsert_tender
 
 # Сколько страниц подряд без новых тендеров означает «контент исчерпан»
 DEFAULT_STOP_AFTER = 5
-# Страховочный лимит на случай зависания (ЕИС не должен выдавать 5000+ стр. на 7 дней)
-DEFAULT_MAX_PAGES = 500
+# Минимум страниц перед включением stop-after (защита при прерванном прогоне)
+DEFAULT_MIN_PAGES = 20
+# Страховочный лимит: ЕИС отдаёт max 100 стр., ставим 110 чтобы stop-after сработал
+DEFAULT_MAX_PAGES = 110
 
 
 class Command(BaseCommand):
-    help = "Первоначальная загрузка тендеров за N дней чанками"
+    help = "Первоначальная загрузка тендеров за N дней (по 1 дню, fz44 и fz223 раздельно)"
 
     def add_arguments(self, parser) -> None:
         parser.add_argument("--days", type=int, default=90, help="Сколько дней назад охватить")
-        parser.add_argument("--chunk", type=int, default=7, help="Размер чанка в днях")
         parser.add_argument(
             "--max-pages", type=int, default=DEFAULT_MAX_PAGES,
-            help=f"Страховочный лимит страниц на чанк (default: {DEFAULT_MAX_PAGES})"
+            help=f"Страховочный лимит страниц на запрос (default: {DEFAULT_MAX_PAGES})"
         )
         parser.add_argument(
             "--stop-after", type=int, default=DEFAULT_STOP_AFTER,
             help=f"Стоп после N страниц подряд без новых тендеров (default: {DEFAULT_STOP_AFTER})"
         )
         parser.add_argument(
-            "--min-pages", type=int, default=50,
-            help="Минимум страниц на чанк (защита от раннего стопа при прерванном прогоне, default: 50)"
+            "--min-pages", type=int, default=DEFAULT_MIN_PAGES,
+            help=f"Минимум страниц перед включением stop-after (default: {DEFAULT_MIN_PAGES})"
         )
         parser.add_argument("--delay", type=float, default=0.5, help="Пауза между страницами (сек)")
         parser.add_argument(
@@ -56,7 +57,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         days: int = options["days"]
-        chunk_days: int = options["chunk"]
         max_pages: int = options["max_pages"]
         stop_after: int = options["stop_after"]
         min_pages: int = options["min_pages"]
@@ -66,132 +66,122 @@ class Command(BaseCommand):
         today = date.today()
         start_date = today - timedelta(days=days)
 
-        # Строим список чанков от новых к старым
-        chunks: list[tuple[date, date]] = []
-        chunk_end = today
-        while chunk_end > start_date:
-            chunk_start = max(chunk_end - timedelta(days=chunk_days - 1), start_date)
-            chunks.append((chunk_start, chunk_end))
-            chunk_end = chunk_start - timedelta(days=1)
+        # Однодневные чанки от новых к старым
+        day_chunks: list[date] = []
+        d = today
+        while d >= start_date:
+            day_chunks.append(d)
+            d -= timedelta(days=1)
 
-        total_chunks = len(chunks)
+        total_days = len(day_chunks)
         self.stdout.write(
             self.style.NOTICE(
                 f"Загрузка тендеров: {start_date} → {today} "
-                f"({days} дней, {total_chunks} чанков по {chunk_days} дней, "
-                f"лимит {max_pages} стр/чанк, стоп после {stop_after} пустых стр.)"
+                f"({days} дней, {total_days} однодневных чанков × 2 запроса (44+223), "
+                f"лимит {max_pages} стр/запрос, стоп после {stop_after} пустых стр.)"
             )
         )
 
-        total_fetched = 0
         total_new = 0
         total_updated = 0
 
-        for chunk_idx, (date_from, date_to) in enumerate(chunks, 1):
-            self.stdout.write(
-                f"\n[{chunk_idx}/{total_chunks}] Чанк {date_from} → {date_to}"
-            )
+        for day_idx, day in enumerate(day_chunks, 1):
+            self.stdout.write(f"\n[{day_idx}/{total_days}] День {day}")
 
-            chunk_fetched = 0
-            chunk_new = 0
-            consecutive_no_new = 0
-
-            # Предзагружаем номера тендеров за этот период для определения новых
             from apps.tenders.models import Tender
             existing_numbers = set(
                 Tender.objects.filter(
-                    published_at__date__gte=date_from,
-                    published_at__date__lte=date_to,
+                    published_at__date=day,
                 ).values_list("number", flat=True)
             )
 
-            for page in range(1, max_pages + 1):
-                try:
-                    results = search_tenders(
-                        date_from=date_from,
-                        date_to=date_to,
-                        page=page,
-                        fz44=True,
-                        fz223=True,
-                    )
-                except Exception as exc:
-                    self.stdout.write(
-                        self.style.WARNING(f"  Страница {page}: ошибка — {exc}")
-                    )
-                    break
+            day_new = 0
+            day_fetched = 0
 
-                if not results:
-                    # ЕИС вернул пустую страницу — всё загружено
-                    break
+            # Два прохода: сначала 44-ФЗ, потом 223-ФЗ
+            for fz_label, fz44, fz223 in [("44-ФЗ", True, False), ("223-ФЗ", False, True)]:
+                self.stdout.write(f"  [{fz_label}]")
+                pass_new = 0
+                pass_fetched = 0
+                consecutive_no_new = 0
 
-                page_new = 0
-                for data in results:
+                for page in range(1, max_pages + 1):
                     try:
-                        is_new = data["number"] not in existing_numbers
-                        data["raw_json"] = data.copy()
-                        tender = upsert_tender(data)
-                        chunk_fetched += 1
-
-                        if is_new:
-                            page_new += 1
-                            chunk_new += 1
-                            existing_numbers.add(data["number"])
-                            if do_enrich:
-                                from apps.tenders.tasks import enrich_tender
-                                enrich_tender.apply_async(
-                                    args=[tender.pk],
-                                    countdown=10,
-                                )
-                    except Exception as exc:
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f"  upsert error {data.get('number', '?')}: {exc}"
-                            )
+                        results = search_tenders(
+                            date_from=day,
+                            date_to=day,
+                            page=page,
+                            fz44=fz44,
+                            fz223=fz223,
                         )
+                    except Exception as exc:
+                        self.stdout.write(self.style.WARNING(f"    стр.{page}: ошибка — {exc}"))
+                        break
 
-                self.stdout.write(
-                    f"  стр.{page}: +{len(results)} (чанк итого: {chunk_fetched}, новых: {chunk_new})"
-                )
+                    if not results:
+                        break
 
-                if len(results) < 50:
-                    # Последняя страница ЕИС вернул меньше per_page записей
-                    break
+                    page_new = 0
+                    for data in results:
+                        try:
+                            is_new = data["number"] not in existing_numbers
+                            data["raw_json"] = data.copy()
+                            tender = upsert_tender(data)
+                            pass_fetched += 1
 
-                # Отслеживаем страницы без новых тендеров (ЕИС отдаёт дубликаты).
-                # Счётчик начинает считаться только после min_pages.
-                if page == min_pages:
-                    consecutive_no_new = 0
-                elif page > min_pages:
-                    if page_new == 0:
-                        consecutive_no_new += 1
-                        if consecutive_no_new >= stop_after:
+                            if is_new:
+                                page_new += 1
+                                pass_new += 1
+                                existing_numbers.add(data["number"])
+                                if do_enrich:
+                                    from apps.tenders.tasks import enrich_tender
+                                    enrich_tender.apply_async(args=[tender.pk], countdown=10)
+                        except Exception as exc:
                             self.stdout.write(
-                                self.style.WARNING(
-                                    f"  Стоп: {stop_after} страниц подряд без новых тендеров — "
-                                    f"уникальный контент чанка исчерпан."
-                                )
+                                self.style.WARNING(f"    upsert error {data.get('number', '?')}: {exc}")
                             )
-                            break
-                    else:
+
+                    self.stdout.write(
+                        f"    стр.{page}: +{len(results)} (итого: {pass_fetched}, новых: {pass_new})"
+                    )
+
+                    if len(results) < 50:
+                        break
+
+                    # stop-after включается после min_pages
+                    if page == min_pages:
                         consecutive_no_new = 0
+                    elif page > min_pages:
+                        if page_new == 0:
+                            consecutive_no_new += 1
+                            if consecutive_no_new >= stop_after:
+                                self.stdout.write(
+                                    self.style.WARNING(
+                                        f"    Стоп: {stop_after} стр. подряд без новых — контент исчерпан."
+                                    )
+                                )
+                                break
+                        else:
+                            consecutive_no_new = 0
 
-                if page < max_pages:
-                    time.sleep(delay)
+                    if page < max_pages:
+                        time.sleep(delay)
 
-            total_fetched += chunk_fetched
-            total_new += chunk_new
-            total_updated += chunk_fetched - chunk_new
+                day_fetched += pass_fetched
+                day_new += pass_new
+
+            total_new += day_new
+            total_updated += day_fetched - day_new
+            self.stdout.write(f"  День итого: {day_fetched} тендеров, новых: {day_new}")
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"\n✓ Готово: всего {total_fetched} тендеров "
-                f"(новых: {total_new}, обновлено: {total_updated})"
+                f"\n✓ Готово: новых: {total_new}, обновлено: {total_updated}"
             )
         )
         if do_enrich and total_new > 0:
-            self.stdout.write(
-                f"  {total_new} новых тендеров поставлены в очередь Celery на обогащение."
-            )
+            self.stdout.write(f"  {total_new} новых тендеров поставлены в очередь Celery на обогащение.")
         self.stdout.write(
             "  Запустите 'python manage.py index_tenders --only-new' для индексации в Qdrant."
         )
+
