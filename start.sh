@@ -20,7 +20,7 @@ step()    { echo -e "\n${BOLD}━━━ $* ━━━${NC}"; }
 APP_DIR="/opt/tenderpilot"
 REPO_URL="${REPO_URL:-}"           # задать снаружи или будет запрошено
 DOMAIN="${DOMAIN:-}"               # домен или IP сервера
-PYTHON="python3.11"
+PYTHON="python3"
 VENV_DIR="$APP_DIR/venv"
 BACKEND_DIR="$APP_DIR/backend"
 LOG_DIR="/var/log/tenderpilot"
@@ -47,7 +47,7 @@ step "1/8  Системные пакеты"
 apt-get update -qq
 apt-get install -y -qq \
     curl wget git nginx supervisor \
-    python3.11 python3.11-venv python3.11-dev \
+    python3 python3-venv python3-dev \
     python3-pip build-essential \
     libpq-dev libxml2-dev libxslt1-dev \
     certbot python3-certbot-nginx \
