@@ -126,13 +126,14 @@ def search_tenders(
     region_code: str | None = None,
     search_string: str | None = None,
     only_accepting: bool = True,
-    etp_code: str | None = None,
+    price_from: str | None = None,
+    price_to: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Возвращает список карточек тендеров со страницы поиска ЕИС.
     search_string — ключевые слова для поиска по тексту тендера.
     only_accepting=True — только тендеры в статусе «Подача заявок» (af).
-    etp_code — фильтр по электронной площадке (только для 44-ФЗ).
+    price_from / price_to — фильтр по НМЦК (priceFromGeneral / priceToGeneral).
     """
     params: dict[str, Any] = {
         "morphology": "on",
@@ -155,8 +156,10 @@ def search_tenders(
         params["fz223"] = "on"
     if search_string:
         params["searchString"] = search_string
-    if etp_code:
-        params["etpCode"] = etp_code
+    if price_from:
+        params["priceFromGeneral"] = price_from
+    if price_to:
+        params["priceToGeneral"] = price_to
 
     html = _fetch_html(SEARCH_URL, params=params)
     if not html:

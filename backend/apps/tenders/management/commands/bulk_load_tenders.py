@@ -4,9 +4,9 @@
 Стратегия:
 - Однодневные чанки (один день = один запрос).
 - ЕИС жёстко ограничивает выдачу 100 страницами (5000 записей) на запрос.
-  При ~11к тендеров/день обходим так:
-  * 44-ФЗ: 8 отдельных запросов по каждой федеральной площадке (~600-1000/площадка)
-  * 223-ФЗ: один запрос (~3к/день — укладывается)
+  При ~10к тендеров/день по 44-ФЗ обходим так:
+  * 44-ФЗ: 4 прохода по ценовым диапазонам (каждый < 5000 записей)
+  * 223-ФЗ: один проход (~3к/день — укладывается)
 - Останов каждого прохода: N страниц подряд без новых тендеров.
 
 Пример:
@@ -22,26 +22,23 @@ from apps.tenders.eis_client import search_tenders
 from apps.tenders.services import upsert_tender
 
 DEFAULT_STOP_AFTER = 5
-DEFAULT_MIN_PAGES = 20
+DEFAULT_MIN_PAGES = 10
 # ЕИС выдаёт max 100 стр.; 110 — чтобы stop-after успел сработать
 DEFAULT_MAX_PAGES = 110
 
-# 8 федеральных электронных площадок для 44-ФЗ
-# Коды берутся из параметра etpCode в EIS extended search
-FZ44_PLATFORMS = [
-    ("Сбербанк-АСТ",    "SBERBANK"),
-    ("РТС-тендер",       "RTS"),
-    ("ЕЭТП",             "ROSELTORG"),
-    ("ЭТП ГПБ",          "ETPGPB"),
-    ("НЭП",              "NATIONAL"),
-    ("ТЭК-Торг",         "TEKTORG"),
-    ("АСТ ГОЗ",          "ASTGOZ"),
-    ("Заказ РФ",         "ZAKAZRF"),
+# Ценовые диапазоны для 44-ФЗ (priceFromGeneral / priceToGeneral).
+# Проверено на 30.04.2026: каждый диапазон < 5000 записей.
+#   ≤100к: ~2300, 100к-1млн: ~4450, 1-5млн: ~2650, 5млн+: ~1400
+FZ44_PRICE_RANGES: list[tuple[str, str | None, str | None]] = [
+    ("≤100к",    None,        "100000"),
+    ("100к-1млн","100001",    "1000000"),
+    ("1-5млн",   "1000001",   "5000000"),
+    ("5млн+",    "5000001",   None),
 ]
 
 
 class Command(BaseCommand):
-    help = "Первоначальная загрузка тендеров за N дней (по 1 дню, fz44 и fz223 раздельно)"
+    help = "Первоначальная загрузка тендеров за N дней (по 1 дню, 44-ФЗ×4 ценовых диапазона + 223-ФЗ)"
 
     def add_arguments(self, parser) -> None:
         parser.add_argument("--days", type=int, default=90, help="Сколько дней назад охватить")
@@ -86,11 +83,12 @@ class Command(BaseCommand):
             d -= timedelta(days=1)
 
         total_days = len(day_chunks)
+        passes_per_day = len(FZ44_PRICE_RANGES) + 1  # 4 ценовых + 1 для 223-ФЗ
         self.stdout.write(
             self.style.NOTICE(
                 f"Загрузка тендеров: {start_date} → {today} "
-                f"({days} дней, {total_days} однодневных чанков × 2 запроса (44+223), "
-                f"лимит {max_pages} стр/запрос, стоп после {stop_after} пустых стр.)"
+                f"({days} дней, {total_days} однодневных чанков × {passes_per_day} проходов, "
+                f"лимит {max_pages} стр/проход, стоп после {stop_after} пустых стр.)"
             )
         )
 
@@ -110,13 +108,13 @@ class Command(BaseCommand):
             day_new = 0
             day_fetched = 0
 
-            # 44-ФЗ: отдельный проход по каждой из 8 федеральных площадок
-            for platform_name, platform_code in FZ44_PLATFORMS:
-                self.stdout.write(f"  [44-ФЗ / {platform_name}]")
+            # 44-ФЗ: 4 прохода по ценовым диапазонам
+            for range_label, price_from, price_to in FZ44_PRICE_RANGES:
+                self.stdout.write(f"  [44-ФЗ / НМЦК {range_label}]")
                 pass_new, pass_fetched = self._fetch_pass(
                     date_from=day, date_to=day,
                     fz44=True, fz223=False,
-                    etp_code=platform_code,
+                    price_from=price_from, price_to=price_to,
                     existing_numbers=existing_numbers,
                     max_pages=max_pages, min_pages=min_pages,
                     stop_after=stop_after, delay=delay, do_enrich=do_enrich,
@@ -124,12 +122,12 @@ class Command(BaseCommand):
                 day_new += pass_new
                 day_fetched += pass_fetched
 
-            # 223-ФЗ: один запрос (~3к/день — укладывается в лимит)
+            # 223-ФЗ: один проход (~3к/день — укладывается в лимит)
             self.stdout.write(f"  [223-ФЗ]")
             pass_new, pass_fetched = self._fetch_pass(
                 date_from=day, date_to=day,
                 fz44=False, fz223=True,
-                etp_code=None,
+                price_from=None, price_to=None,
                 existing_numbers=existing_numbers,
                 max_pages=max_pages, min_pages=min_pages,
                 stop_after=stop_after, delay=delay, do_enrich=do_enrich,
@@ -158,7 +156,8 @@ class Command(BaseCommand):
         date_to: date,
         fz44: bool,
         fz223: bool,
-        etp_code: str | None,
+        price_from: str | None,
+        price_to: str | None,
         existing_numbers: set,
         max_pages: int,
         min_pages: int,
@@ -179,7 +178,8 @@ class Command(BaseCommand):
                     page=page,
                     fz44=fz44,
                     fz223=fz223,
-                    etp_code=etp_code,
+                    price_from=price_from,
+                    price_to=price_to,
                 )
             except Exception as exc:
                 self.stdout.write(self.style.WARNING(f"    стр.{page}: ошибка — {exc}"))
