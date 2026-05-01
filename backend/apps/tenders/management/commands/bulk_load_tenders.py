@@ -2,11 +2,12 @@
 Одноразовая команда для первоначальной загрузки тендеров за N дней.
 
 Стратегия:
-- Разбиваем диапазон на однодневные чанки (по умолчанию).
-- Каждый день парсится ДВАЖДЫ: отдельно 44-ФЗ и отдельно 223-ФЗ.
-  Это обходит жёсткий лимит ЕИС — 100 страниц (5000 записей) на запрос.
-  При ~11к тендеров/день: 44-ФЗ ≈ 8к + 223-ФЗ ≈ 3к — каждый укладывается.
-- Останов: N страниц подряд без новых тендеров (ЕИС отдаёт дубликаты после исчерпания).
+- Однодневные чанки (один день = один запрос).
+- ЕИС жёстко ограничивает выдачу 100 страницами (5000 записей) на запрос.
+  При ~11к тендеров/день обходим так:
+  * 44-ФЗ: 8 отдельных запросов по каждой федеральной площадке (~600-1000/площадка)
+  * 223-ФЗ: один запрос (~3к/день — укладывается)
+- Останов каждого прохода: N страниц подряд без новых тендеров.
 
 Пример:
     python manage.py bulk_load_tenders --days=90
@@ -20,12 +21,23 @@ from django.core.management.base import BaseCommand
 from apps.tenders.eis_client import search_tenders
 from apps.tenders.services import upsert_tender
 
-# Сколько страниц подряд без новых тендеров означает «контент исчерпан»
 DEFAULT_STOP_AFTER = 5
-# Минимум страниц перед включением stop-after (защита при прерванном прогоне)
 DEFAULT_MIN_PAGES = 20
-# Страховочный лимит: ЕИС отдаёт max 100 стр., ставим 110 чтобы stop-after сработал
+# ЕИС выдаёт max 100 стр.; 110 — чтобы stop-after успел сработать
 DEFAULT_MAX_PAGES = 110
+
+# 8 федеральных электронных площадок для 44-ФЗ
+# Коды берутся из параметра etpCode в EIS extended search
+FZ44_PLATFORMS = [
+    ("Сбербанк-АСТ",    "SBERBANK"),
+    ("РТС-тендер",       "RTS"),
+    ("ЕЭТП",             "ROSELTORG"),
+    ("ЭТП ГПБ",          "ETPGPB"),
+    ("НЭП",              "NATIONAL"),
+    ("ТЭК-Торг",         "TEKTORG"),
+    ("АСТ ГОЗ",          "ASTGOZ"),
+    ("Заказ РФ",         "ZAKAZRF"),
+]
 
 
 class Command(BaseCommand):
@@ -98,77 +110,32 @@ class Command(BaseCommand):
             day_new = 0
             day_fetched = 0
 
-            # Два прохода: сначала 44-ФЗ, потом 223-ФЗ
-            for fz_label, fz44, fz223 in [("44-ФЗ", True, False), ("223-ФЗ", False, True)]:
-                self.stdout.write(f"  [{fz_label}]")
-                pass_new = 0
-                pass_fetched = 0
-                consecutive_no_new = 0
-
-                for page in range(1, max_pages + 1):
-                    try:
-                        results = search_tenders(
-                            date_from=day,
-                            date_to=day,
-                            page=page,
-                            fz44=fz44,
-                            fz223=fz223,
-                        )
-                    except Exception as exc:
-                        self.stdout.write(self.style.WARNING(f"    стр.{page}: ошибка — {exc}"))
-                        break
-
-                    if not results:
-                        break
-
-                    page_new = 0
-                    for data in results:
-                        try:
-                            is_new = data["number"] not in existing_numbers
-                            data["raw_json"] = data.copy()
-                            tender = upsert_tender(data)
-                            pass_fetched += 1
-
-                            if is_new:
-                                page_new += 1
-                                pass_new += 1
-                                existing_numbers.add(data["number"])
-                                if do_enrich:
-                                    from apps.tenders.tasks import enrich_tender
-                                    enrich_tender.apply_async(args=[tender.pk], countdown=10)
-                        except Exception as exc:
-                            self.stdout.write(
-                                self.style.WARNING(f"    upsert error {data.get('number', '?')}: {exc}")
-                            )
-
-                    self.stdout.write(
-                        f"    стр.{page}: +{len(results)} (итого: {pass_fetched}, новых: {pass_new})"
-                    )
-
-                    if len(results) < 50:
-                        break
-
-                    # stop-after включается после min_pages
-                    if page == min_pages:
-                        consecutive_no_new = 0
-                    elif page > min_pages:
-                        if page_new == 0:
-                            consecutive_no_new += 1
-                            if consecutive_no_new >= stop_after:
-                                self.stdout.write(
-                                    self.style.WARNING(
-                                        f"    Стоп: {stop_after} стр. подряд без новых — контент исчерпан."
-                                    )
-                                )
-                                break
-                        else:
-                            consecutive_no_new = 0
-
-                    if page < max_pages:
-                        time.sleep(delay)
-
-                day_fetched += pass_fetched
+            # 44-ФЗ: отдельный проход по каждой из 8 федеральных площадок
+            for platform_name, platform_code in FZ44_PLATFORMS:
+                self.stdout.write(f"  [44-ФЗ / {platform_name}]")
+                pass_new, pass_fetched = self._fetch_pass(
+                    date_from=day, date_to=day,
+                    fz44=True, fz223=False,
+                    etp_code=platform_code,
+                    existing_numbers=existing_numbers,
+                    max_pages=max_pages, min_pages=min_pages,
+                    stop_after=stop_after, delay=delay, do_enrich=do_enrich,
+                )
                 day_new += pass_new
+                day_fetched += pass_fetched
+
+            # 223-ФЗ: один запрос (~3к/день — укладывается в лимит)
+            self.stdout.write(f"  [223-ФЗ]")
+            pass_new, pass_fetched = self._fetch_pass(
+                date_from=day, date_to=day,
+                fz44=False, fz223=True,
+                etp_code=None,
+                existing_numbers=existing_numbers,
+                max_pages=max_pages, min_pages=min_pages,
+                stop_after=stop_after, delay=delay, do_enrich=do_enrich,
+            )
+            day_new += pass_new
+            day_fetched += pass_fetched
 
             total_new += day_new
             total_updated += day_fetched - day_new
@@ -184,4 +151,87 @@ class Command(BaseCommand):
         self.stdout.write(
             "  Запустите 'python manage.py index_tenders --only-new' для индексации в Qdrant."
         )
+
+    def _fetch_pass(
+        self,
+        date_from: date,
+        date_to: date,
+        fz44: bool,
+        fz223: bool,
+        etp_code: str | None,
+        existing_numbers: set,
+        max_pages: int,
+        min_pages: int,
+        stop_after: int,
+        delay: float,
+        do_enrich: bool,
+    ) -> tuple[int, int]:
+        """Один проход пагинации для заданных параметров. Возвращает (новых, всего)."""
+        pass_new = 0
+        pass_fetched = 0
+        consecutive_no_new = 0
+
+        for page in range(1, max_pages + 1):
+            try:
+                results = search_tenders(
+                    date_from=date_from,
+                    date_to=date_to,
+                    page=page,
+                    fz44=fz44,
+                    fz223=fz223,
+                    etp_code=etp_code,
+                )
+            except Exception as exc:
+                self.stdout.write(self.style.WARNING(f"    стр.{page}: ошибка — {exc}"))
+                break
+
+            if not results:
+                break
+
+            page_new = 0
+            for data in results:
+                try:
+                    is_new = data["number"] not in existing_numbers
+                    data["raw_json"] = data.copy()
+                    tender = upsert_tender(data)
+                    pass_fetched += 1
+
+                    if is_new:
+                        page_new += 1
+                        pass_new += 1
+                        existing_numbers.add(data["number"])
+                        if do_enrich:
+                            from apps.tenders.tasks import enrich_tender
+                            enrich_tender.apply_async(args=[tender.pk], countdown=10)
+                except Exception as exc:
+                    self.stdout.write(
+                        self.style.WARNING(f"    upsert error {data.get('number', '?')}: {exc}")
+                    )
+
+            self.stdout.write(
+                f"    стр.{page}: +{len(results)} (итого: {pass_fetched}, новых: {pass_new})"
+            )
+
+            if len(results) < 50:
+                break
+
+            if page == min_pages:
+                consecutive_no_new = 0
+            elif page > min_pages:
+                if page_new == 0:
+                    consecutive_no_new += 1
+                    if consecutive_no_new >= stop_after:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"    Стоп: {stop_after} стр. подряд без новых — контент исчерпан."
+                            )
+                        )
+                        break
+                else:
+                    consecutive_no_new = 0
+
+            if page < max_pages:
+                time.sleep(delay)
+
+        return pass_new, pass_fetched
 
