@@ -125,10 +125,12 @@ def search_tenders(
     fz223: bool = True,
     region_code: str | None = None,
     search_string: str | None = None,
+    only_accepting: bool = True,
 ) -> list[dict[str, Any]]:
     """
     Возвращает список карточек тендеров со страницы поиска ЕИС.
     search_string — ключевые слова для поиска по тексту тендера.
+    only_accepting=True — только тендеры в статусе «Подача заявок» (af).
     """
     params: dict[str, Any] = {
         "morphology": "on",
@@ -140,10 +142,11 @@ def search_tenders(
         "publishDateFrom": date_from.strftime("%d.%m.%Y"),
         "publishDateTo": date_to.strftime("%d.%m.%Y"),
         "af": "on",
-        "ca": "on",
-        "pc": "on",
-        "pa": "on",
     }
+    if not only_accepting:
+        params["ca"] = "on"
+        params["pc"] = "on"
+        params["pa"] = "on"
     if fz44:
         params["fz44"] = "on"
     if fz223:
