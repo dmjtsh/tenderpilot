@@ -212,9 +212,6 @@ class Command(BaseCommand):
                 f"    стр.{page}: +{len(results)} (итого: {pass_fetched}, новых: {pass_new})"
             )
 
-            if len(results) < 50:
-                break
-
             if page == min_pages:
                 consecutive_no_new = 0
             elif page > min_pages:
