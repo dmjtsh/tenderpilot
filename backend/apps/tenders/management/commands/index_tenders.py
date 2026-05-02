@@ -31,6 +31,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Индексируем {total} тендеров (batch={batch_size})...")
 
         processed = 0
+        batch_num = 0
         batch_tenders: list[Tender] = []
 
         for tender in qs.iterator(chunk_size=batch_size):
@@ -38,7 +39,9 @@ class Command(BaseCommand):
 
             if len(batch_tenders) >= batch_size:
                 processed += self._index_batch(batch_tenders)
-                self.stdout.write(f"  {processed}/{total}")
+                batch_num += 1
+                if batch_num % 5 == 0:
+                    self.stdout.write(f"  {processed}/{total}")
                 batch_tenders = []
 
         if batch_tenders:
@@ -66,8 +69,8 @@ class Command(BaseCommand):
 
         qdrant.upsert_tenders_batch(items)
 
-        # Отмечаем каждый тендер как проиндексированный (уникальный UUID)
-        for t in tenders:
-            Tender.objects.filter(pk=t.pk).update(embedding_id=uuid.uuid4())
+        # Отмечаем все тендеры батча как проиндексированные одним запросом
+        ids = [t.pk for t in tenders]
+        Tender.objects.filter(pk__in=ids).update(embedding_id=uuid.uuid4())
 
         return len(tenders)
