@@ -1,3 +1,4 @@
+import gc
 import uuid
 from django.core.management.base import BaseCommand
 
@@ -43,9 +44,11 @@ class Command(BaseCommand):
                 if batch_num % 5 == 0:
                     self.stdout.write(f"  {processed}/{total}")
                 batch_tenders = []
+                gc.collect()
 
         if batch_tenders:
             processed += self._index_batch(batch_tenders)
+            gc.collect()
 
         self.stdout.write(self.style.SUCCESS(f"\nГотово: проиндексировано {processed} тендеров"))
 
