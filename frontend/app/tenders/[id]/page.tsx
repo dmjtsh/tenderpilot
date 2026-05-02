@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
@@ -320,6 +320,7 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
   const [phase, setPhase] = useState<SummaryPhase>("idle")
   const [error, setError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
+  const downloadStartRef = useRef<number | null>(null)
 
   const { data: docs = [] } = useDocsQuery(tenderId, downloading)
 
@@ -342,7 +343,9 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
 
   useEffect(() => {
     if (phase !== "downloading") return
-    if (docsAreReady(docs)) {
+    const elapsed = downloadStartRef.current ? Date.now() - downloadStartRef.current : 0
+    // If docs are ready OR we've waited 30s with no docs (tender has no attachments)
+    if (docsAreReady(docs) || (elapsed > 30_000 && docs.length === 0)) {
       setDownloading(false)
       generateSummary()
     }
@@ -362,12 +365,18 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
     if (noDocs) {
       setPhase("downloading")
       setDownloading(true)
+      downloadStartRef.current = Date.now()
+      // Safety-net: if docs never appear after 32s, force-proceed to summary
+      const timeoutId = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
+      }, 32_000)
       try {
         await tendersApi.downloadDocs(tenderId)
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
         }, 1500)
       } catch {
+        clearTimeout(timeoutId)
         setError("Не удалось загрузить документы")
         setPhase("idle")
         setDownloading(false)
