@@ -204,7 +204,7 @@ def _parse_search_entry(entry: lxml_html.HtmlElement) -> dict[str, Any] | None:
     if not purchase_number:
         return None
 
-    law_type = "223-ФЗ" if ("notice223" in href or "noticeInfoId" in href) else "44-ФЗ"
+    law_type = "223-ФЗ" if ("notice223" in href or "noticeInfoId" in href or "/223/" in href) else "44-ФЗ"
 
     # Название (объект закупки)
     title = ""
