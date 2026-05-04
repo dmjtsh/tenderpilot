@@ -2,34 +2,92 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { tendersApi, searchApi, directionsApi, type Tender } from "@/lib/api"
+import { tendersApi, searchApi, directionsApi, pipelineApi, type Tender, type PipelineStatus } from "@/lib/api"
 import { TenderCard } from "@/components/tender-card"
 import { getDirectionColor } from "@/lib/direction-colors"
 import { Search, X, Sparkles } from "lucide-react"
 import Link from "next/link"
+import { useTenderFilters, filtersToApiParams, filtersToSearchBody, type TenderFilters } from "@/hooks/use-tender-filters"
+import { FilterBar } from "@/components/filters/filter-bar"
 
 
 type Tab = "all" | "match"
 
+function usePipelineActions() {
+  const qc = useQueryClient()
+
+  const { data: entries = [] } = useQuery({
+    queryKey: ["pipeline-list"],
+    queryFn: pipelineApi.list,
+  })
+
+  const pipelineMap = new Map<number, { status: PipelineStatus; entryId: number }>()
+  for (const e of entries) pipelineMap.set(e.tender, { status: e.status, entryId: e.id })
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["pipeline-list"] })
+    qc.invalidateQueries({ queryKey: ["pipeline-summary"] })
+  }
+
+  const createMut = useMutation({
+    mutationFn: ({ tenderId, status }: { tenderId: number; status: PipelineStatus }) =>
+      pipelineApi.create(tenderId, status),
+    onSuccess: invalidate,
+  })
+
+  const updateMut = useMutation({
+    mutationFn: ({ entryId, status }: { entryId: number; status: PipelineStatus }) =>
+      pipelineApi.update(entryId, { status }),
+    onSuccess: invalidate,
+  })
+
+  const removeMut = useMutation({
+    mutationFn: (entryId: number) => pipelineApi.remove(entryId),
+    onSuccess: invalidate,
+  })
+
+  const setStatus = (tenderId: number, status: PipelineStatus, entryId?: number | null) => {
+    if (entryId) {
+      updateMut.mutate({ entryId, status })
+    } else {
+      createMut.mutate({ tenderId, status })
+    }
+  }
+
+  const removeEntry = (entryId: number) => removeMut.mutate(entryId)
+
+  return { pipelineMap, setStatus, removeEntry }
+}
+
 // ─── All tenders tab ─────────────────────────────────────────────────────────
 
-function AllTab() {
+function AllTab({ filters }: { filters: TenderFilters }) {
+  const { pipelineMap, setStatus, removeEntry } = usePipelineActions()
   const [query, setQuery] = useState("")
   const [input, setInput] = useState("")
   const [page, setPage] = useState(1)
   const [allTenders, setAllTenders] = useState<Tender[]>([])
 
+  const filterParams = filtersToApiParams(filters)
+  const filterKey = JSON.stringify(filterParams)
+
+  useEffect(() => {
+    setPage(1)
+    setAllTenders([])
+  }, [filterKey])
+
   const { data: listData, isFetching: listFetching } = useQuery({
-    queryKey: ["tenders", page],
-    queryFn: () => tendersApi.list(page),
+    queryKey: ["tenders", page, filterKey],
+    queryFn: () => tendersApi.list(page, filterParams),
     enabled: !query,
   })
 
+  const searchBody = filtersToSearchBody(filters)
   const { data: searchResults, isFetching: searchFetching } = useQuery({
-    queryKey: ["search", query],
-    queryFn: () => searchApi.search(query),
+    queryKey: ["search", query, filterKey],
+    queryFn: () => searchApi.search(query, searchBody),
     enabled: !!query,
   })
 
@@ -87,8 +145,8 @@ function AllTab() {
       {/* Column headers */}
       <div className="flex items-center gap-4 px-6 py-2.5 border-b border-gray-200 shrink-0">
         <span className="w-5" />
-        <span className="text-xs text-gray-400 uppercase tracking-wide w-24 shrink-0">Номер</span>
         <span className="text-xs text-gray-400 uppercase tracking-wide flex-1">Название</span>
+        <span className="text-xs text-gray-400 uppercase tracking-wide w-28 shrink-0">Стадия</span>
         <div className="flex items-center gap-6 shrink-0 text-xs text-gray-400 uppercase tracking-wide">
           <span className="hidden lg:block w-[220px]">Заказчик</span>
           <span className="w-24 text-right">Дедлайн</span>
@@ -109,7 +167,10 @@ function AllTab() {
             {query && <button onClick={handleClear} className="text-xs text-violet-600 hover:underline">Сбросить поиск</button>}
           </div>
         )}
-        {tenders.map((t) => <TenderCard key={t.id} tender={t} />)}
+        {tenders.map((t) => {
+                const p = pipelineMap.get(t.id)
+                return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} />
+              })}
         {hasMore && (
           <div className="flex justify-center py-4">
             <button onClick={() => setPage((p) => p + 1)} disabled={listFetching} className="text-xs text-muted-foreground hover:text-foreground transition-all duration-200 disabled:opacity-50">
@@ -124,7 +185,8 @@ function AllTab() {
 
 // ─── Match tab ────────────────────────────────────────────────────────────────
 
-function MatchTab() {
+function MatchTab({ filters }: { filters: TenderFilters }) {
+  const { pipelineMap, setStatus, removeEntry } = usePipelineActions()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const { data: directions = [] } = useQuery({
@@ -132,7 +194,6 @@ function MatchTab() {
     queryFn: () => directionsApi.list(),
   })
 
-  // По умолчанию пустой = все. Инициализируем все id когда directions загрузятся.
   useEffect(() => {
     if (directions.length > 0 && selectedIds.length === 0) {
       setSelectedIds(directions.map((d) => d.id))
@@ -143,9 +204,12 @@ function MatchTab() {
   const allSelected = directions.length > 0 && selectedIds.length === directions.length
   const activeIds = allSelected ? undefined : selectedIds
 
+  const filterParams = filtersToApiParams(filters)
+  const filterKey = JSON.stringify(filterParams)
+
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["match", activeIds],
-    queryFn: () => searchApi.match(20, activeIds),
+    queryKey: ["match", activeIds, filterKey],
+    queryFn: () => searchApi.match(20, activeIds, filterParams),
     retry: false,
     enabled: !noneSelected,
   })
@@ -259,8 +323,8 @@ function MatchTab() {
       {/* Column headers */}
       <div className="flex items-center gap-4 px-6 py-2.5 border-b border-gray-200 shrink-0">
         <span className="w-5" />
-        <span className="text-xs text-gray-400 uppercase tracking-wide w-24 shrink-0">Номер</span>
         <span className="text-xs text-gray-400 uppercase tracking-wide flex-1">Название</span>
+        <span className="text-xs text-gray-400 uppercase tracking-wide w-28 shrink-0">Стадия</span>
         <div className="flex items-center gap-6 shrink-0 text-xs text-gray-400 uppercase tracking-wide">
           <span className="w-12 text-right">Score</span>
           <span className="hidden lg:block w-[220px]">Заказчик</span>
@@ -270,7 +334,10 @@ function MatchTab() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        {tenders.map((t) => <TenderCard key={t.id} tender={t} />)}
+        {tenders.map((t) => {
+                const p = pipelineMap.get(t.id)
+                return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} />
+              })}
       </div>
     </>
   )
@@ -284,11 +351,17 @@ function TendersPageInner() {
   const [tab, setTab] = useState<Tab>(() =>
     searchParams.get("tab") === "match" ? "match" : "all"
   )
+  const { filters, setFilter, setFilters, clearAll, activeCount, hasFilters } = useTenderFilters()
 
   function handleTabChange(t: Tab) {
     setTab(t)
-    const url = t === "match" ? "/tenders?tab=match" : "/tenders"
-    router.replace(url, { scroll: false })
+    const params = new URLSearchParams(searchParams.toString())
+    if (t === "match") {
+      params.set("tab", "match")
+    } else {
+      params.delete("tab")
+    }
+    router.replace(`/tenders?${params.toString()}`, { scroll: false })
   }
 
   useEffect(() => {
@@ -322,8 +395,16 @@ function TendersPageInner() {
         </button>
       </div>
 
+      <FilterBar
+        filters={filters}
+        setFilter={setFilter}
+        setFilters={setFilters}
+        clearAll={clearAll}
+        activeCount={activeCount}
+      />
+
       <div key={tab} className="flex flex-col flex-1 min-h-0 animate-fade-in">
-        {tab === "all" ? <AllTab /> : <MatchTab />}
+        {tab === "all" ? <AllTab filters={filters} /> : <MatchTab filters={filters} />}
       </div>
     </div>
   )

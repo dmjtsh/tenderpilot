@@ -56,6 +56,8 @@ class QdrantService:
         status: str | None = None,
         nmck_min: float | None = None,
         nmck_max: float | None = None,
+        law_types: list[str] | None = None,
+        procedure_types: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         conditions = []
         if regions:
@@ -68,6 +70,10 @@ class QdrantService:
             conditions.append(
                 FieldCondition(key="nmck", range=Range(gte=nmck_min, lte=nmck_max))
             )
+        if law_types:
+            conditions.append(FieldCondition(key="law_type", match=MatchAny(any=law_types)))
+        if procedure_types:
+            conditions.append(FieldCondition(key="procedure_type", match=MatchAny(any=procedure_types)))
 
         query_filter = Filter(must=conditions) if conditions else None
 
@@ -80,7 +86,17 @@ class QdrantService:
         ).points
         return [{"id": r.id, "score": r.score, **r.payload} for r in results]
 
-    def match_profile(self, profile: Any, limit: int = 20, direction_ids: list[int] | None = None) -> list[dict[str, Any]]:
+    def match_profile(
+        self,
+        profile: Any,
+        limit: int = 20,
+        direction_ids: list[int] | None = None,
+        extra_regions: list[str] | None = None,
+        extra_nmck_min: float | None = None,
+        extra_nmck_max: float | None = None,
+        extra_law_types: list[str] | None = None,
+        extra_procedure_types: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         qs = profile.directions.filter(profile_vector__isnull=False)
         if direction_ids:
             qs = qs.filter(id__in=direction_ids)
@@ -92,17 +108,30 @@ class QdrantService:
 
         for direction in directions:
             conditions = []
-            if direction.regions:
+
+            regions = list(set(direction.regions or []) & set(extra_regions)) if extra_regions and direction.regions else (extra_regions or direction.regions)
+            if regions:
                 conditions.append(
-                    FieldCondition(key="region", match=MatchAny(any=direction.regions))
+                    FieldCondition(key="region", match=MatchAny(any=regions))
                 )
-            if direction.nmck_min is not None or direction.nmck_max is not None:
+
+            eff_nmck_min = max(filter(None, [direction.nmck_min, extra_nmck_min]), default=None)
+            eff_nmck_max = min(filter(None, [direction.nmck_max, extra_nmck_max]), default=None)
+            if eff_nmck_min is not None or eff_nmck_max is not None:
                 conditions.append(
-                    FieldCondition(key="nmck", range=Range(gte=direction.nmck_min, lte=direction.nmck_max))
+                    FieldCondition(key="nmck", range=Range(gte=eff_nmck_min, lte=eff_nmck_max))
                 )
-            if direction.law_types:
+
+            law_types = list(set(direction.law_types or []) & set(extra_law_types)) if extra_law_types and direction.law_types else (extra_law_types or direction.law_types)
+            if law_types:
                 conditions.append(
-                    FieldCondition(key="law_type", match=MatchAny(any=direction.law_types))
+                    FieldCondition(key="law_type", match=MatchAny(any=law_types))
+                )
+
+            proc_types = list(set(direction.procedure_types or []) & set(extra_procedure_types)) if extra_procedure_types and direction.procedure_types else (extra_procedure_types or direction.procedure_types)
+            if proc_types:
+                conditions.append(
+                    FieldCondition(key="procedure_type", match=MatchAny(any=proc_types))
                 )
 
             results = self.client.query_points(

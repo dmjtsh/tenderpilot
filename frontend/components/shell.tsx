@@ -5,10 +5,11 @@ import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
 import Image from "next/image"
-import { FileText, Settings, LogOut } from "lucide-react"
+import { FileText, Columns3, Settings, LogOut } from "lucide-react"
 
 const NAV = [
   { href: "/tenders", icon: FileText, label: "Тендеры" },
+  { href: "/pipeline", icon: Columns3, label: "Мои тендеры" },
   { href: "/profile", icon: Settings, label: "Профиль" },
 ]
 

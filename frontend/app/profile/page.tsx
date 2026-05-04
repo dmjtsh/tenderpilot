@@ -145,6 +145,14 @@ const NMCK_PRESETS = [
 
 const LAW_TYPES = ["44-ФЗ", "223-ФЗ", "615-ПП"] as const
 
+const PROCEDURE_TYPES = [
+  { value: "auction", label: "Аукцион" },
+  { value: "contest", label: "Конкурс" },
+  { value: "request_quotations", label: "Запрос котировок" },
+  { value: "request_proposals", label: "Запрос предложений" },
+  { value: "single_source", label: "Ед. поставщик" },
+] as const
+
 // ─── DirectionCard ────────────────────────────────────────────────────────────
 
 function DirectionCard({
@@ -164,6 +172,7 @@ function DirectionCard({
   const [keywords, setKeywords] = useState((direction.keywords ?? []).join(", "))
   const [regions, setRegions] = useState<string[]>(direction.regions ?? [])
   const [lawTypes, setLawTypes] = useState<string[]>(direction.law_types ?? [])
+  const [procedureTypes, setProcedureTypes] = useState<string[]>(direction.procedure_types ?? [])
   const [nmckPreset, setNmckPreset] = useState(() => {
     const idx = NMCK_PRESETS.findIndex(
       (p) => p.min === direction.nmck_min && p.max === direction.nmck_max
@@ -187,6 +196,7 @@ function DirectionCard({
         keywords: split(keywords),
         regions,
         law_types: lawTypes,
+        procedure_types: procedureTypes,
         nmck_min,
         nmck_max,
       })
@@ -322,6 +332,28 @@ function DirectionCard({
             </div>
           </div>
 
+          {/* Procedure types */}
+          <div>
+            <p className="text-sm text-gray-500 mb-2">Типы процедур</p>
+            <div className="flex flex-wrap gap-4">
+              {PROCEDURE_TYPES.map((pt) => (
+                <label key={pt.value} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={procedureTypes.includes(pt.value)}
+                    onChange={() =>
+                      setProcedureTypes((prev) =>
+                        prev.includes(pt.value) ? prev.filter((x) => x !== pt.value) : [...prev, pt.value]
+                      )
+                    }
+                    className="w-4 h-4 accent-[#111827]"
+                  />
+                  <span className="text-sm text-[#111827]">{pt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <button
               type="button"
@@ -356,6 +388,7 @@ function DirectionsSection({ regionOptions }: { regionOptions: string[] }) {
         keywords: [],
         regions: [],
         law_types: [],
+        procedure_types: [],
         nmck_min: null,
         nmck_max: null,
       }),

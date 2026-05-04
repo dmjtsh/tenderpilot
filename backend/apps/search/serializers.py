@@ -8,6 +8,12 @@ class SearchQuerySerializer(serializers.Serializer):
     status = serializers.CharField(required=False, default="active")
     nmck_max = serializers.FloatField(required=False, allow_null=True)
     nmck_min = serializers.FloatField(required=False, allow_null=True)
+    law_type = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    procedure_type = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    regions = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    deadline_days = serializers.IntegerField(required=False, allow_null=True, default=None)
+    okpd = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    customer = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class SearchResultItemSerializer(serializers.Serializer):

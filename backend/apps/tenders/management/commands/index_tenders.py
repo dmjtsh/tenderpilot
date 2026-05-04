@@ -59,6 +59,7 @@ class Command(BaseCommand):
                 "customer_name": t.customer.name if t.customer else "",
                 "region": t.region,
                 "law_type": t.law_type,
+                "procedure_type": t.procedure_type,
                 "status": t.status,
                 "published_at": t.published_at.isoformat() if t.published_at else None,
             }

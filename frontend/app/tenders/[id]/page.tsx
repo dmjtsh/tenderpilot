@@ -7,6 +7,7 @@ import { isAuthenticated } from "@/lib/auth"
 import { client, tendersApi, type Tender, type TenderSummary, type TenderDoc, type TenderQASource } from "@/lib/api"
 import { AlertTriangle, Check, ChevronDown, ChevronLeft, Download, ExternalLink, FileText, Loader2, Minus, Send, Sparkles, XCircle } from "lucide-react"
 import Link from "next/link"
+import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
 
 const STATUS_LABEL: Record<string, string> = {
   published: "Опубликован",
@@ -30,6 +31,14 @@ function fmt(n: number | null) {
 function fmtDate(s: string | null) {
   if (!s) return "—"
   return new Date(s).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+}
+
+const PROCEDURE_LABEL: Record<string, string> = {
+  auction: "Электронный аукцион",
+  contest: "Конкурс",
+  request_quotations: "Запрос котировок",
+  request_proposals: "Запрос предложений",
+  single_source: "Единственный поставщик",
 }
 
 const URGENCY_BADGE: Record<string, string> = {
@@ -691,6 +700,9 @@ export default function TenderDetailPage() {
             {tender.law_type && (
               <MetaRow label="Тип закупки" value={tender.law_type} />
             )}
+            {tender.procedure_type && tender.procedure_type !== "other" && (
+              <MetaRow label="Процедура" value={PROCEDURE_LABEL[tender.procedure_type] ?? tender.procedure_type} />
+            )}
             <MetaRow label="НМЦК" value={fmt(tender.nmck)} />
             <MetaRow label="Регион" value={tender.region || "—"} />
             <MetaRow
@@ -738,6 +750,9 @@ export default function TenderDetailPage() {
               <MetaRow label="ИНН заказчика" value={tender.customer.inn} />
             )}
           </div>
+
+          {/* Pipeline status */}
+          <PipelineStatusButtons tenderId={tender.id} />
 
           {/* OKPD */}
           {tender.okpd_codes?.length > 0 && (
