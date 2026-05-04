@@ -142,20 +142,8 @@ function AllTab({ filters }: { filters: TenderFilters }) {
         )}
       </div>
 
-      {/* Column headers */}
-      <div className="flex items-center gap-4 px-6 py-2.5 border-b border-gray-200 shrink-0">
-        <span className="w-5" />
-        <span className="text-xs text-gray-400 uppercase tracking-wide flex-1">Название</span>
-        <span className="text-xs text-gray-400 uppercase tracking-wide w-28 shrink-0">Стадия</span>
-        <div className="flex items-center gap-6 shrink-0 text-xs text-gray-400 uppercase tracking-wide">
-          <span className="hidden lg:block w-[220px]">Заказчик</span>
-          <span className="w-24 text-right">Дедлайн</span>
-          <span className="w-24 text-right">НМЦК</span>
-        </div>
-      </div>
-
       {/* List */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
         {isFetching && tenders.length === 0 && (
           <div className="flex items-center justify-center h-32">
             <span className="text-xs text-muted-foreground">Загрузка...</span>
@@ -320,20 +308,7 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
   return (
     <>
       {directionFilter}
-      {/* Column headers */}
-      <div className="flex items-center gap-4 px-6 py-2.5 border-b border-gray-200 shrink-0">
-        <span className="w-5" />
-        <span className="text-xs text-gray-400 uppercase tracking-wide flex-1">Название</span>
-        <span className="text-xs text-gray-400 uppercase tracking-wide w-28 shrink-0">Стадия</span>
-        <div className="flex items-center gap-6 shrink-0 text-xs text-gray-400 uppercase tracking-wide">
-          <span className="w-12 text-right">Score</span>
-          <span className="hidden lg:block w-[220px]">Заказчик</span>
-          <span className="w-24 text-right">Дедлайн</span>
-          <span className="w-24 text-right">НМЦК</span>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
         {tenders.map((t) => {
                 const p = pipelineMap.get(t.id)
                 return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} />

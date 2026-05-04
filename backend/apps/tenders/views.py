@@ -24,6 +24,7 @@ class TenderFilterSet(django_filters.FilterSet):
     deadline_after = django_filters.DateFilter(field_name="deadline_at", lookup_expr="gte")
     deadline_before = django_filters.DateFilter(field_name="deadline_at", lookup_expr="lte")
     deadline_days = django_filters.NumberFilter(method="filter_deadline_days")
+    deadline_days_min = django_filters.NumberFilter(method="filter_deadline_days_min")
     okpd = django_filters.CharFilter(method="filter_okpd")
     customer = django_filters.CharFilter(method="filter_customer")
 
@@ -48,6 +49,12 @@ class TenderFilterSet(django_filters.FilterSet):
             return queryset
         cutoff = timezone.now() + timedelta(days=int(value))
         return queryset.filter(deadline_at__lte=cutoff)
+
+    def filter_deadline_days_min(self, queryset, name, value):
+        if value is None:
+            return queryset
+        cutoff = timezone.now() + timedelta(days=int(value))
+        return queryset.filter(deadline_at__gte=cutoff)
 
     def filter_okpd(self, queryset, name, value):
         codes = [v.strip() for v in value.split(",") if v.strip()]

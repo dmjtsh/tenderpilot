@@ -10,6 +10,7 @@ export interface TenderFilters {
   nmck_max: number | null
   regions: string[]
   deadline_days: number | null
+  deadline_days_min: number | null
   okpd: string[]
   customer: string
 }
@@ -21,6 +22,7 @@ export const EMPTY_FILTERS: TenderFilters = {
   nmck_max: null,
   regions: [],
   deadline_days: null,
+  deadline_days_min: null,
   okpd: [],
   customer: "",
 }
@@ -41,6 +43,7 @@ function parseFiltersFromParams(sp: URLSearchParams): TenderFilters {
     nmck_max: num("nmck_max"),
     regions: csv("region"),
     deadline_days: num("deadline_days"),
+    deadline_days_min: num("deadline_days_min"),
     okpd: csv("okpd"),
     customer: sp.get("customer") || "",
   }
@@ -54,6 +57,7 @@ function filtersToParams(filters: TenderFilters): Record<string, string> {
   if (filters.nmck_max !== null) p.nmck_max = String(filters.nmck_max)
   if (filters.regions.length) p.region = filters.regions.join(",")
   if (filters.deadline_days !== null) p.deadline_days = String(filters.deadline_days)
+  if (filters.deadline_days_min !== null) p.deadline_days_min = String(filters.deadline_days_min)
   if (filters.okpd.length) p.okpd = filters.okpd.join(",")
   if (filters.customer) p.customer = filters.customer
   return p
@@ -71,6 +75,7 @@ export function filtersToSearchBody(filters: TenderFilters): Record<string, unkn
   if (filters.nmck_max !== null) body.nmck_max = filters.nmck_max
   if (filters.regions.length) body.regions = filters.regions
   if (filters.deadline_days !== null) body.deadline_days = filters.deadline_days
+  if (filters.deadline_days_min !== null) body.deadline_days_min = filters.deadline_days_min
   if (filters.okpd.length) body.okpd = filters.okpd
   if (filters.customer) body.customer = filters.customer
   return body
@@ -86,7 +91,7 @@ export function useTenderFilters() {
   const setFilters = useCallback(
     (next: TenderFilters) => {
       const params = new URLSearchParams(searchParams.toString())
-      const FILTER_KEYS = ["procedure_type", "law_type", "nmck_min", "nmck_max", "region", "deadline_days", "okpd", "customer"]
+      const FILTER_KEYS = ["procedure_type", "law_type", "nmck_min", "nmck_max", "region", "deadline_days", "deadline_days_min", "okpd", "customer"]
       FILTER_KEYS.forEach((k) => params.delete(k))
       const fp = filtersToParams(next)
       Object.entries(fp).forEach(([k, v]) => params.set(k, v))
@@ -110,7 +115,7 @@ export function useTenderFilters() {
     if (filters.law_type.length) c++
     if (filters.nmck_min !== null || filters.nmck_max !== null) c++
     if (filters.regions.length) c++
-    if (filters.deadline_days !== null) c++
+    if (filters.deadline_days !== null || filters.deadline_days_min !== null) c++
     if (filters.okpd.length) c++
     if (filters.customer) c++
     return c

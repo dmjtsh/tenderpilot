@@ -22,6 +22,10 @@ def _apply_db_filters(qs, params: dict):
     if deadline_days:
         qs = qs.filter(deadline_at__lte=timezone.now() + timedelta(days=int(deadline_days)))
 
+    deadline_days_min = params.get("deadline_days_min")
+    if deadline_days_min:
+        qs = qs.filter(deadline_at__gte=timezone.now() + timedelta(days=int(deadline_days_min)))
+
     okpd = params.get("okpd") or []
     if okpd:
         q = Q()
@@ -90,6 +94,9 @@ class TenderSearchView(APIView):
                 "law_type": tender.law_type,
                 "status": tender.status,
                 "source_url": tender.source_url,
+                "trading_platform": tender.trading_platform,
+                "auction_date": tender.auction_date,
+                "procedure_type": tender.procedure_type,
                 "score": round(score_map[hit_id], 4),
             })
             if len(results) >= want:
@@ -149,6 +156,7 @@ class TenderMatchView(APIView):
 
         db_filters = {
             "deadline_days": request.query_params.get("deadline_days"),
+            "deadline_days_min": request.query_params.get("deadline_days_min"),
             "okpd": self._csv_param(request, "okpd"),
             "customer": request.query_params.get("customer", ""),
         }
@@ -172,6 +180,9 @@ class TenderMatchView(APIView):
                 "law_type": tender.law_type,
                 "status": tender.status,
                 "source_url": tender.source_url,
+                "trading_platform": tender.trading_platform,
+                "auction_date": tender.auction_date,
+                "procedure_type": tender.procedure_type,
                 "score": round(score_map[hit_id], 4),
                 "matched_direction": direction_map.get(hit_id),
             })

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import type { Tender, PipelineStatus } from "@/lib/api"
 import { ChevronDown } from "lucide-react"
@@ -11,20 +11,6 @@ const PROCEDURE_BADGE: Record<string, { label: string; cls: string }> = {
   request_quotations: { label: "Запрос котировок", cls: "bg-blue-50 text-blue-700" },
   request_proposals: { label: "Запрос предложений", cls: "bg-sky-50 text-sky-700" },
   single_source: { label: "Ед. поставщик", cls: "bg-violet-50 text-violet-700" },
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  published: "text-gray-400",
-  accepting: "text-emerald-500",
-  closed: "text-gray-300",
-  cancelled: "text-red-400",
-}
-
-const STATUS_ICON: Record<string, string> = {
-  published: "○",
-  accepting: "◑",
-  closed: "●",
-  cancelled: "✕",
 }
 
 function scoreColor(score: number): string {
@@ -41,9 +27,23 @@ function fmtNmck(n: number | null): string | null {
   return `${n}`
 }
 
-function fmtDate(s: string | null): string | null {
+function fmtShortDate(s: string | null): string | null {
   if (!s) return null
   return new Date(s).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
+}
+
+function daysUntilDeadline(s: string | null): { text: string; urgent: boolean } | null {
+  if (!s) return null
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const deadline = new Date(s)
+  deadline.setHours(0, 0, 0, 0)
+  const diff = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  if (diff < 0) return { text: "Истёк", urgent: true }
+  if (diff === 0) return { text: "Сегодня", urgent: true }
+  if (diff === 1) return { text: "1 день", urgent: true }
+  if (diff <= 7) return { text: `${diff} дн.`, urgent: true }
+  return { text: `${diff} дн.`, urgent: false }
 }
 
 const PIPELINE_OPTIONS: { value: PipelineStatus; label: string }[] = [
@@ -101,7 +101,7 @@ function StageDropdown({
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open) }}
         className={`
-          w-full h-8 px-2.5 text-xs font-medium border transition-colors flex items-center justify-between gap-1
+          w-full h-8 px-2.5 text-xs font-medium border rounded-lg transition-colors flex items-center justify-between gap-1
           ${pipelineStatus
             ? "bg-violet-50 text-violet-700 border-violet-200 hover:border-violet-300"
             : "bg-white text-gray-400 border-gray-200 hover:text-gray-600 hover:border-gray-300"
@@ -114,7 +114,7 @@ function StageDropdown({
 
       {open && (
         <div
-          className="absolute top-full left-0 mt-1 w-36 bg-white border border-gray-200 shadow-lg z-50 py-1"
+          className="absolute top-full left-0 mt-1 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1"
           onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
         >
           {PIPELINE_OPTIONS.map((opt) => (
@@ -149,63 +149,100 @@ function StageDropdown({
   )
 }
 
+function LabeledValue({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-[10px] text-gray-400 uppercase tracking-wider leading-none mb-0.5">{label}</span>
+      {children}
+    </div>
+  )
+}
+
 export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipelineStatus, onRemoveFromPipeline }: TenderCardProps) {
-  const color = STATUS_COLOR[tender.status] ?? "text-gray-400"
-  const icon = STATUS_ICON[tender.status] ?? "○"
   const nmck = fmtNmck(tender.nmck)
-  const deadline = fmtDate(tender.deadline_at)
+  const deadlineInfo = daysUntilDeadline(tender.deadline_at)
+  const auctionDate = fmtShortDate(tender.auction_date)
   const procBadge = tender.procedure_type ? PROCEDURE_BADGE[tender.procedure_type] : null
 
   return (
-    <Link href={`/tenders/${tender.id}`} className="block group">
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-200 hover:bg-gray-50 hover:shadow-sm transition-all duration-200">
-        {/* Status icon */}
-        <span className={`text-base leading-none shrink-0 w-5 text-center ${color}`}>
-          {icon}
-        </span>
-
-        {/* Title + badges */}
-        <span className="flex-1 flex items-center gap-3 min-w-0">
-          <span className="text-[15px] text-gray-700 truncate group-hover:text-[#111827] transition-all duration-200">
+    <Link href={`/tenders/${tender.id}`} className="block">
+      <div className="p-5 bg-white rounded-xl border border-gray-200 hover:shadow-sm transition-all duration-200">
+        {/* Row 1: Title + badges */}
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0 text-base font-medium text-gray-900 line-clamp-2">
             {tender.title}
-          </span>
-          {procBadge && (
-            <span className={`hidden md:inline-block shrink-0 text-xs px-2 py-0.5 font-medium ${procBadge.cls}`}>
-              {procBadge.label}
-            </span>
-          )}
-          {tender.matched_direction && (
-            <span className="hidden md:inline-block shrink-0 text-sm px-2.5 py-0.5 bg-violet-100 text-violet-800 border border-violet-300 font-medium max-w-[180px] truncate">
-              {tender.matched_direction}
-            </span>
-          )}
-        </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {procBadge && (
+              <span className={`text-xs px-2 py-0.5 rounded font-medium ${procBadge.cls}`}>
+                {procBadge.label}
+              </span>
+            )}
+            {tender.matched_direction && (
+              <span className="text-xs px-2 py-0.5 rounded bg-violet-100 text-violet-800 border border-violet-300 font-medium max-w-[180px] truncate">
+                {tender.matched_direction}
+              </span>
+            )}
+            {tender.score != null && (
+              <span className={`text-sm font-semibold ${scoreColor(tender.score)}`}>
+                {(tender.score * 100).toFixed(0)}%
+              </span>
+            )}
+          </div>
+        </div>
 
-        {/* Stage column */}
-        {onSetPipelineStatus && (
-          <StageDropdown
-            pipelineStatus={pipelineStatus}
-            pipelineEntryId={pipelineEntryId}
-            tenderId={tender.id}
-            onSetPipelineStatus={onSetPipelineStatus}
-            onRemoveFromPipeline={onRemoveFromPipeline}
-          />
+        {/* Row 2: Region */}
+        {tender.region && (
+          <div className="text-sm text-gray-500 mt-1">{tender.region}</div>
         )}
 
-        {/* Right metadata */}
-        <div className="flex items-center gap-6 shrink-0 text-sm text-gray-500">
-          {tender.score != null && (
-            <span className={`w-12 text-right font-semibold text-[15px] ${scoreColor(tender.score)}`}>
-              {(tender.score * 100).toFixed(0)}%
-            </span>
+        {/* Row 3: Customer */}
+        {tender.customer_name && (
+          <div className="text-sm text-gray-700 line-clamp-2 mt-1">{tender.customer_name}</div>
+        )}
+
+        {/* Divider */}
+        <div className="border-t border-gray-100 my-3" />
+
+        {/* Row 4: Metrics + Stage */}
+        <div className="flex items-end">
+          <div className="flex items-end gap-x-5 flex-wrap gap-y-2 flex-1 min-w-0">
+            {nmck && (
+              <LabeledValue label="НМЦ">
+                <span className="text-sm text-gray-900 font-medium">{nmck} ₽</span>
+              </LabeledValue>
+            )}
+
+            {deadlineInfo && (
+              <LabeledValue label="Подача заявок">
+                <span className={`text-sm font-medium ${deadlineInfo.urgent ? "text-red-600" : "text-gray-900"}`}>
+                  {deadlineInfo.text}
+                </span>
+              </LabeledValue>
+            )}
+
+            {auctionDate && (
+              <LabeledValue label="Торги">
+                <span className="text-sm text-gray-900 font-medium">{auctionDate}</span>
+              </LabeledValue>
+            )}
+
+            {tender.trading_platform && (
+              <LabeledValue label="Площадка">
+                <span className="text-sm text-gray-900 font-medium">{tender.trading_platform}</span>
+              </LabeledValue>
+            )}
+          </div>
+
+          {onSetPipelineStatus && (
+            <StageDropdown
+              pipelineStatus={pipelineStatus}
+              pipelineEntryId={pipelineEntryId}
+              tenderId={tender.id}
+              onSetPipelineStatus={onSetPipelineStatus}
+              onRemoveFromPipeline={onRemoveFromPipeline}
+            />
           )}
-          <span className="hidden lg:block w-[220px] truncate text-gray-500">
-            {tender.customer_name || "—"}
-          </span>
-          <span className="tabular-nums w-24 text-right text-gray-500">{deadline || "—"}</span>
-          <span className="tabular-nums w-24 text-right text-[#111827] font-semibold">
-            {nmck ? `${nmck} ₽` : "—"}
-          </span>
         </div>
       </div>
     </Link>

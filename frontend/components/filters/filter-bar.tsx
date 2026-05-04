@@ -103,11 +103,13 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
 
       <FilterDropdown
         label="Дедлайн"
-        activeCount={filters.deadline_days !== null ? 1 : 0}
+        activeCount={filters.deadline_days !== null || filters.deadline_days_min !== null ? 1 : 0}
       >
         <DeadlineFilter
-          value={filters.deadline_days}
-          onChange={(v) => setFilter("deadline_days", v)}
+          min={filters.deadline_days_min}
+          max={filters.deadline_days}
+          onChangeMin={(v) => setFilter("deadline_days_min", v)}
+          onChangeMax={(v) => setFilter("deadline_days", v)}
         />
       </FilterDropdown>
 
@@ -246,8 +248,10 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
               <div>
                 <p className="text-xs text-gray-500 mb-1.5">Дедлайн подачи</p>
                 <DeadlineFilter
-                  value={filters.deadline_days}
-                  onChange={(v) => setFilter("deadline_days", v)}
+                  min={filters.deadline_days_min}
+                  max={filters.deadline_days}
+                  onChangeMin={(v) => setFilter("deadline_days_min", v)}
+                  onChangeMax={(v) => setFilter("deadline_days", v)}
                 />
               </div>
               <div>
