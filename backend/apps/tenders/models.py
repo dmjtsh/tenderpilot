@@ -64,6 +64,7 @@ class Tender(models.Model):
     raw_json = models.JSONField(default=dict)
     ai_summary = models.TextField(blank=True)
     embedding_id = models.UUIDField(null=True, blank=True)
+    docs_indexed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

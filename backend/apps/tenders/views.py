@@ -144,3 +144,35 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         tender = self.get_object()
         download_and_parse_documents.delay(tender.id)
         return Response({"data": {"started": True}, "error": None})
+
+    @action(detail=True, methods=["post"], url_path="reindex-docs")
+    def reindex_docs(self, request, pk=None):
+        from apps.documents.models import TenderDocument
+        from apps.documents.tasks import parse_document, index_document_chunks
+
+        tender = self.get_object()
+
+        docs_with_text = TenderDocument.objects.filter(
+            tender=tender, parse_status=TenderDocument.ParseStatus.DONE,
+        ).exclude(parsed_text="")
+
+        if docs_with_text.exists():
+            for doc in docs_with_text:
+                index_document_chunks.delay(doc.id)
+            return Response({"data": {"action": "reindex", "count": docs_with_text.count()}, "error": None})
+
+        docs_to_reparse = TenderDocument.objects.filter(
+            tender=tender, parse_status__in=[
+                TenderDocument.ParseStatus.DONE,
+                TenderDocument.ParseStatus.CLEANED,
+            ],
+        ).filter(parsed_text="")
+
+        count = 0
+        for doc in docs_to_reparse:
+            doc.parse_status = TenderDocument.ParseStatus.PENDING
+            doc.save(update_fields=["parse_status"])
+            parse_document.delay(doc.id)
+            count += 1
+
+        return Response({"data": {"action": "reparse", "count": count}, "error": None})

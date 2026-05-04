@@ -91,13 +91,15 @@ export interface TenderDoc {
 export interface TenderQASource {
   filename: string
   chunk_index: number
-  preview: string
+  text: string
+  document_id: number | null
 }
 
 export interface TenderQAResponse {
   answer: string | null
   has_docs: boolean
   sources: TenderQASource[]
+  needs_reindex?: boolean
 }
 
 export const tendersApi = {
@@ -121,6 +123,9 @@ export const tendersApi = {
 
   askQuestion: (id: number, question: string) =>
     client.post(`/tenders/${id}/ask/`, { question }).then((r) => r.data.data as TenderQAResponse),
+
+  reindexDocs: (id: number) =>
+    client.post(`/tenders/${id}/reindex-docs/`).then((r) => r.data.data),
 }
 
 // Search

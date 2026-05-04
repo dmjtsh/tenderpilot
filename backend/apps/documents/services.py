@@ -304,7 +304,7 @@ def answer_question(tender_id: int, question: str) -> dict:
     )
 
     if not hits:
-        return {"answer": None, "has_docs": True, "sources": []}
+        return {"answer": None, "has_docs": True, "sources": [], "needs_reindex": True}
 
     context_parts: list[str] = []
     sources: list[dict] = []
@@ -316,7 +316,8 @@ def answer_question(tender_id: int, question: str) -> dict:
         sources.append({
             "filename": filename,
             "chunk_index": chunk_index,
-            "preview": text[:150],
+            "text": text,
+            "document_id": hit.get("document_id"),
         })
 
     context = "\n\n---\n\n".join(context_parts)
@@ -331,7 +332,7 @@ def answer_question(tender_id: int, question: str) -> dict:
     )
     answer = response.choices[0].message.content.strip()
 
-    return {"answer": answer, "has_docs": True, "sources": sources}
+    return {"answer": answer, "has_docs": True, "sources": sources, "needs_reindex": False}
 
 
 def get_summary_context(

@@ -18,6 +18,8 @@ class SearchResultItemSerializer(serializers.Serializer):
     customer_name = serializers.CharField(allow_null=True)
     region = serializers.CharField()
     published_at = serializers.DateTimeField(allow_null=True)
+    deadline_at = serializers.DateTimeField(allow_null=True, required=False)
+    law_type = serializers.CharField(allow_null=True, required=False, allow_blank=True)
     status = serializers.CharField()
     source_url = serializers.CharField()
     score = serializers.FloatField()

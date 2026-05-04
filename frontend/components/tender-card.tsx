@@ -1,11 +1,12 @@
 import Link from "next/link"
 import type { Tender } from "@/lib/api"
+import { getDirectionColor } from "@/lib/direction-colors"
 
 const STATUS_COLOR: Record<string, string> = {
-  published: "text-muted-foreground",
-  accepting: "text-emerald-400",
-  closed: "text-muted-foreground/40",
-  cancelled: "text-red-400/70",
+  published: "text-gray-400",
+  accepting: "text-emerald-500",
+  closed: "text-gray-300",
+  cancelled: "text-red-400",
 }
 
 const STATUS_ICON: Record<string, string> = {
@@ -13,6 +14,12 @@ const STATUS_ICON: Record<string, string> = {
   accepting: "◑",
   closed: "●",
   cancelled: "✕",
+}
+
+function scoreColor(score: number): string {
+  if (score >= 0.6) return "text-violet-600"
+  if (score >= 0.4) return "text-violet-500"
+  return "text-violet-400"
 }
 
 function fmtNmck(n: number | null): string | null {
@@ -29,66 +36,51 @@ function fmtDate(s: string | null): string | null {
 }
 
 export function TenderCard({ tender }: { tender: Tender }) {
-  const color = STATUS_COLOR[tender.status] ?? "text-muted-foreground"
+  const color = STATUS_COLOR[tender.status] ?? "text-gray-400"
   const icon = STATUS_ICON[tender.status] ?? "○"
   const nmck = fmtNmck(tender.nmck)
   const deadline = fmtDate(tender.deadline_at)
+  const dirColor = tender.matched_direction ? getDirectionColor(tender.matched_direction) : null
 
   return (
     <Link href={`/tenders/${tender.id}`} className="block group">
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-border/50 hover:bg-white/[0.025] transition-colors">
+      <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-200 hover:bg-gray-50 hover:shadow-sm transition-all duration-200">
         {/* Status icon */}
-        <span className={`text-[13px] leading-none shrink-0 w-3.5 text-center ${color}`}>
+        <span className={`text-base leading-none shrink-0 w-5 text-center ${color}`}>
           {icon}
         </span>
 
         {/* Number */}
-        <span className="text-[11px] text-muted-foreground/70 font-mono w-[4.5rem] shrink-0 truncate tabular-nums">
+        <span className="text-sm text-gray-400 font-mono w-24 shrink-0 truncate tabular-nums">
           {tender.number ? tender.number.replace(/^0+/, "").slice(-8) : `#${tender.id}`}
         </span>
 
         {/* Title + direction badge */}
-        <span className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="text-[13px] text-foreground/90 truncate group-hover:text-foreground transition-colors">
+        <span className="flex-1 flex items-center gap-3 min-w-0">
+          <span className="text-[15px] text-gray-700 truncate group-hover:text-[#111827] transition-all duration-200">
             {tender.title}
           </span>
           {tender.matched_direction && (
-            <span className="hidden md:inline-block shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary/80 border border-primary/20 font-medium max-w-[140px] truncate">
+            <span className="hidden md:inline-block shrink-0 text-sm px-2.5 py-0.5 bg-violet-100 text-violet-800 border border-violet-300 font-medium max-w-[180px] truncate">
               {tender.matched_direction}
             </span>
           )}
         </span>
 
         {/* Right metadata */}
-        <div className="flex items-center gap-5 shrink-0 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-6 shrink-0 text-sm text-gray-500">
           {tender.score != null && (
-            <span className="text-primary font-medium text-xs">
+            <span className={`w-12 text-right font-semibold text-[15px] ${scoreColor(tender.score)}`}>
               {(tender.score * 100).toFixed(0)}%
             </span>
           )}
-          {tender.law_type && (
-            <span className="hidden sm:block text-[10px] px-1.5 py-0.5 rounded border border-border/60 text-muted-foreground/70 font-mono shrink-0">
-              {tender.law_type}
-            </span>
-          )}
-          {tender.trading_platform && (
-            <span className="hidden xl:block text-[11px] text-muted-foreground/60 max-w-[140px] truncate shrink-0">
-              {tender.trading_platform}
-            </span>
-          )}
-          {tender.customer_name && (
-            <span className="hidden lg:block max-w-[180px] truncate">
-              {tender.customer_name}
-            </span>
-          )}
-          {deadline && (
-            <span className="tabular-nums w-[4.5rem] text-right">{deadline}</span>
-          )}
-          {nmck && (
-            <span className="tabular-nums w-[4.5rem] text-right text-foreground/70 font-medium">
-              {nmck} ₽
-            </span>
-          )}
+          <span className="hidden lg:block w-[220px] truncate text-gray-500">
+            {tender.customer_name || "—"}
+          </span>
+          <span className="tabular-nums w-24 text-right text-gray-500">{deadline || "—"}</span>
+          <span className="tabular-nums w-24 text-right text-[#111827] font-semibold">
+            {nmck ? `${nmck} ₽` : "—"}
+          </span>
         </div>
       </div>
     </Link>

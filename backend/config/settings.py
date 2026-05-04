@@ -150,6 +150,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.documents.tasks.cleanup_old_documents",
         "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),
     },
+    "cleanup-doc-chunks": {
+        "task": "apps.documents.tasks.cleanup_doc_chunks",
+        "schedule": crontab(minute=0),
+    },
 }
 
 # Qdrant
