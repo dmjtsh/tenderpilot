@@ -12,6 +12,14 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
+    active_profile = models.ForeignKey(
+        "CompanyProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="active_for_users",
+    )
+
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
@@ -21,7 +29,7 @@ class User(AbstractUser):
 
 
 class CompanyProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="company_profile")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="company_profiles")
     name = models.CharField(max_length=255)
     inn = models.CharField(max_length=12, blank=True)
     description = models.TextField(blank=True)

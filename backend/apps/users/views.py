@@ -2,7 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import CompanyProfile, CompanyDirection
+from .models import User, CompanyProfile, CompanyDirection
 from .serializers import (
     UserSerializer,
     CompanyProfileSerializer,
@@ -56,25 +56,126 @@ class ChangePasswordView(APIView):
         return Response({"data": {"detail": "Пароль изменён."}, "error": None})
 
 
+def _get_active_profile(user: User) -> CompanyProfile:
+    """Возвращает активный профиль (или последний созданный, или создаёт новый)."""
+    if user.active_profile_id:
+        try:
+            return CompanyProfile.objects.get(pk=user.active_profile_id, user=user)
+        except CompanyProfile.DoesNotExist:
+            pass
+    # fallback: последний созданный
+    profile = CompanyProfile.objects.filter(user=user).order_by("-created_at").first()
+    if profile:
+        User.objects.filter(pk=user.pk).update(active_profile=profile)
+        user.active_profile_id = profile.pk
+        return profile
+    # создаём пустой профиль
+    profile = CompanyProfile.objects.create(user=user, name="")
+    User.objects.filter(pk=user.pk).update(active_profile=profile)
+    user.active_profile_id = profile.pk
+    return profile
+
+
+# ─── Backward-compat single-company endpoints ────────────────────────────────
+
 class CompanyProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = CompanyProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
+
     def get_object(self):
-        profile, _ = CompanyProfile.objects.get_or_create(user=self.request.user)
-        return profile
+        return _get_active_profile(self.request.user)
+
+
+# ─── Multi-company CRUD ───────────────────────────────────────────────────────
+
+class CompanyProfileListCreateView(generics.ListCreateAPIView):
+    serializer_class = CompanyProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
+
+    def get_queryset(self):
+        return CompanyProfile.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        profile = serializer.save(user=self.request.user)
+        # новый профиль становится активным
+        User.objects.filter(pk=self.request.user.pk).update(active_profile=profile)
+        self.request.user.active_profile_id = profile.pk
+
+
+class CompanyProfileDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = CompanyProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
+
+    def get_queryset(self):
+        return CompanyProfile.objects.filter(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        was_active = user.active_profile_id == instance.pk
+        instance.delete()
+        if was_active:
+            remaining = CompanyProfile.objects.filter(user=user).order_by("-created_at").first()
+            User.objects.filter(pk=user.pk).update(active_profile=remaining)
+
+
+class CompanyProfileActivateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk: int):
+        try:
+            profile = CompanyProfile.objects.get(pk=pk, user=request.user)
+        except CompanyProfile.DoesNotExist:
+            return Response({"data": None, "error": "Профиль не найден"}, status=status.HTTP_404_NOT_FOUND)
+        User.objects.filter(pk=request.user.pk).update(active_profile=profile)
+        request.user.active_profile_id = profile.pk
+        return Response({
+            "data": CompanyProfileSerializer(profile, context={"request": request}).data,
+            "error": None,
+        })
+
+
+# ─── Directions ───────────────────────────────────────────────────────────────
+
+def _resolve_profile(request, profile_id: int | None = None) -> CompanyProfile | None:
+    if profile_id:
+        try:
+            return CompanyProfile.objects.get(pk=profile_id, user=request.user)
+        except CompanyProfile.DoesNotExist:
+            return None
+    return _get_active_profile(request.user)
 
 
 class CompanyDirectionListCreateView(generics.ListCreateAPIView):
     serializer_class = CompanyDirectionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def _profile(self):
+        pid = self.kwargs.get("profile_pk") or self.request.query_params.get("profile_id")
+        return _resolve_profile(self.request, int(pid) if pid else None)
+
     def get_queryset(self):
-        profile, _ = CompanyProfile.objects.get_or_create(user=self.request.user)
+        profile = self._profile()
+        if not profile:
+            return CompanyDirection.objects.none()
         return CompanyDirection.objects.filter(profile=profile).order_by("created_at")
 
     def perform_create(self, serializer):
-        profile, _ = CompanyProfile.objects.get_or_create(user=self.request.user)
+        profile = self._profile()
         serializer.save(profile=profile)
 
 
@@ -83,8 +184,7 @@ class CompanyDirectionDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        profile, _ = CompanyProfile.objects.get_or_create(user=self.request.user)
-        return CompanyDirection.objects.filter(profile=profile)
+        return CompanyDirection.objects.filter(profile__user=self.request.user)
 
 
 class InnLookupView(APIView):

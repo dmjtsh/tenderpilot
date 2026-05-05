@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { isAuthenticated } from "@/lib/auth"
 import { profileApi, directionsApi, tendersApi, type CompanyProfile, type CompanyDirection, type InnLookupResult } from "@/lib/api"
-import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles } from "lucide-react"
+import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles, Building2, Check } from "lucide-react"
 import { OkvedCombobox } from "@/components/okved-combobox"
 
 type FormValues = {
@@ -158,10 +158,12 @@ const PROCEDURE_TYPES = [
 function DirectionCard({
   direction,
   regionOptions,
+  profileId,
   onDelete,
 }: {
   direction: CompanyDirection
   regionOptions: string[]
+  profileId?: number
   onDelete: () => void
 }) {
   const qc = useQueryClient()
@@ -199,10 +201,10 @@ function DirectionCard({
         procedure_types: procedureTypes,
         nmck_min,
         nmck_max,
-      })
+      }, profileId)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["directions"] })
+      qc.invalidateQueries({ queryKey: ["directions", profileId] })
       setExpanded(false)
     },
   })
@@ -372,12 +374,13 @@ function DirectionCard({
 
 // ─── DirectionsSection ────────────────────────────────────────────────────────
 
-function DirectionsSection({ regionOptions }: { regionOptions: string[] }) {
+function DirectionsSection({ regionOptions, profileId }: { regionOptions: string[], profileId?: number }) {
   const qc = useQueryClient()
 
   const { data: directions = [], isPending, isFetching } = useQuery<CompanyDirection[]>({
-    queryKey: ["directions"],
-    queryFn: () => directionsApi.list(),
+    queryKey: ["directions", profileId],
+    queryFn: () => directionsApi.list(profileId),
+    enabled: !!profileId,
   })
 
   const createMutation = useMutation({
@@ -391,14 +394,14 @@ function DirectionsSection({ regionOptions }: { regionOptions: string[] }) {
         procedure_types: [],
         nmck_min: null,
         nmck_max: null,
-      }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["directions"] }),
+      }, profileId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["directions", profileId] }),
     onError: (e: unknown) => console.error("create direction failed:", e),
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => directionsApi.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["directions"] }),
+    mutationFn: (id: number) => directionsApi.remove(id, profileId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["directions", profileId] }),
   })
 
   const isLoading = isPending && isFetching
@@ -429,10 +432,11 @@ function DirectionsSection({ regionOptions }: { regionOptions: string[] }) {
         ) : (
           <div className="space-y-3">
             {directions.map((d) => (
-              <DirectionCard
+          <DirectionCard
                 key={d.id}
                 direction={d}
                 regionOptions={regionOptions}
+                profileId={profileId}
                 onDelete={() => deleteMutation.mutate(d.id)}
               />
             ))}
@@ -549,14 +553,17 @@ export default function ProfilePage() {
   const router = useRouter()
   const qc = useQueryClient()
   const [innSuggestion, setInnSuggestion] = useState<InnLookupResult | null>(null)
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+  const [showNewCompanyForm, setShowNewCompanyForm] = useState(false)
+  const [newCompanyName, setNewCompanyName] = useState("")
 
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
   }, [router])
 
-  const { data: company, isLoading } = useQuery<CompanyProfile>({
-    queryKey: ["company"],
-    queryFn: () => profileApi.getCompany(),
+  const { data: companies = [], isLoading: companiesLoading } = useQuery<CompanyProfile[]>({
+    queryKey: ["companies"],
+    queryFn: () => profileApi.listCompanies(),
   })
 
   const { data: regionOptions = [] } = useQuery<string[]>({
@@ -564,19 +571,52 @@ export default function ProfilePage() {
     queryFn: () => tendersApi.regions(),
   })
 
+  // Default to active profile, fallback to first
+  useEffect(() => {
+    if (companies.length > 0 && !selectedProfileId) {
+      const active = companies.find((c) => c.is_active) ?? companies[0]
+      setSelectedProfileId(active.id)
+    }
+  }, [companies, selectedProfileId])
+
+  const selectedCompany = companies.find((c) => c.id === selectedProfileId) ?? null
+
   const { register, handleSubmit, reset, watch, setValue, formState: { isDirty, isSubmitting } } = useForm<FormValues>()
 
   useEffect(() => {
-    if (company) reset(toForm(company))
-  }, [company, reset])
+    if (selectedCompany) reset(toForm(selectedCompany))
+  }, [selectedCompany, reset])
 
-  const mutation = useMutation({
+  const saveMutation = useMutation({
     mutationFn: (data: FormValues) =>
-      profileApi.updateCompany(fromForm(data)),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["company"] }),
+      selectedProfileId
+        ? profileApi.updateCompanyById(selectedProfileId, fromForm(data))
+        : Promise.reject("No profile selected"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["companies"] }),
   })
 
-  const isChanged = isDirty
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => profileApi.deleteCompany(id),
+    onSuccess: (_, deletedId) => {
+      if (selectedProfileId === deletedId) setSelectedProfileId(null)
+      qc.invalidateQueries({ queryKey: ["companies"] })
+    },
+  })
+
+  const activateMutation = useMutation({
+    mutationFn: (id: number) => profileApi.activateCompany(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["companies"] }),
+  })
+
+  const createCompanyMutation = useMutation({
+    mutationFn: (name: string) => profileApi.createCompany({ name }),
+    onSuccess: (newCompany) => {
+      qc.invalidateQueries({ queryKey: ["companies"] })
+      setSelectedProfileId((newCompany as CompanyProfile).id)
+      setShowNewCompanyForm(false)
+      setNewCompanyName("")
+    },
+  })
 
   const innValue = watch("inn")
   const [innLookupLoading, setInnLookupLoading] = useState(false)
@@ -618,41 +658,147 @@ export default function ProfilePage() {
           procedure_types: [],
           nmck_min: null,
           nmck_max: null,
-        })
+        }, selectedProfileId ?? undefined)
       )
     )
-    qc.invalidateQueries({ queryKey: ["directions"] })
+    qc.invalidateQueries({ queryKey: ["directions", selectedProfileId] })
     setInnSuggestion(null)
   }
 
+  const isChanged = isDirty
+
   return (
     <div className="flex flex-col h-screen animate-fade-in">
+      {/* Header */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 shrink-0">
         <h1 className="text-lg font-bold text-[#111827]">Профиль компании</h1>
-        {!isLoading && (
+        {selectedCompany && (
           <button
-            onClick={handleSubmit((data) => mutation.mutateAsync(data))}
+            onClick={handleSubmit((data) => saveMutation.mutateAsync(data))}
             disabled={!isChanged || isSubmitting}
             className="h-10 px-5 text-base font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-40"
           >
-            {isSubmitting ? "Сохранение..." : mutation.isSuccess ? "Сохранено" : "Сохранить"}
+            {isSubmitting ? "Сохранение..." : saveMutation.isSuccess ? "Сохранено" : "Сохранить"}
           </button>
         )}
       </div>
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
-          {isLoading ? (
-            <p className="text-[15px] text-gray-500">Загрузка...</p>
-          ) : (
+
+          {/* Company selector */}
+          <div className="border border-gray-200 bg-white">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <p className="text-base font-semibold text-[#111827]">Компании</p>
+              <button
+                type="button"
+                onClick={() => setShowNewCompanyForm((v) => !v)}
+                className="flex items-center gap-2 h-9 px-4 text-sm font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Добавить компанию
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-2">
+              {companiesLoading ? (
+                <p className="text-sm text-gray-500">Загрузка...</p>
+              ) : (
+                <>
+                  {companies.map((company) => (
+                    <div
+                      key={company.id}
+                      onClick={() => { setSelectedProfileId(company.id); reset(toForm(company)); setInnSuggestion(null) }}
+                      className={`flex items-center gap-3 px-4 py-3 border cursor-pointer transition-colors ${
+                        selectedProfileId === company.id
+                          ? "border-[#111827] bg-gray-50"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+                      <span className="flex-1 text-sm font-medium text-[#111827] truncate">
+                        {company.name || "Без названия"}
+                      </span>
+                      {company.is_active && (
+                        <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
+                          <Check className="w-3 h-3" />
+                          Активный
+                        </span>
+                      )}
+                      {!company.is_active && selectedProfileId === company.id && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); activateMutation.mutate(company.id) }}
+                          disabled={activateMutation.isPending}
+                          className="text-[11px] text-violet-600 hover:underline disabled:opacity-50"
+                        >
+                          Сделать активным
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (confirm(`Удалить компанию «${company.name || "Без названия"}»?`)) {
+                            deleteMutation.mutate(company.id)
+                          }
+                        }}
+                        className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {showNewCompanyForm && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <input
+                        autoFocus
+                        className={inputCls + " flex-1"}
+                        placeholder="Название новой компании"
+                        value={newCompanyName}
+                        onChange={(e) => setNewCompanyName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && newCompanyName.trim()) createCompanyMutation.mutate(newCompanyName.trim())
+                          if (e.key === "Escape") { setShowNewCompanyForm(false); setNewCompanyName("") }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { if (newCompanyName.trim()) createCompanyMutation.mutate(newCompanyName.trim()) }}
+                        disabled={!newCompanyName.trim() || createCompanyMutation.isPending}
+                        className="h-11 px-4 text-sm font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-50"
+                      >
+                        {createCompanyMutation.isPending ? "..." : "Создать"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNewCompanyForm(false); setNewCompanyName("") }}
+                        className="h-11 px-3 text-sm text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-300 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {companies.length === 0 && !showNewCompanyForm && (
+                    <p className="text-sm text-gray-500">Добавьте компанию для начала работы.</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Company detail (shown when a company is selected) */}
+          {selectedCompany && (
             <>
               {/* Company info card */}
               <div className="border border-gray-200 bg-white">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <p className="text-base font-semibold text-[#111827]">Компания</p>
+                  <p className="text-base font-semibold text-[#111827]">Данные компании</p>
                 </div>
                 <div className="px-6 py-6">
-                  <form onSubmit={handleSubmit((data) => mutation.mutateAsync(data))}>
+                  <form onSubmit={handleSubmit((data) => saveMutation.mutateAsync(data))}>
                     <div className="space-y-5">
                       <Field label="Название">
                         <input className={inputCls} placeholder="ООО Технологии" {...register("name")} />
@@ -682,8 +828,7 @@ export default function ProfilePage() {
                         )}
                       </Field>
                     </div>
-
-                    {mutation.isError && (
+                    {saveMutation.isError && (
                       <p className="text-sm text-red-500 mt-4">Ошибка сохранения</p>
                     )}
                   </form>
@@ -704,14 +849,12 @@ export default function ProfilePage() {
                   />
                 </div>
               </div>
-            </>
-          )}
 
-          {/* Directions card */}
-          {!isLoading && (
-            <div className="border border-gray-200 bg-white">
-              <DirectionsSection regionOptions={regionOptions} />
-            </div>
+              {/* Directions card */}
+              <div className="border border-gray-200 bg-white">
+                <DirectionsSection regionOptions={regionOptions} profileId={selectedProfileId ?? undefined} />
+              </div>
+            </>
           )}
         </div>
       </div>

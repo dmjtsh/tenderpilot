@@ -136,12 +136,13 @@ export const searchApi = {
       .post("/search/", { query, limit: 20, ...filters })
       .then((r) => r.data.data as Tender[]),
 
-  match: (limit = 20, directionIds?: number[], filters: Record<string, string> = {}) =>
+  match: (limit = 20, directionIds?: number[], filters: Record<string, string> = {}, profileId?: number) =>
     client
       .get("/search/match/", {
         params: {
           limit,
           ...(directionIds?.length ? { direction_ids: directionIds.join(",") } : {}),
+          ...(profileId ? { profile_id: profileId } : {}),
           ...filters,
         },
       })
@@ -157,6 +158,7 @@ export interface CompanyProfile {
   okved_codes: string[]
   regions: string[]
   keywords: string[]
+  is_active: boolean
 }
 
 export interface CompanyDirection {
@@ -188,6 +190,16 @@ export const profileApi = {
   getCompany: () => client.get("/users/me/company/").then((r) => r.data),
   updateCompany: (data: Partial<CompanyProfile>) =>
     client.patch("/users/me/company/", data).then((r) => r.data),
+  listCompanies: () =>
+    client.get("/users/me/companies/").then((r) => (r.data.results ?? r.data) as CompanyProfile[]),
+  createCompany: (data: Partial<CompanyProfile>) =>
+    client.post("/users/me/companies/", data).then((r) => r.data as CompanyProfile),
+  updateCompanyById: (id: number, data: Partial<CompanyProfile>) =>
+    client.patch(`/users/me/companies/${id}/`, data).then((r) => r.data as CompanyProfile),
+  deleteCompany: (id: number) =>
+    client.delete(`/users/me/companies/${id}/`),
+  activateCompany: (id: number) =>
+    client.post(`/users/me/companies/${id}/activate/`).then((r) => r.data as { data: CompanyProfile; error: string | null }),
   lookupInn: (inn: string) =>
     client
       .post("/users/lookup-inn/", { inn })
@@ -244,12 +256,22 @@ export const pipelineApi = {
 }
 
 export const directionsApi = {
-  list: () =>
-    client.get("/users/me/directions/").then((r) => (r.data.results ?? r.data) as CompanyDirection[]),
-  create: (data: Omit<CompanyDirection, "id" | "vector_updated_at" | "created_at">) =>
-    client.post("/users/me/directions/", data).then((r) => r.data as CompanyDirection),
-  update: (id: number, data: Partial<CompanyDirection>) =>
-    client.patch(`/users/me/directions/${id}/`, data).then((r) => r.data as CompanyDirection),
-  remove: (id: number) =>
-    client.delete(`/users/me/directions/${id}/`),
+  list: (profileId?: number) =>
+    client.get(
+      profileId ? `/users/me/companies/${profileId}/directions/` : "/users/me/directions/",
+    ).then((r) => (r.data.results ?? r.data) as CompanyDirection[]),
+  create: (data: Omit<CompanyDirection, "id" | "vector_updated_at" | "created_at">, profileId?: number) =>
+    client.post(
+      profileId ? `/users/me/companies/${profileId}/directions/` : "/users/me/directions/",
+      data,
+    ).then((r) => r.data as CompanyDirection),
+  update: (id: number, data: Partial<CompanyDirection>, profileId?: number) =>
+    client.patch(
+      profileId ? `/users/me/companies/${profileId}/directions/${id}/` : `/users/me/directions/${id}/`,
+      data,
+    ).then((r) => r.data as CompanyDirection),
+  remove: (id: number, profileId?: number) =>
+    client.delete(
+      profileId ? `/users/me/companies/${profileId}/directions/${id}/` : `/users/me/directions/${id}/`,
+    ),
 }

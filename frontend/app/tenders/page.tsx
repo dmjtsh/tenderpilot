@@ -4,11 +4,11 @@ import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { tendersApi, searchApi, directionsApi, pipelineApi, type Tender, type PipelineStatus } from "@/lib/api"
+import { tendersApi, searchApi, directionsApi, pipelineApi, profileApi, type Tender, type PipelineStatus, type CompanyProfile } from "@/lib/api"
 import { TenderCard } from "@/components/tender-card"
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getDirectionColor } from "@/lib/direction-colors"
-import { Search, X, Sparkles } from "lucide-react"
+import { Search, X, Sparkles, Building2, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { useTenderFilters, filtersToApiParams, filtersToSearchBody, type TenderFilters } from "@/hooks/use-tender-filters"
 import { FilterBar } from "@/components/filters/filter-bar"
@@ -172,22 +172,82 @@ function AllTab({ filters }: { filters: TenderFilters }) {
   )
 }
 
+// ─── Profile selector dropdown ────────────────────────────────────────────────
+
+function ProfileSelector({
+  companies,
+  selectedId,
+  onSelect,
+}: {
+  companies: CompanyProfile[]
+  selectedId: number | null
+  onSelect: (id: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = companies.find((c) => c.id === selectedId)
+
+  if (companies.length <= 1) return null
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 h-8 px-3 text-sm border border-gray-200 text-gray-700 hover:border-gray-300 hover:text-[#111827] transition-colors"
+      >
+        <Building2 className="w-3.5 h-3.5 text-gray-400" />
+        <span className="max-w-[160px] truncate">{selected?.name || "Выбрать компанию"}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 min-w-[200px] border border-gray-200 bg-white shadow-lg">
+          {companies.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => { onSelect(c.id); setOpen(false) }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
+                c.id === selectedId ? "bg-gray-50 text-[#111827] font-medium" : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <span className="flex-1 truncate">{c.name || "Без названия"}</span>
+              {c.is_active && <span className="text-[10px] text-emerald-600 shrink-0">● активный</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Match tab ────────────────────────────────────────────────────────────────
 
 function MatchTab({ filters }: { filters: TenderFilters }) {
   const { pipelineMap, setStatus, removeEntry } = usePipelineActions()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+
+  const { data: companies = [] } = useQuery<CompanyProfile[]>({
+    queryKey: ["companies"],
+    queryFn: () => profileApi.listCompanies(),
+  })
+
+  // Set default profile: active one or first
+  useEffect(() => {
+    if (companies.length > 0 && !selectedProfileId) {
+      const active = companies.find((c) => c.is_active) ?? companies[0]
+      setSelectedProfileId(active.id)
+    }
+  }, [companies, selectedProfileId])
 
   const { data: directions = [] } = useQuery({
-    queryKey: ["directions"],
-    queryFn: () => directionsApi.list(),
+    queryKey: ["directions", selectedProfileId],
+    queryFn: () => directionsApi.list(selectedProfileId ?? undefined),
+    enabled: !!selectedProfileId,
   })
 
   useEffect(() => {
-    if (directions.length > 0 && selectedIds.length === 0) {
-      setSelectedIds(directions.map((d) => d.id))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedIds(directions.map((d) => d.id))
   }, [directions])
 
   const noneSelected = selectedIds.length === 0
@@ -198,10 +258,10 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
   const filterKey = JSON.stringify(filterParams)
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["match", activeIds, filterKey],
-    queryFn: () => searchApi.match(20, activeIds, filterParams),
+    queryKey: ["match", activeIds, filterKey, selectedProfileId],
+    queryFn: () => searchApi.match(20, activeIds, filterParams, selectedProfileId ?? undefined),
     retry: false,
-    enabled: !noneSelected,
+    enabled: !noneSelected && !!selectedProfileId,
   })
 
   function toggleDirection(id: number) {
@@ -221,40 +281,52 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
   const tenders = data?.data ?? []
   const error = data?.error
 
-  const directionFilter = directions.length > 1 ? (
+  const directionFilter = (
     <div className="flex items-center gap-2 px-6 py-3 border-b border-gray-200 shrink-0 flex-wrap">
-      <span className="text-xs text-gray-400 uppercase tracking-wide mr-1 select-none">Направления</span>
-      <button
-        type="button"
-        onClick={toggleAll}
-        className={`h-8 px-3.5 text-sm border transition-all duration-200 ${
-          allSelected
-            ? "bg-[#111827] border-[#111827] text-white font-medium"
-            : "border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
-        }`}
-      >
-        Все
-      </button>
-      <span className="w-px h-5 bg-gray-200 mx-0.5" />
-      {directions.map((d) => {
-        const active = selectedIds.includes(d.id)
-        return (
+      <ProfileSelector
+        companies={companies}
+        selectedId={selectedProfileId}
+        onSelect={(id) => { setSelectedProfileId(id); setSelectedIds([]) }}
+      />
+      {companies.length > 1 && directions.length > 0 && (
+        <span className="w-px h-5 bg-gray-200 mx-0.5" />
+      )}
+      {directions.length > 1 && (
+        <>
+          <span className="text-xs text-gray-400 uppercase tracking-wide mr-1 select-none">Направления</span>
           <button
-            key={d.id}
             type="button"
-            onClick={() => toggleDirection(d.id)}
+            onClick={toggleAll}
             className={`h-8 px-3.5 text-sm border transition-all duration-200 ${
-              active
-                ? "bg-violet-100 border-violet-300 text-violet-800 font-medium"
+              allSelected
+                ? "bg-[#111827] border-[#111827] text-white font-medium"
                 : "border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
             }`}
           >
-            {d.name || "Без названия"}
+            Все
           </button>
-        )
-      })}
+          <span className="w-px h-5 bg-gray-200 mx-0.5" />
+          {directions.map((d) => {
+            const active = selectedIds.includes(d.id)
+            return (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => toggleDirection(d.id)}
+                className={`h-8 px-3.5 text-sm border transition-all duration-200 ${
+                  active
+                    ? "bg-violet-100 border-violet-300 text-violet-800 font-medium"
+                    : "border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
+                }`}
+              >
+                {d.name || "Без названия"}
+              </button>
+            )
+          })}
+        </>
+      )}
     </div>
-  ) : null
+  )
 
   if (noneSelected) {
     return (

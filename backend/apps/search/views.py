@@ -114,7 +114,16 @@ class TenderMatchView(APIView):
         return [v.strip() for v in raw.split(",") if v.strip()]
 
     def get(self, request: Request) -> Response:
-        profile, _ = CompanyProfile.objects.get_or_create(user=request.user)
+        profile_id_raw = request.query_params.get("profile_id")
+        if profile_id_raw and profile_id_raw.isdigit():
+            try:
+                profile = CompanyProfile.objects.get(pk=int(profile_id_raw), user=request.user)
+            except CompanyProfile.DoesNotExist:
+                return Response({"data": [], "error": "Профиль не найден"}, status=404)
+        else:
+            # fallback: активный или последний
+            from apps.users.views import _get_active_profile
+            profile = _get_active_profile(request.user)
         want = int(request.query_params.get("limit", 20))
 
         direction_ids_raw = request.query_params.get("direction_ids", "")
