@@ -234,10 +234,32 @@ success "Systemd сервисы запущены"
 
 # ─── Nginx ───────────────────────────────────────────────────────────────────
 step "Nginx"
-cat > /etc/nginx/sites-available/tenderpilot << EOF
+
+SSL_CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+HAS_SSL=false
+[[ -f "$SSL_CERT" ]] && HAS_SSL=true
+
+# Определяем — это реальный домен или IP (для certbot нужен домен)
+IS_DOMAIN=false
+if [[ "$DOMAIN" =~ ^[a-zA-Z] ]]; then IS_DOMAIN=true; fi
+
+if $HAS_SSL; then
+    # SSL уже есть — пишем конфиг с редиректом http→https
+    cat > /etc/nginx/sites-available/tenderpilot << EOF
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name $DOMAIN www.$DOMAIN;
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name $DOMAIN www.$DOMAIN;
+
+    ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
     client_max_body_size 50M;
 
@@ -261,7 +283,43 @@ server {
         expires 30d;
     }
 
-    # Фронтенд (если задеплоен локально, иначе убрать этот блок и юзать Vercel)
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+}
+EOF
+    success "Nginx настроен с SSL"
+else
+    # SSL нет — plain HTTP
+    cat > /etc/nginx/sites-available/tenderpilot << EOF
+server {
+    listen 80;
+    server_name $DOMAIN www.$DOMAIN;
+
+    client_max_body_size 50M;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 120s;
+    }
+
+    location /admin/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+
+    location /static/ {
+        alias $BACKEND_DIR/staticfiles/;
+        expires 30d;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host \$host;
@@ -270,10 +328,28 @@ server {
 }
 EOF
 
+    ln -sf /etc/nginx/sites-available/tenderpilot /etc/nginx/sites-enabled/tenderpilot
+    rm -f /etc/nginx/sites-enabled/default
+    nginx -t && systemctl restart nginx
+    success "Nginx настроен (HTTP)"
+
+    # Автоматически получаем SSL если это домен и certbot доступен
+    if $IS_DOMAIN && command -v certbot &>/dev/null; then
+        info "Пробуем получить SSL сертификат для $DOMAIN..."
+        if certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email \
+            -d "$DOMAIN" -d "www.$DOMAIN" 2>/dev/null; then
+            HAS_SSL=true
+            success "SSL сертификат получен!"
+        else
+            warn "Не удалось получить SSL (DNS ещё не прокинулся?). Продолжаем с HTTP."
+            warn "После прокидывания DNS запусти: certbot --nginx -d $DOMAIN -d www.$DOMAIN"
+        fi
+    fi
+fi
+
 ln -sf /etc/nginx/sites-available/tenderpilot /etc/nginx/sites-enabled/tenderpilot
 rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl restart nginx
-success "Nginx настроен"
+nginx -t && systemctl reload nginx
 
 # ─── Файрвол ─────────────────────────────────────────────────────────────────
 ufw allow OpenSSH > /dev/null
@@ -296,9 +372,14 @@ else
     success "Node.js уже есть: $(node -v)"
 fi
 
-# .env.local для фронта
-echo "NEXT_PUBLIC_API_URL=http://$DOMAIN/api/v1" > "$FRONTEND_DIR/.env.local"
-success ".env.local создан → NEXT_PUBLIC_API_URL=http://$DOMAIN/api/v1"
+# .env.local для фронта (https если SSL есть, иначе http)
+if $HAS_SSL; then
+    FRONTEND_API_URL="https://$DOMAIN/api/v1"
+else
+    FRONTEND_API_URL="http://$DOMAIN/api/v1"
+fi
+echo "NEXT_PUBLIC_API_URL=$FRONTEND_API_URL" > "$FRONTEND_DIR/.env.local"
+success ".env.local создан → NEXT_PUBLIC_API_URL=$FRONTEND_API_URL"
 
 # Зависимости и сборка
 info "npm install..."
