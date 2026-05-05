@@ -119,6 +119,7 @@ function PipelineCard({ entry, index }: { entry: TenderPipelineEntry; index: num
 export default function PipelinePage() {
   const router = useRouter()
   const qc = useQueryClient()
+  // null = все компании (default — показываем все записи без фильтра)
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
   const [profileSelectorOpen, setProfileSelectorOpen] = useState(false)
 
@@ -130,14 +131,6 @@ export default function PipelinePage() {
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
   })
-
-  // Default to active profile
-  useEffect(() => {
-    if (companies.length > 0 && selectedProfileId === null) {
-      const active = companies.find((c) => c.is_active) ?? companies[0]
-      setSelectedProfileId(active.id)
-    }
-  }, [companies, selectedProfileId])
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ["pipeline-list", selectedProfileId],
