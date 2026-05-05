@@ -21,7 +21,7 @@ function usePipelineActions() {
 
   const { data: entries = [] } = useQuery({
     queryKey: ["pipeline-list"],
-    queryFn: pipelineApi.list,
+    queryFn: () => pipelineApi.list(),
   })
 
   const pipelineMap = new Map<number, { status: PipelineStatus; entryId: number }>()
