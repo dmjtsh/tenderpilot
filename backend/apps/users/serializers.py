@@ -59,7 +59,7 @@ class CompanyDirectionSerializer(serializers.ModelSerializer):
         model = CompanyDirection
         fields = [
             "id", "name", "okved_codes", "keywords", "regions",
-            "nmck_min", "nmck_max", "law_types",
+            "nmck_min", "nmck_max", "law_types", "procedure_types",
             "vector_updated_at", "created_at",
         ]
         read_only_fields = ["id", "vector_updated_at", "created_at"]

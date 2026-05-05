@@ -94,7 +94,7 @@ def classify_documents_priority(filenames: list[str]) -> dict[str, int]:
 
     from openai import OpenAI
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    client = OpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_BASE_URL or None)
     prompt = CLASSIFY_PROMPT.format(filenames=json.dumps(filenames, ensure_ascii=False))
 
     try:
@@ -266,6 +266,73 @@ def _rag_for_other_docs(
         doc_counts[doc_id] = doc_counts.get(doc_id, 0) + 1
 
     return result
+
+
+QA_PROMPT = """Ты эксперт по госзакупкам России.
+Отвечай ТОЛЬКО на основе документации тендера ниже.
+Если ответа нет в документах — скажи об этом прямо.
+Не придумывай и не используй общие знания.
+
+ДОКУМЕНТАЦИЯ:
+{context}
+
+ВОПРОС: {question}"""
+
+
+def answer_question(tender_id: int, question: str) -> dict:
+    from apps.documents.models import TenderDocument
+    from apps.search.embedder import Embedder
+    from apps.search.services import qdrant
+    from openai import OpenAI
+
+    has_any_docs = TenderDocument.objects.filter(
+        tender_id=tender_id,
+        parse_status=TenderDocument.ParseStatus.DONE,
+    ).exists()
+
+    if not has_any_docs:
+        return {"answer": None, "has_docs": False, "sources": []}
+
+    embedder = Embedder()
+    vector = embedder.embed_query(question)
+
+    hits = qdrant.search_doc_chunks(
+        vector=vector,
+        tender_id=tender_id,
+        limit=5,
+        score_threshold=0.0,
+    )
+
+    if not hits:
+        return {"answer": None, "has_docs": True, "sources": [], "needs_reindex": True}
+
+    context_parts: list[str] = []
+    sources: list[dict] = []
+    for hit in hits:
+        filename = hit.get("filename", "документ")
+        text = hit.get("text", "")
+        chunk_index = hit.get("chunk_index", 0)
+        context_parts.append(f"[{filename}]\n{text}")
+        sources.append({
+            "filename": filename,
+            "chunk_index": chunk_index,
+            "text": text,
+            "document_id": hit.get("document_id"),
+        })
+
+    context = "\n\n---\n\n".join(context_parts)
+    prompt = QA_PROMPT.format(context=context, question=question)
+
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=600,
+        temperature=0.2,
+    )
+    answer = response.choices[0].message.content.strip()
+
+    return {"answer": answer, "has_docs": True, "sources": sources, "needs_reindex": False}
 
 
 def get_summary_context(

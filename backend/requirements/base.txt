@@ -20,3 +20,7 @@ anthropic>=0.28
 requests>=2.31
 lxml>=5.0
 fastembed>=0.3
+gunicorn
+openai>=1.30
+pymupdf>=1.24
+dadata>=21.10

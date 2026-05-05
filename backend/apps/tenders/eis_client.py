@@ -125,10 +125,15 @@ def search_tenders(
     fz223: bool = True,
     region_code: str | None = None,
     search_string: str | None = None,
+    only_accepting: bool = True,
+    price_from: str | None = None,
+    price_to: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Возвращает список карточек тендеров со страницы поиска ЕИС.
     search_string — ключевые слова для поиска по тексту тендера.
+    only_accepting=True — только тендеры в статусе «Подача заявок» (af).
+    price_from / price_to — фильтр по НМЦК (priceFromGeneral / priceToGeneral).
     """
     params: dict[str, Any] = {
         "morphology": "on",
@@ -140,16 +145,21 @@ def search_tenders(
         "publishDateFrom": date_from.strftime("%d.%m.%Y"),
         "publishDateTo": date_to.strftime("%d.%m.%Y"),
         "af": "on",
-        "ca": "on",
-        "pc": "on",
-        "pa": "on",
     }
+    if not only_accepting:
+        params["ca"] = "on"
+        params["pc"] = "on"
+        params["pa"] = "on"
     if fz44:
         params["fz44"] = "on"
     if fz223:
         params["fz223"] = "on"
     if search_string:
         params["searchString"] = search_string
+    if price_from:
+        params["priceFromGeneral"] = price_from
+    if price_to:
+        params["priceToGeneral"] = price_to
 
     html = _fetch_html(SEARCH_URL, params=params)
     if not html:
@@ -194,7 +204,7 @@ def _parse_search_entry(entry: lxml_html.HtmlElement) -> dict[str, Any] | None:
     if not purchase_number:
         return None
 
-    law_type = "223-ФЗ" if ("notice223" in href or "noticeInfoId" in href) else "44-ФЗ"
+    law_type = "223-ФЗ" if ("notice223" in href or "noticeInfoId" in href or "/223/" in href) else "44-ФЗ"
 
     # Название (объект закупки)
     title = ""

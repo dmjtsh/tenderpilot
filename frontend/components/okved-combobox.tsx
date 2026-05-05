@@ -82,13 +82,13 @@ export function OkvedCombobox({ value, onChange }: OkvedComboboxProps) {
           {value.map((code) => (
             <span
               key={code}
-              className="inline-flex items-center gap-1 h-5 px-2 text-[11px] rounded-md bg-primary/15 text-primary border border-primary/25 font-mono"
+              className="inline-flex items-center gap-1 h-5 px-2 text-[11px] rounded-md bg-violet-50 text-violet-600 border border-violet-200 font-mono"
             >
               {code}
               <button
                 type="button"
                 onClick={() => onChange(value.filter((c) => c !== code))}
-                className="text-primary/60 hover:text-primary transition-colors"
+                className="text-violet-400 hover:text-violet-600 transition-colors"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -148,7 +148,7 @@ export function OkvedCombobox({ value, onChange }: OkvedComboboxProps) {
                       onClick={() => toggle(opt.code)}
                       className={`w-full flex items-start gap-2.5 px-3 py-2 text-left hover:bg-secondary/60 transition-colors ${selected ? "bg-primary/5" : ""}`}
                     >
-                      <Check className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${selected ? "text-primary opacity-100" : "opacity-0"}`} />
+                      <Check className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${selected ? "text-violet-600 opacity-100" : "opacity-0"}`} />
                       <div className="min-w-0">
                         <p className="font-mono text-xs font-semibold text-foreground">{opt.code}</p>
                         <p className="text-[11px] text-muted-foreground leading-tight mt-0.5 truncate">{opt.name}</p>

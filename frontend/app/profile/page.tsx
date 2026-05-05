@@ -145,6 +145,14 @@ const NMCK_PRESETS = [
 
 const LAW_TYPES = ["44-ФЗ", "223-ФЗ", "615-ПП"] as const
 
+const PROCEDURE_TYPES = [
+  { value: "auction", label: "Аукцион" },
+  { value: "contest", label: "Конкурс" },
+  { value: "request_quotations", label: "Запрос котировок" },
+  { value: "request_proposals", label: "Запрос предложений" },
+  { value: "single_source", label: "Ед. поставщик" },
+] as const
+
 // ─── DirectionCard ────────────────────────────────────────────────────────────
 
 function DirectionCard({
@@ -164,6 +172,7 @@ function DirectionCard({
   const [keywords, setKeywords] = useState((direction.keywords ?? []).join(", "))
   const [regions, setRegions] = useState<string[]>(direction.regions ?? [])
   const [lawTypes, setLawTypes] = useState<string[]>(direction.law_types ?? [])
+  const [procedureTypes, setProcedureTypes] = useState<string[]>(direction.procedure_types ?? [])
   const [nmckPreset, setNmckPreset] = useState(() => {
     const idx = NMCK_PRESETS.findIndex(
       (p) => p.min === direction.nmck_min && p.max === direction.nmck_max
@@ -187,6 +196,7 @@ function DirectionCard({
         keywords: split(keywords),
         regions,
         law_types: lawTypes,
+        procedure_types: procedureTypes,
         nmck_min,
         nmck_max,
       })
@@ -200,21 +210,21 @@ function DirectionCard({
   const isIndexing = !direction.vector_updated_at
 
   return (
-    <div className="border border-border/60 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 overflow-hidden">
       {/* Header */}
       <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-secondary/30 transition-colors"
+        className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
         onClick={() => setExpanded((e) => !e)}
       >
-        <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
-        <span className="flex-1 text-sm font-medium text-foreground/90">{name || "Новое направление"}</span>
+        <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        <span className="flex-1 text-base font-medium text-[#111827]">{name || "Новое направление"}</span>
         {isIndexing ? (
-          <span className="flex items-center gap-1.5 text-[10px] text-amber-400/80">
+          <span className="flex items-center gap-1.5 text-[10px] text-amber-600">
             <Loader2 className="w-3 h-3 animate-spin" />
             индексируется
           </span>
         ) : (
-          <span className="text-[10px] text-emerald-400/70">● активно</span>
+          <span className="text-[10px] text-emerald-500">● активно</span>
         )}
         <button
           type="button"
@@ -227,10 +237,10 @@ function DirectionCard({
 
       {/* Body */}
       {expanded && (
-        <div className="px-4 pb-4 pt-1 space-y-4 border-t border-border/40">
+        <div className="px-5 pb-5 pt-2 space-y-5 border-t border-gray-200">
           {/* Name */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">Название направления</p>
+            <p className="text-sm text-gray-500 mb-2">Название направления</p>
             <input
               className={inputCls}
               placeholder="Кровельные работы"
@@ -241,13 +251,13 @@ function DirectionCard({
 
           {/* OKVED */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">ОКВЭД коды</p>
+            <p className="text-sm text-gray-500 mb-2">ОКВЭД коды</p>
             <OkvedCombobox value={okvedCodes} onChange={setOkvedCodes} />
           </div>
 
           {/* Keywords */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">Ключевые слова <span className="text-muted-foreground/50">(через запятую)</span></p>
+            <p className="text-sm text-gray-500 mb-2">Ключевые слова <span className="text-muted-foreground/50">(через запятую)</span></p>
             <input
               className={inputCls}
               placeholder="кровля, кровельные работы"
@@ -258,23 +268,23 @@ function DirectionCard({
 
           {/* Regions */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">Регионы</p>
+            <p className="text-sm text-gray-500 mb-2">Регионы</p>
             <RegionSelect value={regions} onChange={setRegions} options={regionOptions} />
           </div>
 
           {/* NMC */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">НМЦК</p>
+            <p className="text-sm text-gray-500 mb-2">НМЦК</p>
             <div className="flex flex-wrap gap-1.5">
               {NMCK_PRESETS.map((preset, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setNmckPreset(idx)}
-                  className={`h-7 px-2.5 text-xs rounded-md border transition-colors ${
+                  className={`h-9 px-3.5 text-sm border transition-colors ${
                     nmckPreset === idx
-                      ? "bg-primary/15 border-primary/40 text-primary"
-                      : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+                      ? "bg-[#111827] border-[#111827] text-white"
+                      : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-900"
                   }`}
                 >
                   {preset.label}
@@ -302,10 +312,10 @@ function DirectionCard({
 
           {/* Law types */}
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">Типы закупок</p>
-            <div className="flex gap-3">
+            <p className="text-sm text-gray-500 mb-2">Типы закупок</p>
+            <div className="flex gap-4">
               {LAW_TYPES.map((lt) => (
-                <label key={lt} className="flex items-center gap-1.5 cursor-pointer">
+                <label key={lt} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={lawTypes.includes(lt)}
@@ -314,9 +324,31 @@ function DirectionCard({
                         prev.includes(lt) ? prev.filter((x) => x !== lt) : [...prev, lt]
                       )
                     }
-                    className="w-3.5 h-3.5 accent-primary"
+                    className="w-4 h-4 accent-[#111827]"
                   />
-                  <span className="text-xs text-foreground/80 font-mono">{lt}</span>
+                  <span className="text-sm text-[#111827] font-mono">{lt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Procedure types */}
+          <div>
+            <p className="text-sm text-gray-500 mb-2">Типы процедур</p>
+            <div className="flex flex-wrap gap-4">
+              {PROCEDURE_TYPES.map((pt) => (
+                <label key={pt.value} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={procedureTypes.includes(pt.value)}
+                    onChange={() =>
+                      setProcedureTypes((prev) =>
+                        prev.includes(pt.value) ? prev.filter((x) => x !== pt.value) : [...prev, pt.value]
+                      )
+                    }
+                    className="w-4 h-4 accent-[#111827]"
+                  />
+                  <span className="text-sm text-[#111827]">{pt.label}</span>
                 </label>
               ))}
             </div>
@@ -327,7 +359,7 @@ function DirectionCard({
               type="button"
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
-              className="h-7 px-3 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="h-10 px-5 text-sm font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-50"
             >
               {saveMutation.isPending ? "Сохранение..." : "Сохранить"}
             </button>
@@ -356,6 +388,7 @@ function DirectionsSection({ regionOptions }: { regionOptions: string[] }) {
         keywords: [],
         regions: [],
         law_types: [],
+        procedure_types: [],
         nmck_min: null,
         nmck_max: null,
       }),
@@ -371,63 +404,56 @@ function DirectionsSection({ regionOptions }: { regionOptions: string[] }) {
   const isLoading = isPending && isFetching
 
   return (
-    <div className="py-5 border-b border-border/50 last:border-0">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">Направления поиска</p>
+    <div>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <p className="text-base font-semibold text-[#111827]">Направления поиска</p>
         <button
           type="button"
           onClick={() => createMutation.mutate()}
           disabled={createMutation.isPending}
-          className="flex items-center gap-1 h-6 px-2 text-xs rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 h-10 px-4 text-sm font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors disabled:opacity-50"
         >
-          <Plus className="w-3 h-3" />
+          <Plus className="w-4 h-4" />
           Добавить
         </button>
       </div>
 
-      {isLoading ? (
-        <p className="text-xs text-muted-foreground">Загрузка...</p>
-      ) : directions.length === 0 ? (
-        <p className="text-xs text-muted-foreground/60">
-          Добавьте направления чтобы настроить точный поиск с фильтрами по НМЦ и типу закона.
-          HyDE-вектор строится автоматически через ~30 секунд после сохранения.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {directions.map((d) => (
-            <DirectionCard
-              key={d.id}
-              direction={d}
-              regionOptions={regionOptions}
-              onDelete={() => deleteMutation.mutate(d.id)}
-            />
-          ))}
-        </div>
-      )}
+      <div className="px-6 py-5">
+        {isLoading ? (
+          <p className="text-[15px] text-gray-500">Загрузка...</p>
+        ) : directions.length === 0 ? (
+          <p className="text-[15px] text-gray-500">
+            Добавьте направления чтобы настроить точный поиск с фильтрами по НМЦ и типу закона.
+            HyDE-вектор строится автоматически через ~30 секунд после сохранения.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {directions.map((d) => (
+              <DirectionCard
+                key={d.id}
+                direction={d}
+                regionOptions={regionOptions}
+                onDelete={() => deleteMutation.mutate(d.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-const inputCls = "w-full h-8 rounded-md bg-secondary border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-colors"
-const textareaCls = "w-full rounded-md bg-secondary border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-colors resize-none"
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="py-5 border-b border-border/50 last:border-0">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">{title}</p>
-      {children}
-    </div>
-  )
-}
+const inputCls = "w-full h-11 bg-gray-50 border border-gray-200 px-4 text-base text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
+const textareaCls = "w-full bg-gray-50 border border-gray-200 px-4 py-3 text-base text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors resize-none"
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[180px_1fr] gap-4 items-start mb-3 last:mb-0">
-      <div className="pt-1.5">
-        <p className="text-sm text-foreground/80">{label}</p>
-        {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
+    <div className="grid grid-cols-[200px_1fr] gap-5 items-start mb-4 last:mb-0">
+      <div className="pt-2.5">
+        <p className="text-[15px] text-[#111827]">{label}</p>
+        {hint && <p className="text-sm text-gray-500 mt-0.5">{hint}</p>}
       </div>
       <div>{children}</div>
     </div>
@@ -458,11 +484,11 @@ function InnSuggestPanel({
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+    <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50/50 p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-        <p className="text-xs font-medium text-foreground">
-          Найдено: <span className="text-primary">{result.name}</span>
+        <Sparkles className="w-3.5 h-3.5 text-violet-600 shrink-0" />
+        <p className="text-xs font-medium text-gray-900">
+          Найдено: <span className="text-violet-600">{result.name}</span>
         </p>
         <button
           type="button"
@@ -599,14 +625,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="h-[52px] flex items-center justify-between px-6 border-b border-border shrink-0">
-        <h1 className="text-sm font-medium">Профиль компании</h1>
+    <div className="flex flex-col h-screen animate-fade-in">
+      <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 shrink-0">
+        <h1 className="text-lg font-bold text-[#111827]">Профиль компании</h1>
         {!isLoading && (
           <button
             onClick={handleSubmit((data) => mutation.mutateAsync(data))}
             disabled={!isChanged || isSubmitting}
-            className="h-7 px-3 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
+            className="h-10 px-5 text-base font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-40"
           >
             {isSubmitting ? "Сохранение..." : mutation.isSuccess ? "Сохранено" : "Сохранить"}
           </button>
@@ -614,58 +640,77 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="max-w-2xl mx-auto px-6 py-8">
+        <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
           {isLoading ? (
-            <p className="text-xs text-muted-foreground">Загрузка...</p>
+            <p className="text-[15px] text-gray-500">Загрузка...</p>
           ) : (
-            <form onSubmit={handleSubmit((data) => mutation.mutateAsync(data))}>
-              <Section title="Компания">
-                <Field label="Название">
-                  <input className={inputCls} placeholder="ООО Технологии" {...register("name")} />
-                </Field>
-                <Field label="ИНН">
-                  <div className="flex gap-2">
-                    <input className={inputCls} placeholder="7700000000" {...register("inn")} />
-                    <button
-                      type="button"
-                      onClick={handleInnLookup}
-                      disabled={innLookupLoading}
-                      className="shrink-0 h-8 px-3 text-xs rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {innLookupLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-                      Найти
-                    </button>
-                  </div>
-                  {innLookupError && (
-                    <p className="text-xs text-destructive mt-1.5">{innLookupError}</p>
-                  )}
-                  {innSuggestion && (
-                    <InnSuggestPanel
-                      result={innSuggestion}
-                      onApply={handleApplySuggestion}
-                      onDismiss={() => setInnSuggestion(null)}
-                    />
-                  )}
-                </Field>
-              </Section>
+            <>
+              {/* Company info card */}
+              <div className="border border-gray-200 bg-white">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <p className="text-base font-semibold text-[#111827]">Компания</p>
+                </div>
+                <div className="px-6 py-6">
+                  <form onSubmit={handleSubmit((data) => mutation.mutateAsync(data))}>
+                    <div className="space-y-5">
+                      <Field label="Название">
+                        <input className={inputCls} placeholder="ООО Технологии" {...register("name")} />
+                      </Field>
+                      <Field label="ИНН">
+                        <div className="flex gap-2">
+                          <input className={inputCls} placeholder="7700000000" {...register("inn")} />
+                          <button
+                            type="button"
+                            onClick={handleInnLookup}
+                            disabled={innLookupLoading}
+                            className="shrink-0 h-11 px-5 text-sm font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors disabled:opacity-50 flex items-center gap-2"
+                          >
+                            {innLookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                            Найти
+                          </button>
+                        </div>
+                        {innLookupError && (
+                          <p className="text-sm text-red-500 mt-2">{innLookupError}</p>
+                        )}
+                        {innSuggestion && (
+                          <InnSuggestPanel
+                            result={innSuggestion}
+                            onApply={handleApplySuggestion}
+                            onDismiss={() => setInnSuggestion(null)}
+                          />
+                        )}
+                      </Field>
+                    </div>
 
-              <Section title="Описание деятельности">
-                <textarea
-                  className={textareaCls}
-                  rows={4}
-                  placeholder="Разработка и поставка медицинского оборудования, ИТ-решений..."
-                  {...register("description")}
-                />
-              </Section>
+                    {mutation.isError && (
+                      <p className="text-sm text-red-500 mt-4">Ошибка сохранения</p>
+                    )}
+                  </form>
+                </div>
+              </div>
 
-              {mutation.isError && (
-                <p className="text-xs text-destructive mt-2">Ошибка сохранения</p>
-              )}
-            </form>
+              {/* Description card */}
+              <div className="border border-gray-200 bg-white">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <p className="text-base font-semibold text-[#111827]">Описание деятельности</p>
+                </div>
+                <div className="px-6 py-6">
+                  <textarea
+                    className={textareaCls}
+                    rows={4}
+                    placeholder="Разработка и поставка медицинского оборудования, ИТ-решений..."
+                    {...register("description")}
+                  />
+                </div>
+              </div>
+            </>
           )}
 
+          {/* Directions card */}
           {!isLoading && (
-            <DirectionsSection regionOptions={regionOptions} />
+            <div className="border border-gray-200 bg-white">
+              <DirectionsSection regionOptions={regionOptions} />
+            </div>
           )}
         </div>
       </div>

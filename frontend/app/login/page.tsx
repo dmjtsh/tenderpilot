@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { authApi } from "@/lib/api"
 import { setTokens, isAuthenticated } from "@/lib/auth"
-import { Zap } from "lucide-react"
+import Image from "next/image"
 
 const loginSchema = z.object({
   email: z.string().email("Некорректный email"),
@@ -147,9 +147,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[360px]">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-primary/90 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-          </div>
+          <Image src="/logo.png" width={26} height={26} className="rounded-xl" alt="ТендерПилот" />
           <span className="text-lg font-semibold tracking-tight">Tender Pilot</span>
         </div>
 

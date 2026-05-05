@@ -1,3 +1,4 @@
+import gc
 import uuid
 from django.core.management.base import BaseCommand
 
@@ -31,6 +32,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Индексируем {total} тендеров (batch={batch_size})...")
 
         processed = 0
+        batch_num = 0
         batch_tenders: list[Tender] = []
 
         for tender in qs.iterator(chunk_size=batch_size):
@@ -38,11 +40,15 @@ class Command(BaseCommand):
 
             if len(batch_tenders) >= batch_size:
                 processed += self._index_batch(batch_tenders)
-                self.stdout.write(f"  {processed}/{total}")
+                batch_num += 1
+                if batch_num % 5 == 0:
+                    self.stdout.write(f"  {processed}/{total}")
                 batch_tenders = []
+                gc.collect()
 
         if batch_tenders:
             processed += self._index_batch(batch_tenders)
+            gc.collect()
 
         self.stdout.write(self.style.SUCCESS(f"\nГотово: проиндексировано {processed} тендеров"))
 
@@ -59,6 +65,7 @@ class Command(BaseCommand):
                 "customer_name": t.customer.name if t.customer else "",
                 "region": t.region,
                 "law_type": t.law_type,
+                "procedure_type": t.procedure_type,
                 "status": t.status,
                 "published_at": t.published_at.isoformat() if t.published_at else None,
             }
@@ -66,8 +73,8 @@ class Command(BaseCommand):
 
         qdrant.upsert_tenders_batch(items)
 
-        # Отмечаем каждый тендер как проиндексированный (уникальный UUID)
-        for t in tenders:
-            Tender.objects.filter(pk=t.pk).update(embedding_id=uuid.uuid4())
+        # Отмечаем все тендеры батча как проиндексированные одним запросом
+        ids = [t.pk for t in tenders]
+        Tender.objects.filter(pk__in=ids).update(embedding_id=uuid.uuid4())
 
         return len(tenders)

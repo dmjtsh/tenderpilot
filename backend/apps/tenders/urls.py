@@ -1,8 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import TenderViewSet, RegionsListView, OkvedSearchView
+from .views import TenderViewSet, TenderPipelineViewSet, RegionsListView, OkvedSearchView
 
 router = DefaultRouter()
+router.register(r"pipeline", TenderPipelineViewSet, basename="pipeline")
 router.register(r"", TenderViewSet, basename="tenders")
 
 urlpatterns = [

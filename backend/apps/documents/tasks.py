@@ -235,7 +235,46 @@ def index_document_chunks(self, document_id: int) -> str:
         points.append((point_id, vector, payload))
 
     qdrant.upsert_doc_chunks(points)
+    Tender.objects.filter(id=doc.tender_id).update(docs_indexed_at=timezone.now())
     return f"indexed {len(chunks)} chunks for document {document_id} ({doc.filename})"
+
+
+DOC_CHUNKS_TTL_HOURS = 48
+
+
+@shared_task
+def cleanup_doc_chunks() -> str:
+    cutoff = timezone.now() - timedelta(hours=DOC_CHUNKS_TTL_HOURS)
+
+    stale_tenders = Tender.objects.filter(
+        docs_indexed_at__isnull=False,
+        docs_indexed_at__lt=cutoff,
+    )
+    if not stale_tenders.exists():
+        return "nothing to clean"
+
+    stale_ids = list(stale_tenders.values_list("id", flat=True))
+
+    from apps.search.services import qdrant_service, COLLECTION_DOC_CHUNKS
+
+    try:
+        qdrant_service.client.delete(
+            collection_name=COLLECTION_DOC_CHUNKS,
+            points_selector=Filter(
+                must=[FieldCondition(key="tender_id", match=MatchAny(any=stale_ids))]
+            ),
+        )
+    except Exception as exc:
+        logger.warning("Qdrant chunk cleanup error: %s", exc)
+
+    cleaned = TenderDocument.objects.filter(
+        tender_id__in=stale_ids,
+        parse_status=TenderDocument.ParseStatus.DONE,
+    ).exclude(parsed_text="").update(parsed_text="")
+
+    stale_tenders.update(docs_indexed_at=None)
+
+    return f"cleaned chunks for {len(stale_ids)} tenders, {cleaned} docs text cleared"
 
 
 @shared_task

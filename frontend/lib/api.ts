@@ -1,7 +1,7 @@
 import axios from "axios"
 import { getToken, clearTokens } from "./auth"
 
-const API_BASE = "http://localhost:8080/api/v1"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1"
 
 export const client = axios.create({ baseURL: API_BASE })
 
@@ -65,6 +65,7 @@ export interface Tender {
   auction_date: string | null
   status: string
   law_type: string
+  procedure_type?: string
   trading_platform: string
   trading_platform_url: string
   bid_security_amount: number | null
@@ -88,9 +89,23 @@ export interface TenderDoc {
   archive_name?: string
 }
 
+export interface TenderQASource {
+  filename: string
+  chunk_index: number
+  text: string
+  document_id: number | null
+}
+
+export interface TenderQAResponse {
+  answer: string | null
+  has_docs: boolean
+  sources: TenderQASource[]
+  needs_reindex?: boolean
+}
+
 export const tendersApi = {
-  list: (page = 1) =>
-    client.get("/tenders/", { params: { page } }).then((r) => r.data),
+  list: (page = 1, filters: Record<string, string> = {}) =>
+    client.get("/tenders/", { params: { page, ...filters } }).then((r) => r.data),
 
   get: (id: number) =>
     client.get(`/tenders/${id}/`).then((r) => r.data),
@@ -106,18 +121,30 @@ export const tendersApi = {
 
   downloadDocs: (id: number) =>
     client.post(`/tenders/${id}/download-docs/`).then((r) => r.data.data),
+
+  askQuestion: (id: number, question: string) =>
+    client.post(`/tenders/${id}/ask/`, { question }).then((r) => r.data.data as TenderQAResponse),
+
+  reindexDocs: (id: number) =>
+    client.post(`/tenders/${id}/reindex-docs/`).then((r) => r.data.data),
 }
 
 // Search
 export const searchApi = {
-  search: (query: string, filters: { nmck_max?: number; status?: string } = {}) =>
+  search: (query: string, filters: Record<string, unknown> = {}) =>
     client
       .post("/search/", { query, limit: 20, ...filters })
       .then((r) => r.data.data as Tender[]),
 
-  match: (limit = 20, directionIds?: number[]) =>
+  match: (limit = 20, directionIds?: number[], filters: Record<string, string> = {}) =>
     client
-      .get("/search/match/", { params: { limit, ...(directionIds?.length ? { direction_ids: directionIds.join(",") } : {}) } })
+      .get("/search/match/", {
+        params: {
+          limit,
+          ...(directionIds?.length ? { direction_ids: directionIds.join(",") } : {}),
+          ...filters,
+        },
+      })
       .then((r) => r.data as { data: Tender[]; error: string | null }),
 }
 
@@ -141,6 +168,7 @@ export interface CompanyDirection {
   nmck_min: number | null
   nmck_max: number | null
   law_types: string[]
+  procedure_types: string[]
   vector_updated_at: string | null
   created_at: string
 }
@@ -171,6 +199,48 @@ export const okvedApi = {
     client
       .get("/tenders/okved/", { params: { q } })
       .then((r) => r.data.data as { code: string; name: string }[]),
+}
+
+// Pipeline
+export type PipelineStatus = "studying" | "preparing" | "submitted" | "won" | "lost"
+
+export interface TenderPipelineEntry {
+  id: number
+  tender: number
+  status: PipelineStatus
+  notes: string
+  tender_title: string
+  tender_number: string
+  tender_nmck: number | null
+  tender_region: string
+  tender_deadline_at: string | null
+  tender_customer_name: string
+  created_at: string
+  updated_at: string
+}
+
+export interface PipelineSummary {
+  in_work_count: number
+  in_work_sum: number
+  won_count: number
+  won_sum: number
+  lost_count: number
+  lost_sum: number
+}
+
+export const pipelineApi = {
+  list: () =>
+    client.get("/tenders/pipeline/").then((r) => (r.data.results ?? r.data) as TenderPipelineEntry[]),
+  create: (tender: number, status: PipelineStatus) =>
+    client.post("/tenders/pipeline/", { tender, status }).then((r) => r.data as TenderPipelineEntry),
+  update: (id: number, data: { status?: PipelineStatus; notes?: string }) =>
+    client.patch(`/tenders/pipeline/${id}/`, data).then((r) => r.data as TenderPipelineEntry),
+  remove: (id: number) =>
+    client.delete(`/tenders/pipeline/${id}/`),
+  summary: () =>
+    client.get("/tenders/pipeline/summary/").then((r) => r.data.data as PipelineSummary),
+  byTender: (tenderId: number) =>
+    client.get(`/tenders/pipeline/by-tender/${tenderId}/`).then((r) => r.data.data as TenderPipelineEntry | null),
 }
 
 export const directionsApi = {
