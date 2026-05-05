@@ -19,9 +19,10 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
   const [notes, setNotes] = useState("")
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
-  const { data: companies = [] } = useQuery({
+  const { data: companies = [], isPending: companiesLoading } = useQuery({
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
+    staleTime: 5 * 60 * 1000, // use cache for 5 min — avoids re-fetching on every tender page
   })
   const activeProfile = companies.find((c) => c.is_active) ?? companies[0] ?? null
 
@@ -79,7 +80,7 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
     }, 1000)
   }
 
-  if (isLoading) return null
+  if (isLoading || companiesLoading) return null
 
   const busy = createMut.isPending || updateMut.isPending || removeMut.isPending
 
