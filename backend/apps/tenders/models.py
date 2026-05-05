@@ -33,10 +33,16 @@ class Tender(models.Model):
         FINISHED = "finished", "Завершён"
         CANCELLED = "cancelled", "Отменён"
 
+    class Source(models.TextChoices):
+        EIS = "eis", "ЕИС (zakupki.gov.ru)"
+        BIDZAAR = "bidzaar", "Bidzaar"
+        OTHER = "other", "Другой источник"
+
     class LawType(models.TextChoices):
         FZ44 = "44-ФЗ", "44-ФЗ"
         FZ223 = "223-ФЗ", "223-ФЗ"
         PP615 = "615-ПП", "615-ПП"
+        COMMERCIAL = "b2b", "Коммерческая закупка"
 
     class ProcedureType(models.TextChoices):
         AUCTION = "auction", "Электронный аукцион"
@@ -46,7 +52,13 @@ class Tender(models.Model):
         SINGLE_SOURCE = "single_source", "Единственный поставщик"
         OTHER = "other", "Иной"
 
-    number = models.CharField(max_length=50, unique=True, db_index=True)
+    source = models.CharField(
+        max_length=20,
+        choices=Source.choices,
+        default=Source.EIS,
+        db_index=True,
+    )
+    number = models.CharField(max_length=50, db_index=True)
     title = models.TextField()
     nmck = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
     customer = models.ForeignKey(
@@ -84,6 +96,12 @@ class Tender(models.Model):
         verbose_name = "Тендер"
         verbose_name_plural = "Тендеры"
         ordering = ["-published_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["number", "source"],
+                name="unique_number_per_source",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.number}: {self.title[:80]}"

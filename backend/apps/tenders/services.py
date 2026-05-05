@@ -238,10 +238,13 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
 
     source_url = data.get("source_url", "")
     procedure_type = data.get("procedure_type") or detect_procedure_type(source_url)
+    source = data.get("source", Tender.Source.EIS)
 
     tender, created = Tender.objects.update_or_create(
         number=data["number"],
+        source=source,
         defaults={
+            "source": source,
             "title": data.get("title", ""),
             "nmck": data.get("nmck"),
             "customer": customer,
