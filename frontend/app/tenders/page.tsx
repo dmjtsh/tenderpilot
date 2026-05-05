@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
 import { tendersApi, searchApi, directionsApi, pipelineApi, type Tender, type PipelineStatus } from "@/lib/api"
 import { TenderCard } from "@/components/tender-card"
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getDirectionColor } from "@/lib/direction-colors"
 import { Search, X, Sparkles } from "lucide-react"
 import Link from "next/link"
@@ -326,7 +327,7 @@ function TendersPageInner() {
   const [tab, setTab] = useState<Tab>(() =>
     searchParams.get("tab") === "match" ? "match" : "all"
   )
-  const { filters, setFilter, setFilters, clearAll, activeCount, hasFilters } = useTenderFilters()
+  const { filters, setFilter, setFilters, clearAll, activeCount } = useTenderFilters()
 
   function handleTabChange(t: Tab) {
     setTab(t)
