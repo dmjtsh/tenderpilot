@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useEffect, useRef, useState, Suspense } from "react"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
 import { client, tendersApi, type Tender, type TenderSummary, type TenderDoc, type TenderQASource } from "@/lib/api"
@@ -636,9 +636,12 @@ function MetaRow({ label, value, href }: { label: string; value: string; href?: 
   )
 }
 
-export default function TenderDetailPage() {
+function TenderDetailPageInner() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
+  const profileIdParam = searchParams.get("profile_id")
+  const profileId = profileIdParam ? Number(profileIdParam) : null
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
   }, [router])
@@ -761,7 +764,7 @@ export default function TenderDetailPage() {
           </div>
 
           {/* Pipeline status */}
-          <PipelineStatusButtons tenderId={tender.id} />
+          <PipelineStatusButtons tenderId={tender.id} profileId={profileId} />
 
           {/* OKPD */}
           {tender.okpd_codes?.length > 0 && (
@@ -802,5 +805,13 @@ export default function TenderDetailPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TenderDetailPage() {
+  return (
+    <Suspense>
+      <TenderDetailPageInner />
+    </Suspense>
   )
 }

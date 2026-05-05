@@ -385,7 +385,7 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
       <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
         {tenders.map((t) => {
                 const p = pipelineMap.get(t.id)
-                return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} />
+                return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} profileId={selectedProfileId} />
               })}
       </div>
     </>

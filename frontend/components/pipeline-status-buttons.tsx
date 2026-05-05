@@ -14,7 +14,7 @@ const STATUSES: { value: PipelineStatus; label: string; icon: typeof Eye }[] = [
   { value: "lost", label: "Проиграл", icon: XCircle },
 ]
 
-export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
+export function PipelineStatusButtons({ tenderId, profileId: profileIdProp }: { tenderId: number; profileId?: number | null }) {
   const qc = useQueryClient()
   const [notes, setNotes] = useState("")
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
@@ -23,8 +23,12 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
     staleTime: 5 * 60 * 1000, // use cache for 5 min — avoids re-fetching on every tender page
+    // skip query if profile is already known from URL param
+    enabled: profileIdProp == null,
   })
   const activeProfile = companies.find((c) => c.is_active) ?? companies[0] ?? null
+  // Use URL param if provided, otherwise fall back to active company
+  const resolvedProfileId = profileIdProp ?? activeProfile?.id ?? null
 
   const { data: entry, isLoading } = useQuery({
     queryKey: ["pipeline", tenderId],
@@ -43,7 +47,7 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
 
   const createMut = useMutation({
     mutationFn: (status: PipelineStatus) =>
-      pipelineApi.create(tenderId, status, activeProfile?.id ?? null),
+      pipelineApi.create(tenderId, status, resolvedProfileId),
     onSuccess: invalidate,
   })
 
@@ -80,7 +84,7 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
     }, 1000)
   }
 
-  if (isLoading || companiesLoading) return null
+  if (isLoading || (profileIdProp == null && companiesLoading)) return null
 
   const busy = createMut.isPending || updateMut.isPending || removeMut.isPending
 
@@ -90,8 +94,10 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
         <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
           Участие в тендере
         </p>
-        {activeProfile && (
-          <span className="text-xs text-gray-400">{activeProfile.name || "Компания"}</span>
+        {resolvedProfileId != null && (
+          <span className="text-xs text-gray-400">
+            {companies.find((c) => c.id === resolvedProfileId)?.name || activeProfile?.name || "Компания"}
+          </span>
         )}
       </div>
 

@@ -64,6 +64,7 @@ interface TenderCardProps {
   pipelineEntryId?: number | null
   onSetPipelineStatus?: (tenderId: number, status: PipelineStatus, entryId?: number | null) => void
   onRemoveFromPipeline?: (entryId: number) => void
+  profileId?: number | null
 }
 
 function StageDropdown({
@@ -158,14 +159,15 @@ function LabeledValue({ label, children }: { label: string; children: ReactNode 
   )
 }
 
-export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipelineStatus, onRemoveFromPipeline }: TenderCardProps) {
+export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipelineStatus, onRemoveFromPipeline, profileId }: TenderCardProps) {
   const nmck = fmtNmck(tender.nmck)
   const deadlineInfo = daysUntilDeadline(tender.deadline_at)
   const auctionDate = fmtShortDate(tender.auction_date)
   const procBadge = tender.procedure_type ? PROCEDURE_BADGE[tender.procedure_type] : null
+  const tenderHref = profileId ? `/tenders/${tender.id}?profile_id=${profileId}` : `/tenders/${tender.id}`
 
   return (
-    <Link href={`/tenders/${tender.id}`} className="block">
+    <Link href={tenderHref} className="block">
       <div className="p-5 bg-white rounded-xl border border-gray-200 hover:shadow-sm transition-all duration-200">
         {/* Row 1: Title + badges */}
         <div className="flex items-start gap-3">
