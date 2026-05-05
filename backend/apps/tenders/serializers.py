@@ -20,7 +20,7 @@ class TenderListSerializer(serializers.ModelSerializer):
             "trading_platform", "trading_platform_url",
             "bid_security_amount", "bid_security_required",
             "contract_security_amount", "contract_security_percent",
-            "source_url",
+            "source_url", "source",
         ]
 
 
@@ -36,7 +36,7 @@ class TenderDetailSerializer(serializers.ModelSerializer):
             "trading_platform", "trading_platform_url",
             "bid_security_amount", "bid_security_required",
             "contract_security_amount", "contract_security_percent",
-            "source_url", "ai_summary", "created_at", "updated_at",
+            "source_url", "ai_summary", "source", "created_at", "updated_at",
         ]
 
 

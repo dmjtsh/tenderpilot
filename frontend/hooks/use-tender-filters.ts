@@ -6,6 +6,7 @@ import { useCallback, useMemo } from "react"
 export interface TenderFilters {
   procedure_type: string[]
   law_type: string[]
+  source: string[]
   nmck_min: number | null
   nmck_max: number | null
   regions: string[]
@@ -18,6 +19,7 @@ export interface TenderFilters {
 export const EMPTY_FILTERS: TenderFilters = {
   procedure_type: [],
   law_type: [],
+  source: [],
   nmck_min: null,
   nmck_max: null,
   regions: [],
@@ -39,6 +41,7 @@ function parseFiltersFromParams(sp: URLSearchParams): TenderFilters {
   return {
     procedure_type: csv("procedure_type"),
     law_type: csv("law_type"),
+    source: csv("source"),
     nmck_min: num("nmck_min"),
     nmck_max: num("nmck_max"),
     regions: csv("region"),
@@ -53,6 +56,7 @@ function filtersToParams(filters: TenderFilters): Record<string, string> {
   const p: Record<string, string> = {}
   if (filters.procedure_type.length) p.procedure_type = filters.procedure_type.join(",")
   if (filters.law_type.length) p.law_type = filters.law_type.join(",")
+  if (filters.source.length) p.source = filters.source.join(",")
   if (filters.nmck_min !== null) p.nmck_min = String(filters.nmck_min)
   if (filters.nmck_max !== null) p.nmck_max = String(filters.nmck_max)
   if (filters.regions.length) p.region = filters.regions.join(",")
@@ -71,6 +75,7 @@ export function filtersToSearchBody(filters: TenderFilters): Record<string, unkn
   const body: Record<string, unknown> = {}
   if (filters.procedure_type.length) body.procedure_type = filters.procedure_type
   if (filters.law_type.length) body.law_type = filters.law_type
+  if (filters.source.length) body.source = filters.source
   if (filters.nmck_min !== null) body.nmck_min = filters.nmck_min
   if (filters.nmck_max !== null) body.nmck_max = filters.nmck_max
   if (filters.regions.length) body.regions = filters.regions
@@ -91,7 +96,7 @@ export function useTenderFilters() {
   const setFilters = useCallback(
     (next: TenderFilters) => {
       const params = new URLSearchParams(searchParams.toString())
-      const FILTER_KEYS = ["procedure_type", "law_type", "nmck_min", "nmck_max", "region", "deadline_days", "deadline_days_min", "okpd", "customer"]
+      const FILTER_KEYS = ["procedure_type", "law_type", "source", "nmck_min", "nmck_max", "region", "deadline_days", "deadline_days_min", "okpd", "customer"]
       FILTER_KEYS.forEach((k) => params.delete(k))
       const fp = filtersToParams(next)
       Object.entries(fp).forEach(([k, v]) => params.set(k, v))
@@ -113,6 +118,7 @@ export function useTenderFilters() {
     let c = 0
     if (filters.procedure_type.length) c++
     if (filters.law_type.length) c++
+    if (filters.source.length) c++
     if (filters.nmck_min !== null || filters.nmck_max !== null) c++
     if (filters.regions.length) c++
     if (filters.deadline_days !== null || filters.deadline_days_min !== null) c++

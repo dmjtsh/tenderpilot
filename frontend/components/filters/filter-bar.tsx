@@ -24,6 +24,11 @@ const LAW_OPTIONS = [
   { value: "615-ПП", label: "615-ПП" },
 ]
 
+const SOURCE_OPTIONS = [
+  { value: "eis", label: "ЕИС (госзакупки)" },
+  { value: "bidzaar", label: "Bidzaar (B2B)" },
+]
+
 interface Props {
   filters: TenderFilters
   setFilter: <K extends keyof TenderFilters>(key: K, value: TenderFilters[K]) => void
@@ -75,6 +80,14 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
           options={LAW_OPTIONS}
           selected={filters.law_type}
           onChange={(v) => setFilter("law_type", v)}
+        />
+      </FilterDropdown>
+
+      <FilterDropdown label="Источник" activeCount={filters.source.length}>
+        <MultiSelectFilter
+          options={SOURCE_OPTIONS}
+          selected={filters.source}
+          onChange={(v) => setFilter("source", v)}
         />
       </FilterDropdown>
 

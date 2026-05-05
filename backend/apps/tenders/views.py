@@ -18,6 +18,7 @@ from apps.documents.services import answer_question
 class TenderFilterSet(django_filters.FilterSet):
     procedure_type = django_filters.CharFilter(method="filter_procedure_type")
     law_type = django_filters.CharFilter(method="filter_law_type")
+    source = django_filters.CharFilter(method="filter_source")
     nmck_min = django_filters.NumberFilter(field_name="nmck", lookup_expr="gte")
     nmck_max = django_filters.NumberFilter(field_name="nmck", lookup_expr="lte")
     region = django_filters.CharFilter(method="filter_region")
@@ -39,6 +40,10 @@ class TenderFilterSet(django_filters.FilterSet):
     def filter_law_type(self, queryset, name, value):
         vals = [v.strip() for v in value.split(",") if v.strip()]
         return queryset.filter(law_type__in=vals) if vals else queryset
+
+    def filter_source(self, queryset, name, value):
+        vals = [v.strip() for v in value.split(",") if v.strip()]
+        return queryset.filter(source__in=vals) if vals else queryset
 
     def filter_region(self, queryset, name, value):
         vals = [v.strip() for v in value.split(",") if v.strip()]

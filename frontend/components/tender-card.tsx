@@ -13,6 +13,10 @@ const PROCEDURE_BADGE: Record<string, { label: string; cls: string }> = {
   single_source: { label: "Ед. поставщик", cls: "bg-violet-50 text-violet-700" },
 }
 
+const SOURCE_BADGE: Record<string, { label: string; cls: string }> = {
+  bidzaar: { label: "Bidzaar B2B", cls: "bg-amber-50 text-amber-700 border border-amber-200" },
+}
+
 function scoreColor(score: number): string {
   if (score >= 0.6) return "text-violet-600"
   if (score >= 0.4) return "text-violet-500"
@@ -164,6 +168,7 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
   const deadlineInfo = daysUntilDeadline(tender.deadline_at)
   const auctionDate = fmtShortDate(tender.auction_date)
   const procBadge = tender.procedure_type ? PROCEDURE_BADGE[tender.procedure_type] : null
+  const sourceBadge = tender.source ? SOURCE_BADGE[tender.source] : null
   const tenderHref = profileId ? `/tenders/${tender.id}?profile_id=${profileId}` : `/tenders/${tender.id}`
 
   return (
@@ -175,6 +180,11 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
             {tender.title}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {sourceBadge && (
+              <span className={`text-xs px-2 py-0.5 rounded font-medium ${sourceBadge.cls}`}>
+                {sourceBadge.label}
+              </span>
+            )}
             {procBadge && (
               <span className={`text-xs px-2 py-0.5 rounded font-medium ${procBadge.cls}`}>
                 {procBadge.label}

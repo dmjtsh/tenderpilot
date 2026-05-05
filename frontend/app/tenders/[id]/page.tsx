@@ -698,6 +698,11 @@ function TenderDetailPageInner() {
                 <span className={`w-2 h-2 rounded-full ${STATUS_DOT[tender.status] ?? "bg-gray-400"}`} />
                 {STATUS_LABEL[tender.status] ?? tender.status}
               </span>
+              {tender.source === "bidzaar" && (
+                <span className="text-sm px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                  Bidzaar B2B
+                </span>
+              )}
               {tender.number && (
                 <span className="text-sm text-gray-500 font-mono">{tender.number}</span>
               )}
@@ -784,15 +789,24 @@ function TenderDetailPageInner() {
           )}
 
           {/* Documents */}
-          <DocumentsBlock tenderId={tender.id} />
+          {tender.source !== "bidzaar" && <DocumentsBlock tenderId={tender.id} />}
 
           {/* AI summary */}
           <AiSummaryBlock tenderId={tender.id} initialSummary={initialSummary} />
 
           {/* Chat */}
-          <TenderChat tenderId={tender.id} />
+          {tender.source !== "bidzaar" ? (
+            <TenderChat tenderId={tender.id} />
+          ) : (
+            <div className="mb-8 p-5 border border-amber-200 bg-amber-50 rounded-xl">
+              <p className="text-sm font-medium text-amber-800 mb-1">Документы и RAG-чат недоступны</p>
+              <p className="text-sm text-amber-700">
+                Это коммерческий тендер с площадки Bidzaar. Документы закупки доступны напрямую на платформе.
+              </p>
+            </div>
+          )}
 
-          {/* EIS link */}
+          {/* Source link */}
           <a
             href={tender.source_url}
             target="_blank"
@@ -800,7 +814,7 @@ function TenderDetailPageInner() {
             className="inline-flex items-center gap-2.5 h-11 px-5 text-base font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors"
           >
             <ExternalLink className="w-5 h-5" />
-            Открыть на ЕИС
+            {tender.source === "bidzaar" ? "Открыть на Bidzaar" : "Открыть на ЕИС"}
           </a>
         </div>
       </div>
