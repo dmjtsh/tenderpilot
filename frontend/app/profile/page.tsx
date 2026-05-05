@@ -583,9 +583,11 @@ export default function ProfilePage() {
 
   const { register, handleSubmit, reset, watch, setValue, formState: { isDirty, isSubmitting } } = useForm<FormValues>()
 
+  // Reset form only when switching profiles (not on every render)
   useEffect(() => {
     if (selectedCompany) reset(toForm(selectedCompany))
-  }, [selectedCompany, reset])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProfileId])
 
   const saveMutation = useMutation({
     mutationFn: (data: FormValues) =>
@@ -619,6 +621,7 @@ export default function ProfilePage() {
   })
 
   const innValue = watch("inn")
+  const currentName = watch("name")
   const [innLookupLoading, setInnLookupLoading] = useState(false)
   const [innLookupError, setInnLookupError] = useState<string | null>(null)
 
@@ -708,7 +711,7 @@ export default function ProfilePage() {
                   {companies.map((company) => (
                     <div
                       key={company.id}
-                      onClick={() => { setSelectedProfileId(company.id); reset(toForm(company)); setInnSuggestion(null) }}
+                      onClick={() => { setSelectedProfileId(company.id); setInnSuggestion(null) }}
                       className={`flex items-center gap-3 px-4 py-3 border cursor-pointer transition-colors ${
                         selectedProfileId === company.id
                           ? "border-[#111827] bg-gray-50"
@@ -717,7 +720,10 @@ export default function ProfilePage() {
                     >
                       <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
                       <span className="flex-1 text-sm font-medium text-[#111827] truncate">
-                        {company.name || "Без названия"}
+                        {/* Show live form name for selected company, saved name for others */}
+                        {company.id === selectedProfileId
+                          ? (currentName || company.name || "Без названия")
+                          : (company.name || "Без названия")}
                       </span>
                       {company.is_active && (
                         <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
