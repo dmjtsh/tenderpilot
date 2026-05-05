@@ -150,6 +150,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.tenders.tasks.sync_active_tenders",
         "schedule": crontab(minute=0),  # каждый час в :00
     },
+    "sync-bidzaar-tenders": {
+        "task": "apps.tenders.tasks.sync_bidzaar_tenders",
+        "schedule": crontab(minute=30),  # каждый час в :30
+    },
     "cleanup-old-documents": {
         "task": "apps.documents.tasks.cleanup_old_documents",
         "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),

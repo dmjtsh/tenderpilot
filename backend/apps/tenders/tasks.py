@@ -161,3 +161,70 @@ def sync_active_tenders() -> dict:
         stats["fetched"], stats["new"], stats["updated"], stats["expired"], stats["errors"],
     )
     return stats
+
+
+@shared_task(name="apps.tenders.tasks.sync_bidzaar_tenders")
+def sync_bidzaar_tenders() -> dict:
+    """
+    Почасовая синхронизация тендеров с Bidzaar B2B.
+
+    Что делает:
+    1. Забирает тендеры за последние 2 дня
+    2. Делает upsert в БД
+    3. Ставит новые тендеры в очередь на индексацию в Qdrant
+    """
+    from .models import Tender
+    from .bidzaar_client import search_tenders, fetch_tender_detail
+    from .services import upsert_tender
+    from apps.search.tasks import embed_tender
+
+    days = 2
+
+    stats = {"fetched": 0, "new": 0, "updated": 0, "errors": 0}
+
+    try:
+        items = search_tenders(days=days, max_pages=20, active_only=True)
+    except Exception as exc:
+        logger.error("sync_bidzaar_tenders: search_tenders failed: %s", exc)
+        return stats
+
+    stats["fetched"] = len(items)
+    logger.info("sync_bidzaar_tenders: fetched %d items", len(items))
+
+    for data in items:
+        bidzaar_id: str = data.pop("bidzaar_id", "")
+
+        # Обогащение деталями (бюджет, ОКПД)
+        if bidzaar_id:
+            try:
+                detail = fetch_tender_detail(bidzaar_id)
+                if detail:
+                    data["nmck"] = detail["nmck"]
+                    data["okpd_codes"] = detail["okpd_codes"]
+                    if detail.get("customer_inn"):
+                        data["customer_inn"] = detail["customer_inn"]
+                time.sleep(0.3)
+            except Exception as exc:
+                logger.warning("sync_bidzaar_tenders: enrich failed %s: %s", bidzaar_id, exc)
+
+        try:
+            data["raw_json"] = {k: v for k, v in data.items() if k != "raw_json"}
+            number = data.get("number", "")
+            existing_id = Tender.objects.filter(
+                number=number, source=Tender.Source.BIDZAAR
+            ).values_list("pk", flat=True).first()
+            tender = upsert_tender(data)
+            if existing_id is None:
+                stats["new"] += 1
+                embed_tender.delay(tender.pk)
+            else:
+                stats["updated"] += 1
+        except Exception as exc:
+            stats["errors"] += 1
+            logger.error("sync_bidzaar_tenders: upsert error %s: %s", data.get("number"), exc)
+
+    logger.info(
+        "sync_bidzaar_tenders done: fetched=%d new=%d updated=%d errors=%d",
+        stats["fetched"], stats["new"], stats["updated"], stats["errors"],
+    )
+    return stats
