@@ -55,7 +55,7 @@ class TenderPipelineSerializer(serializers.ModelSerializer):
     class Meta:
         model = TenderPipeline
         fields = [
-            "id", "tender", "status", "notes",
+            "id", "tender", "profile", "status", "notes",
             "tender_title", "tender_number", "tender_nmck",
             "tender_region", "tender_deadline_at", "tender_customer_name",
             "created_at", "updated_at",

@@ -103,6 +103,13 @@ class TenderPipeline(models.Model):
     tender = models.ForeignKey(
         Tender, on_delete=models.CASCADE, related_name="pipeline_entries"
     )
+    profile = models.ForeignKey(
+        "users.CompanyProfile",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pipeline_entries",
+    )
     status = models.CharField(max_length=20, choices=PipelineStatus.choices)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -1,9 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { pipelineApi, type PipelineStatus } from "@/lib/api"
+import { pipelineApi, profileApi, type PipelineStatus } from "@/lib/api"
 import { Eye, FileEdit, Send, Trophy, XCircle } from "lucide-react"
+import { useState } from "react"
 
 const STATUSES: { value: PipelineStatus; label: string; icon: typeof Eye }[] = [
   { value: "studying", label: "Изучаю", icon: Eye },
@@ -17,6 +18,12 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
   const qc = useQueryClient()
   const [notes, setNotes] = useState("")
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+
+  const { data: companies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => profileApi.listCompanies(),
+  })
+  const activeProfile = companies.find((c) => c.is_active) ?? companies[0] ?? null
 
   const { data: entry, isLoading } = useQuery({
     queryKey: ["pipeline", tenderId],
@@ -34,7 +41,8 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
   }, [qc, tenderId])
 
   const createMut = useMutation({
-    mutationFn: (status: PipelineStatus) => pipelineApi.create(tenderId, status),
+    mutationFn: (status: PipelineStatus) =>
+      pipelineApi.create(tenderId, status, activeProfile?.id ?? null),
     onSuccess: invalidate,
   })
 
@@ -77,9 +85,14 @@ export function PipelineStatusButtons({ tenderId }: { tenderId: number }) {
 
   return (
     <div className="mb-8">
-      <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-        Участие в тендере
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+          Участие в тендере
+        </p>
+        {activeProfile && (
+          <span className="text-xs text-gray-400">{activeProfile.name || "Компания"}</span>
+        )}
+      </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
         {STATUSES.map(({ value, label, icon: Icon }) => {

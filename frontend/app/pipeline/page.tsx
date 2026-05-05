@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { pipelineApi, type PipelineStatus, type TenderPipelineEntry } from "@/lib/api"
+import { pipelineApi, profileApi, type PipelineStatus, type TenderPipelineEntry } from "@/lib/api"
 import Link from "next/link"
-import { Briefcase, Trophy, XCircle } from "lucide-react"
+import { Briefcase, Trophy, XCircle, Building2, ChevronDown } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 
 const COLUMNS: { status: PipelineStatus; label: string; color: string }[] = [
@@ -34,10 +34,10 @@ function fmtDate(s: string | null) {
   })
 }
 
-function SummaryCards() {
+function SummaryCards({ profileId }: { profileId?: number | null }) {
   const { data } = useQuery({
-    queryKey: ["pipeline-summary"],
-    queryFn: pipelineApi.summary,
+    queryKey: ["pipeline-summary", profileId],
+    queryFn: () => pipelineApi.summary(profileId),
   })
 
   if (!data) return null
@@ -119,22 +119,37 @@ function PipelineCard({ entry, index }: { entry: TenderPipelineEntry; index: num
 export default function PipelinePage() {
   const router = useRouter()
   const qc = useQueryClient()
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+  const [profileSelectorOpen, setProfileSelectorOpen] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
   }, [router])
 
+  const { data: companies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => profileApi.listCompanies(),
+  })
+
+  // Default to active profile
+  useEffect(() => {
+    if (companies.length > 0 && selectedProfileId === null) {
+      const active = companies.find((c) => c.is_active) ?? companies[0]
+      setSelectedProfileId(active.id)
+    }
+  }, [companies, selectedProfileId])
+
   const { data: entries = [], isLoading } = useQuery({
-    queryKey: ["pipeline-list"],
-    queryFn: pipelineApi.list,
+    queryKey: ["pipeline-list", selectedProfileId],
+    queryFn: () => pipelineApi.list(selectedProfileId),
   })
 
   const updateMut = useMutation({
     mutationFn: ({ id, status }: { id: number; status: PipelineStatus }) =>
       pipelineApi.update(id, { status }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pipeline-list"] })
-      qc.invalidateQueries({ queryKey: ["pipeline-summary"] })
+      qc.invalidateQueries({ queryKey: ["pipeline-list", selectedProfileId] })
+      qc.invalidateQueries({ queryKey: ["pipeline-summary", selectedProfileId] })
     },
   })
 
@@ -146,7 +161,7 @@ export default function PipelinePage() {
     const entry = entries.find((e) => String(e.id) === draggableId)
     if (!entry || entry.status === newStatus) return
 
-    qc.setQueryData<TenderPipelineEntry[]>(["pipeline-list"], (old) =>
+    qc.setQueryData<TenderPipelineEntry[]>(["pipeline-list", selectedProfileId], (old) =>
       old?.map((e) => (e.id === entry.id ? { ...e, status: newStatus } : e))
     )
 
@@ -158,11 +173,49 @@ export default function PipelinePage() {
     entries: entries.filter((e) => e.status === col.status),
   }))
 
+  const selectedCompany = companies.find((c) => c.id === selectedProfileId)
+
   return (
     <div className="p-8 max-w-[1400px] mx-auto">
-      <h1 className="text-2xl font-bold text-[#111827] mb-6">Мои тендеры</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-[#111827]">Мои тендеры</h1>
 
-      <SummaryCards />
+        {/* Profile selector */}
+        {companies.length > 1 && (
+          <div className="relative">
+            <button
+              onClick={() => setProfileSelectorOpen((v) => !v)}
+              className="flex items-center gap-2 h-9 px-4 text-sm font-medium border border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:text-[#111827] transition-colors"
+            >
+              <Building2 className="w-4 h-4 text-gray-400" />
+              <span>{selectedCompany?.name || "Все компании"}</span>
+              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${profileSelectorOpen ? "rotate-180" : ""}`} />
+            </button>
+            {profileSelectorOpen && (
+              <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 shadow-lg z-10">
+                <button
+                  onClick={() => { setSelectedProfileId(null); setProfileSelectorOpen(false) }}
+                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition-colors ${selectedProfileId === null ? "font-medium text-[#111827]" : "text-gray-600"}`}
+                >
+                  Все компании
+                </button>
+                {companies.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setSelectedProfileId(c.id); setProfileSelectorOpen(false) }}
+                    className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition-colors ${selectedProfileId === c.id ? "font-medium text-[#111827]" : "text-gray-600"}`}
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                    <span className="truncate">{c.name || "Без названия"}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <SummaryCards profileId={selectedProfileId} />
 
       {isLoading ? (
         <div className="text-gray-400 text-sm">Загрузка...</div>

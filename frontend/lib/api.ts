@@ -219,6 +219,7 @@ export type PipelineStatus = "studying" | "preparing" | "submitted" | "won" | "l
 export interface TenderPipelineEntry {
   id: number
   tender: number
+  profile: number | null
   status: PipelineStatus
   notes: string
   tender_title: string
@@ -241,16 +242,20 @@ export interface PipelineSummary {
 }
 
 export const pipelineApi = {
-  list: () =>
-    client.get("/tenders/pipeline/").then((r) => (r.data.results ?? r.data) as TenderPipelineEntry[]),
-  create: (tender: number, status: PipelineStatus) =>
-    client.post("/tenders/pipeline/", { tender, status }).then((r) => r.data as TenderPipelineEntry),
+  list: (profileId?: number | null) => {
+    const params = profileId ? `?profile_id=${profileId}` : ""
+    return client.get(`/tenders/pipeline/${params}`).then((r) => (r.data.results ?? r.data) as TenderPipelineEntry[])
+  },
+  create: (tender: number, status: PipelineStatus, profileId?: number | null) =>
+    client.post("/tenders/pipeline/", { tender, status, profile: profileId ?? null }).then((r) => r.data as TenderPipelineEntry),
   update: (id: number, data: { status?: PipelineStatus; notes?: string }) =>
     client.patch(`/tenders/pipeline/${id}/`, data).then((r) => r.data as TenderPipelineEntry),
   remove: (id: number) =>
     client.delete(`/tenders/pipeline/${id}/`),
-  summary: () =>
-    client.get("/tenders/pipeline/summary/").then((r) => r.data.data as PipelineSummary),
+  summary: (profileId?: number | null) => {
+    const params = profileId ? `?profile_id=${profileId}` : ""
+    return client.get(`/tenders/pipeline/summary/${params}`).then((r) => r.data.data as PipelineSummary)
+  },
   byTender: (tenderId: number) =>
     client.get(`/tenders/pipeline/by-tender/${tenderId}/`).then((r) => r.data.data as TenderPipelineEntry | null),
 }
