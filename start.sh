@@ -329,14 +329,6 @@ systemctl enable tenderpilot-frontend
 systemctl restart tenderpilot-frontend
 success "Фронтенд запущен на порту 3000"
 
-# ─── Первичная загрузка тендеров ─────────────────────────────────────────────
-step "Первичная загрузка тендеров из ЕИС"
-info "Загружаем тендеры за последние 3 дня (это займёт 2-5 минут)..."
-cd "$BACKEND_DIR"
-source "$VENV_DIR/bin/activate"
-python manage.py parse_eis --days 3 --fz all --max-pages 10 --delay 0.7 || \
-    warn "Ошибка при первичной загрузке, запустится автоматически через час"
-
 # ─── Итог ────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}${BOLD}════════════════════════════════════════${NC}"
