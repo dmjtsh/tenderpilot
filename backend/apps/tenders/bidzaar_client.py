@@ -185,7 +185,7 @@ def search_tenders(
 
 def fetch_tender_detail(bidzaar_id: str) -> dict | None:
     """
-    Запрашивает детали тендера по UUID через /procedures/base?ids=...
+    Запрашивает детали тендера по UUID через /procedures/base (POST).
     Возвращает dict с дополнительными полями или None при ошибке.
 
     Поля которые можно обогатить:
@@ -194,8 +194,26 @@ def fetch_tender_detail(bidzaar_id: str) -> dict | None:
       - okpd_codes
       - customer_inn (если вернёт)
     """
-    data = _get(DETAIL_API, {"ids": bidzaar_id})
-    if not data:
+    for attempt in range(3):
+        try:
+            resp = requests.post(
+                DETAIL_API,
+                headers={**HEADERS, "Content-Type": "application/json"},
+                json={"ids": [bidzaar_id]},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            break
+        except Exception as exc:
+            if attempt < 2:
+                wait = 3 * (attempt + 1)
+                logger.warning("Retry %d for %s in %ds: %s", attempt + 1, DETAIL_API, wait, exc)
+                time.sleep(wait)
+            else:
+                logger.error("fetch_tender_detail failed %s: %s", bidzaar_id, exc)
+                return None
+    else:
         return None
 
     # Ответ может быть списком или {"items": [...]}
