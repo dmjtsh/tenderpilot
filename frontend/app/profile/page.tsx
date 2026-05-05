@@ -613,8 +613,10 @@ export default function ProfilePage() {
   const createCompanyMutation = useMutation({
     mutationFn: (name: string) => profileApi.createCompany({ name }),
     onSuccess: (newCompany) => {
+      const company = newCompany as CompanyProfile
       qc.invalidateQueries({ queryKey: ["companies"] })
-      setSelectedProfileId((newCompany as CompanyProfile).id)
+      setSelectedProfileId(company.id)
+      reset(toForm(company))  // populate form immediately without waiting for refetch
       setShowNewCompanyForm(false)
       setNewCompanyName("")
     },
@@ -807,11 +809,11 @@ export default function ProfilePage() {
                   <form onSubmit={handleSubmit((data) => saveMutation.mutateAsync(data))}>
                     <div className="space-y-5">
                       <Field label="Название">
-                        <input className={inputCls} placeholder="ООО Технологии" {...register("name")} />
+                        <input className={inputCls} placeholder="ООО Технологии" autoComplete="off" {...register("name")} />
                       </Field>
                       <Field label="ИНН">
                         <div className="flex gap-2">
-                          <input className={inputCls} placeholder="7700000000" {...register("inn")} />
+                          <input className={inputCls} placeholder="7700000000" autoComplete="off" {...register("inn")} />
                           <button
                             type="button"
                             onClick={handleInnLookup}
