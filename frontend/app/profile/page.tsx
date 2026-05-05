@@ -615,6 +615,7 @@ export default function ProfilePage() {
           keywords: [],
           regions: [],
           law_types: [],
+          procedure_types: [],
           nmck_min: null,
           nmck_max: null,
         })

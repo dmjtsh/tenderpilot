@@ -187,6 +187,7 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
     if (directions.length > 0 && selectedIds.length === 0) {
       setSelectedIds(directions.map((d) => d.id))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directions])
 
   const noneSelected = selectedIds.length === 0
