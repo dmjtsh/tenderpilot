@@ -48,6 +48,7 @@ class CompanyDirection(models.Model):
     nmck_min = models.BigIntegerField(null=True, blank=True)
     nmck_max = models.BigIntegerField(null=True, blank=True)
     law_types = ArrayField(models.CharField(max_length=10), default=list, blank=True)
+    procedure_types = ArrayField(models.CharField(max_length=25), default=list, blank=True)
     hyde_texts = models.JSONField(null=True, blank=True)
     profile_vector = ArrayField(models.FloatField(), size=1024, null=True, blank=True)
     content_hash = models.CharField(max_length=16, blank=True)
@@ -71,6 +72,7 @@ class CompanyDirection(models.Model):
             "nmck_min": self.nmck_min,
             "nmck_max": self.nmck_max,
             "law_types": sorted(self.law_types or []),
+            "procedure_types": sorted(self.procedure_types or []),
         }
         return hashlib.sha256(
             json.dumps(content, sort_keys=True).encode()

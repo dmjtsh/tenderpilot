@@ -4,33 +4,129 @@
 
 @layer base {
   :root {
-    /* Linear-inspired dark palette — always dark */
-    --background: 240 6% 6%;
-    --foreground: 240 8% 92%;
-    --card: 240 5% 10%;
-    --card-foreground: 240 8% 92%;
-    --popover: 240 5% 10%;
-    --popover-foreground: 240 8% 92%;
-    --primary: 234 58% 61%;
+    /* Light palette — matching landing page style */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 210 20% 98%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 15%;
-    --secondary-foreground: 240 8% 78%;
-    --muted: 240 5% 13%;
-    --muted-foreground: 248 7% 46%;
-    --accent: 240 5% 15%;
-    --accent-foreground: 240 8% 92%;
-    --destructive: 0 70% 51%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 20% 98%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 5% 17%;
-    --input: 240 5% 17%;
-    --ring: 234 58% 61%;
-    --radius: 0.375rem;
+    --border: 220 13% 86%;
+    --input: 220 13% 86%;
+    --ring: 222 47% 11%;
+    --radius: 0px;
   }
 
+  html { font-size: 14px; }
   * { @apply border-border; }
   body { @apply bg-background text-foreground; }
+  button, [role="button"], a, summary { cursor: pointer; }
 }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* ---- Scroll-triggered animations ---- */
+.scroll-hidden {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.scroll-hidden.scroll-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-hidden-left {
+  opacity: 0;
+  transform: translateX(-32px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.scroll-hidden-left.scroll-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.scroll-hidden-right {
+  opacity: 0;
+  transform: translateX(32px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.scroll-hidden-right.scroll-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.scroll-hidden-scale {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.scroll-hidden-scale.scroll-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.stagger-1 { transition-delay: 0ms; }
+.stagger-2 { transition-delay: 100ms; }
+.stagger-3 { transition-delay: 200ms; }
+.stagger-4 { transition-delay: 300ms; }
+.stagger-5 { transition-delay: 400ms; }
+.stagger-6 { transition-delay: 500ms; }
+
+/* ---- Hero entrance ---- */
+@keyframes hero-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-hero {
+  opacity: 0;
+  animation: hero-fade-up 0.7s ease-out forwards;
+}
+
+/* ---- Button hover lift ---- */
+.btn-hover-lift {
+  cursor: pointer;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+.btn-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.btn-hover-lift:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ---- Accessibility ---- */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-hidden, .scroll-hidden-left, .scroll-hidden-right, .scroll-hidden-scale {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .animate-hero {
+    opacity: 1 !important;
+    animation: none !important;
+  }
 }

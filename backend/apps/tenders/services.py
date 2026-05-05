@@ -1,10 +1,26 @@
 import json
+import re
 from typing import Any
 
 from django.conf import settings
 from django.utils import timezone
 
 from .models import Customer, Tender
+
+
+_PROCEDURE_URL_MAP = [
+    (r"/notice/ea(?:20|44)/", Tender.ProcedureType.AUCTION),
+    (r"/notice/ok(?:20|44)/", Tender.ProcedureType.CONTEST),
+    (r"/notice/zk(?:20|44)/", Tender.ProcedureType.REQUEST_QUOTATIONS),
+    (r"/notice/(?:ezt20|zp44)/", Tender.ProcedureType.REQUEST_PROPOSALS),
+]
+
+
+def detect_procedure_type(source_url: str) -> str:
+    for pattern, proc_type in _PROCEDURE_URL_MAP:
+        if re.search(pattern, source_url):
+            return proc_type
+    return Tender.ProcedureType.OTHER
 
 SUMMARY_PROMPT = """Ты эксперт по госзакупкам России.
 Определи тип тендера по названию и ОКВЭД:
@@ -52,15 +68,17 @@ SUMMARY_PROMPT = """Ты эксперт по госзакупкам России
   "tender_type": "строительство | поставка | услуги | проектирование | IT | другое"
 }}
 
+ГЛАВНОЕ ПРАВИЛО: все числовые значения (сроки, проценты, суммы)
+копируй ТОЧНО как написано в документах.
+Не округляй, не конвертируй, не интерпретируй.
+Если написано "не менее 3 лет" — пиши "не менее 3 лет".
+Если написано "1/300 ключевой ставки" — пиши "1/300 ключевой ставки".
+
 Правила:
 - извлекай ВСЕ конкретные требования из документов
-- requirements: допуски, лицензии, сертификаты на материалы, акты скрытых работ,
-  журнал работ, квалификация, гарантийные сроки, согласования с заказчиком
-  Пример: "Сертификаты на все строительные материалы", "Акты на скрытые работы обязательны",
-  "Материалы должны быть новыми, не б/у", "Гарантия 5 лет"
-- red_flags: штрафы с размером, сжатые сроки, запрет субподряда, необычные условия
-  Пример: "Пеня 1/300 ключевой ставки ЦБ за каждый день просрочки",
-  "Штраф 1% цены контракта за каждый факт нарушения"
+- requirements: допуски, лицензии, сертификаты, квалификация, гарантийные сроки, условия приёмки
+- red_flags: штрафы/пени с размером, запрет субподряда, сжатые сроки, необычные ограничения
+- если факт подходит и туда и туда — дублируй в оба списка
 - обеспечение контракта НЕ является красным флагом если <= 15%
 - обеспечение контракта > 15% → добавь в red_flags с точным процентом
 - НЕ придумывай то чего нет в документах
@@ -218,6 +236,9 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
             defaults={"region": data.get("customer_region", "")},
         )
 
+    source_url = data.get("source_url", "")
+    procedure_type = data.get("procedure_type") or detect_procedure_type(source_url)
+
     tender, created = Tender.objects.update_or_create(
         number=data["number"],
         defaults={
@@ -231,13 +252,14 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
             "auction_date": data.get("auction_date"),
             "status": data.get("status", Tender.Status.ACTIVE),
             "law_type": data.get("law_type", ""),
+            "procedure_type": procedure_type,
             "trading_platform": data.get("trading_platform", ""),
             "trading_platform_url": data.get("trading_platform_url", ""),
             "bid_security_amount": data.get("bid_security_amount"),
             "bid_security_required": data.get("bid_security_required"),
             "contract_security_amount": data.get("contract_security_amount"),
             "contract_security_percent": data.get("contract_security_percent"),
-            "source_url": data.get("source_url", ""),
+            "source_url": source_url,
             "raw_json": data,
         },
     )

@@ -8,7 +8,7 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
 ```
 /backend
   /apps
-    /tenders      — парсинг ЕИС, модели тендеров, справочник ОКВЭД
+    /tenders      — парсинг ЕИС, модели тендеров, справочник ОКВЭД, pipeline
     /search       — embedding, Qdrant, HyDE, матчинг
     /documents    — PDF парсинг, RAG, очистка (см. DOCUMENTS_ARCHITECTURE.md)
     /users        — авторизация, CompanyProfile, CompanyDirection
@@ -19,6 +19,7 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
   /app            — Next.js App Router pages
   /components     — UI компоненты
   /lib            — API клиент, типы
+  /b_cTFNgcyL3L3  — лендинг (старая копия, не трогать)
 /infra            — docker-compose, nginx, .env.example
 ```
 
@@ -75,28 +76,95 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
   - Celery pipeline: download → parse → classify → index → invalidate
   - get_summary_context() — RAG выборка через Qdrant для AI резюме
   - classify_documents_priority() — GPT определяет приоритет по имени файла
-  - cleanup_old_documents() — Celery beat каждое воскресенье
+  - **TTL-очистка doc_chunks** (`cleanup_doc_chunks`) — каждый час, удаляет чанки из Qdrant + parsed_text из Postgres для тендеров где `docs_indexed_at` старше 48ч (`DOC_CHUNKS_TTL_HOURS=48`)
+  - cleanup_old_documents() — Celery beat каждое воскресенье (nuclear: 730 дней, MinIO + записи)
+  - **Переиндексация**: `POST /api/v1/tenders/{id}/reindex-docs/` — если parsed_text есть → re-embed, если очищен → re-parse из MinIO
 
 - **AI резюме** (`apps/tenders/services.py`)
   - generate_tender_summary(tender) — GPT-4o-mini с RAG контекстом
   - get_or_create_summary(tender) — кэш в tender.ai_summary
   - Промпт: чеклист по категориям, конкретные значения, универсальный тип
+  - Числовые значения копировать ТОЧНО как в документах (не конвертировать)
   - `GET /api/v1/tenders/{id}/summary/`
+
+- **RAG вопросы** (`apps/documents/services.py`)
+  - answer_question(tender_id, question) — поиск в doc_chunks + GPT
+  - Возвращает полный текст чанков + document_id для цитирования
+  - `needs_reindex: true` если доки есть но чанки очищены (TTL) — фронтенд показывает кнопку переиндексации
+  - `POST /api/v1/tenders/{id}/ask/`
 
 ### Фронтенд
 
-- Linear.app-стиль, always-dark, Tailwind v3
-- `/login`, `/tenders` (Все / Для вас), `/tenders/[id]`, `/profile`
-- Таб "Для вас" персистится в URL (`?tab=match`)
-- Фильтр по направлениям (чипы, если направлений > 1)
-- `TenderCard` — бейдж matched_direction
-- `OkvedCombobox` — топ-20 популярных при открытии, поиск без минимума символов
+#### Дизайн-система
+- **Лендинг** (`/frontend/components/landing/`): белая тема, Stripe/Minerva стиль
+- **Приложение** (`/app`): светлая тема, Linear.app стиль
+- Tailwind v3 (не v4 — shadcn генерирует v4-синтаксис)
+- **Логотип**: `pilot_logo.png` → `/frontend/public/logo.png` + `/frontend/app/icon.png` (favicon с закруглёнными углами через PIL)
+- Все логотипы используют `<Image src="/logo.png" className="rounded-xl">` (28x28 основные, 26x26 логин)
+
+#### Цветовая схема приложения
+```
+Background:  white / gray-50 (#FAFAFA)
+Cards:       white, border gray-200
+Accent:      violet-600 (#7C3AED) — score, direction badges, кнопки фильтров
+Text:        gray-900 (#111827) primary, gray-500 secondary
+Direction buttons active: bg-violet-100 border-violet-300 text-violet-800
+"Все" button active: bg-[#111827] text-white
+```
+
+#### Цветовая схема лендинга (светлая)
+```
+Background:  white (#FFFFFF)
+Cards:       gray-50 (#F9FAFB), border gray-200
+Accent:      black (#111827) для кнопок
+Text:        gray-900 (primary), gray-500 (secondary)
+Highlight:   violet-600 — только для акцентов, не доминирует
+```
+
+#### Страницы приложения
+- `/login` — авторизация + регистрация
+- `/tenders` — лента (табы: Все / Для вас), фильтр по направлениям с violet-кнопками
+- `/tenders/[id]` — детальная страница тендера с AI-резюме, документами, RAG-чатом с цитатами
+- `/profile` — профиль компании с направлениями, анимация fade-in
+- `/pipeline` — kanban-доска тендеров со статусами участия (новый/изучаю/готовлю/подал/выиграл/проиграл)
+
+#### Лендинг (`/frontend/components/landing/`)
+- `Navbar` — auth-aware (показывает "Личный кабинет" когда авторизован), breakpoint sm
+- `Hero` — staggered `animate-hero` анимации, `hero.png` справа + статистика столбиком слева
+- `Features` — scroll-анимации (left/right чередование) через IntersectionObserver
+- `FAQ` — оригинальная 2x2 сетка карточек (не стандартный аккордеон), `grid-rows-[1fr]/[0fr]` анимация
+- `CTA` — скрывается когда пользователь авторизован
+- `Footer` — логотип + ссылки
+
+#### Компоненты
+- `TenderCard` — карточка тендера, бейдж matched_direction (violet), score gradient (violet), фиксированные колонки с "—" fallback
+- `OkvedCombobox` — топ-20 популярных при открытии, поиск без минимума
 - `InnSuggestPanel` — автозаполнение по ИНН + чекбоксы направлений
-- `DirectionCard` — форма направления с ОКВЭД combobox, НМЦ presets, 44/223/615
-- Страница тендера:
-  - DocumentsBlock — загрузка документов, polling статусов, список файлов
-  - AiSummaryBlock — генерация резюме, прогресс загрузки если нет доков,
-    бейдж "На основе документов" если has_docs=true
+- `DirectionCard` — форма направления (ОКВЭД, НМЦ presets, 44/223/615)
+- `DocumentsBlock` — загрузка документов, polling статусов
+- `AiSummaryBlock` — резюме с прогрессом, бейдж "На основе документов"
+- `TenderChat` — RAG чат, история в сессии (не в БД)
+- `SourceCitation` — цитата из документа в RAG-ответе (expand/collapse, violet border-left)
+- `PipelineStatusButtons` — кнопки статусов на странице тендера
+- `PipelineKanban` — kanban-доска на странице /pipeline
+- `useScrollAnimation` hook — IntersectionObserver для scroll-анимаций лендинга
+
+#### CSS-анимации (`globals.css`)
+- `scroll-hidden` / `scroll-visible` — fade-up при скролле
+- `scroll-hidden-left` / `scroll-hidden-right` — directional slide-in
+- `scroll-hidden-scale` — scale-up при скролле
+- `.stagger-1..6` — задержки для каскадных анимаций
+- `.animate-hero` — entrance для hero секции
+- `.btn-hover-lift` — подъём кнопок при hover
+- Глобальный `cursor: pointer` для button/a/[role="button"] (Tailwind v3 preflight fix)
+- `@media (prefers-reduced-motion: reduce)` — accessibility
+
+#### Ключевые фиксы — не трогать
+- `frontend/app/providers.tsx` — `useState(() => new QueryClient())` намеренно
+- `frontend/components/Shell.tsx` — `mounted` state намеренный (hydration fix)
+- 401 interceptor только при наличии токена
+- Таб "Для вас" персистится в URL (`?tab=match`)
+- Cursor pointer через global CSS — Tailwind v3 preflight ставит `cursor: default` на кнопки
 
 ### Данные
 - ~3400+ тендеров, ~700+ обогащено
@@ -108,9 +176,9 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
 ## Не трогать — работает
 - `apps/tenders/eis_client.py` — не рефакторить
 - `apps/search/embedder.py` — singleton намеренный (модель ~450MB)
-- `frontend/app/providers.tsx` — `useState(() => new QueryClient())` намеренно
-- `frontend/components/Shell.tsx` — `mounted` state намеренный (hydration fix)
-- Tailwind v3 — не обновлять (shadcn генерирует v4-синтаксис)
+- `frontend/app/providers.tsx` — см. выше
+- `frontend/components/Shell.tsx` — см. выше
+- Tailwind v3 — не обновлять
 
 ---
 
@@ -125,6 +193,7 @@ http://localhost:6333
 - `tenders` — векторы тендеров для матчинга
 - `doc_chunks` — RAG чанки документов
   payload: {tender_id, document_id, chunk_index, text, filename, content_priority}
+- **mmap включён** для обеих коллекций (memmap_threshold=10000, on_disk HNSW) — векторы на диске, ОС кеширует в RAM
 
 ### sequential-thinking ✓
 Обязательно для проектирования, архитектурных решений, сложных багов.
@@ -173,33 +242,39 @@ http://localhost:6333
 - Debounce векторов: countdown=30, фиксированный task_id
 
 ### Documents (полная архитектура в DOCUMENTS_ARCHITECTURE.md)
-- Документы качаются ТОЛЬКО по явному запросу пользователя — не автоматически
+- Документы качаются ТОЛЬКО по явному запросу пользователя
 - Режим А (резюме): get_summary_context() → RAG через Qdrant doc_chunks
-  Fallback на parsed_text если чанков нет
-  Fallback на метаданные если документов нет (пометить source="none" в промпте)
-- Режим Б (вопросы): answer_question() → RAG через Qdrant с filter(tender_id)
-- SUMMARY_QUERIES универсальные — без привязки к конкретной сфере
-- classify_documents_priority() — один GPT вызов на весь тендер
+- Режим Б (вопросы): answer_question() → RAG с filter(tender_id)
+- SUMMARY_QUERIES универсальные — без привязки к сфере
 - document_id в каждом Qdrant payload — для точечного удаления
 - Инвалидация ai_summary при новом документе (post_save сигнал)
-- ai_summary НЕ удалять при очистке — 500 байт, историческая ценность
-- Очистка: тендеры старше 730 дней → Qdrant + MinIO + parsed_text
+- ai_summary НЕ удалять при очистке
+- **TTL-очистка (48ч)**: cleanup_doc_chunks каждый час — Qdrant doc_chunks + parsed_text. MinIO файлы остаются для re-parse
+- **Nuclear-очистка (730 дней)**: cleanup_old_documents — MinIO + записи TenderDocument
+- `docs_indexed_at` на Tender — ставится при index_document_chunks, сбрасывается при TTL-очистке
 
-### AI резюме промпт — ключевые правила
-- Чеклист с □ по категориям, не плоский список
-- Конкретные значения: "Гарантия 5 лет", не "гарантийные обязательства"
-- Тип тендера GPT определяет сам по названию и ОКВЭД
-- Обеспечение > 15% → явный красный флаг с процентом
-- Если source="none" → указать в промпте что анализ только по метаданным
-- Не придумывать то чего нет в документах
+### AI резюме промпт
+- Чеклист с □ по категориям
+- Числовые значения ТОЧНО как в документах — не конвертировать
+- Тип тендера GPT определяет сам
+- Обеспечение > 15% → красный флаг с процентом
+- source="none" → предупреждение что только метаданные
 
-### Frontend
-- App Router (не Pages Router)
-- Tailwind v3 (не v4)
+### Pipeline
+- Один статус на пару (user, tender) — unique_together
+- Статусы: new / studying / preparing / submitted / won / lost
+- Pipeline показывается на странице тендера и на отдельной /pipeline
+- Метрика "сумма в работе" — sum НМЦ для статусов studying/preparing/submitted
+- Метрика "выиграно" — sum НМЦ для статуса won (для дашборда инвесторов)
+
+### Frontend — дизайн
+- Лендинг (`/frontend/components/landing/`): светлая тема, Stripe/Minerva стиль
+- Приложение (`/app`): светлая тема, Linear стиль
+- При редизайне — брать токены из светлой схемы (white/gray-50/gray-200/violet-600)
 - React Query v5: `isLoading = isPending && isFetching`
 - Типы из `frontend/lib/api.ts`
 - DRF ListCreateAPIView: `r.data.results ?? r.data`
-- DocumentsBlock и AiSummaryBlock используют один React Query ключ для /docs/
+- DocumentsBlock и AiSummaryBlock: один React Query ключ для /docs/
 
 ### Никогда
 - Бизнес-логику в views
@@ -209,6 +284,8 @@ http://localhost:6333
 - Коммитить .env
 - Писать код не прочитав файл
 - Автоматически качать документы при парсинге ЕИС
+- Менять тему лендинга на тёмную
+- Менять тему приложения на тёмную
 
 ---
 
@@ -220,7 +297,8 @@ Tender: id, number, title, nmck, customer, region, okpd_codes,
         law_type, trading_platform, trading_platform_url,
         bid_security_amount, bid_security_required,
         contract_security_amount, contract_security_percent,
-        source_url, raw_json, ai_summary, embedding_id
+        source_url, raw_json, ai_summary, embedding_id,
+        docs_indexed_at (nullable — когда чанки проиндексированы)
 
 Customer: id, inn, name, region, full_name
 
@@ -237,6 +315,11 @@ TenderDocument: id, tender, filename, file_type, s3_key, file_size,
                 parse_status (pending/processing/done/failed/skipped/cleaned),
                 parse_error, content_priority (0-99),
                 created_at, parsed_at
+
+TenderPipeline: id, user, tender, status, notes,
+                created_at, updated_at
+                # status: new / studying / preparing / submitted / won / lost
+                # unique_together: (user, tender)
 
 TenderMatch: id, profile, tender, score, notified_at
 Subscription: id, user, plan (free/solo/team), expires_at
@@ -330,20 +413,33 @@ for pk, num, url in Tender.objects.filter(trading_platform='').values_list('pk',
 - [x] Celery pipeline: download → parse → classify → index → invalidate
 - [x] AI резюме с RAG контекстом (GPT-4o-mini)
 - [x] DocumentsBlock + AiSummaryBlock на странице тендера
+- [x] RAG чат по тендеру (TenderChat)
 - [x] Очистка старых документов (Celery beat)
+- [x] Лендинг белая тема (Stripe/Minerva стиль)
+- [x] Редизайн фильтра направлений (violet кнопки, "Все" toggle)
+- [x] Связка лендинг ↔ приложение (CTA → /login, auth-aware navbar)
+- [x] Scroll-анимации лендинга
+- [x] Hero, FAQ редизайн
+- [x] RAG цитаты: SourceCitation
+- [x] Логотип pilot_logo.png + favicon
+- [x] TTL-очистка doc_chunks (48ч) + mmap для Qdrant
+- [x] Эндпоинт переиндексации документов
 
 ### Приоритет 1 — до первых пользователей
-- [ ] RAG вопросы по тендеру (POST /tenders/{id}/ask/) + UI чат
+- [x] Pipeline тендеров (kanban + статусы участия)
+- [ ] Обратный отсчёт дедлайна в TenderCard
 - [ ] Telegram bot алерты
 - [ ] Монетизация (ЮКасса) — free/solo/team
 
 ### Приоритет 2 — после первых платящих
+- [ ] Карточка заказчика (история победителей, бенчмарки) — данные из ЕИС
+- [ ] Мониторинг изменений документов (file_hash + diff)
+- [ ] Bidding outcomes tracking (расширение Pipeline для аналитики)
 - [ ] Rate limiting на AI endpoints + Sentry
 - [ ] Cross-encoder reranking
 - [ ] OCR для сканированных PDF
 
 ### Приоритет 3 — по фидбеку
 - [ ] Черновик заявки (LLM)
-- [ ] Pipeline / kanban
-- [ ] История победителей заказчика
+- [ ] Сохранённые поисковые запросы
 - [ ] Фильтры в UI: площадка, дата торгов
