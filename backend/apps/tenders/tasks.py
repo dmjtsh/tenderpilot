@@ -178,7 +178,7 @@ def sync_bidzaar_tenders() -> dict:
     from .services import upsert_tender
     from apps.search.tasks import embed_tender
 
-    days = 2
+    days = 1
 
     stats = {"fetched": 0, "new": 0, "updated": 0, "errors": 0}
 
