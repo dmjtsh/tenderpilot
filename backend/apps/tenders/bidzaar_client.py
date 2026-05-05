@@ -185,56 +185,38 @@ def search_tenders(
 
 def fetch_tender_detail(bidzaar_id: str) -> dict | None:
     """
-    Запрашивает детали тендера по UUID через /procedures/base (POST).
-    Возвращает dict с дополнительными полями или None при ошибке.
-
-    Поля которые можно обогатить:
-      - nmck (budget / initialPrice)
-      - description
-      - okpd_codes
-      - customer_inn (если вернёт)
+    Пытается получить детали тендера из публичного API Bidzaar.
+    Endpoint /procedures/base требует авторизацию — возвращает None.
+    Оставлен для совместимости; обогащение делается через /available фильтр.
     """
-    for attempt in range(3):
-        try:
-            resp = requests.post(
-                DETAIL_API,
-                headers={**HEADERS, "Content-Type": "application/json"},
-                json={"ids": [bidzaar_id]},
-                timeout=30,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            break
-        except Exception as exc:
-            if attempt < 2:
-                wait = 3 * (attempt + 1)
-                logger.warning("Retry %d for %s in %ds: %s", attempt + 1, DETAIL_API, wait, exc)
-                time.sleep(wait)
-            else:
-                logger.error("fetch_tender_detail failed %s: %s", bidzaar_id, exc)
-                return None
-    else:
+    # Пробуем получить через /available с фильтром по id
+    params = {
+        "filters[0].field": "id",
+        "filters[0].operator": "eq",
+        "filters[0].value": bidzaar_id,
+    }
+    data = _get(LIST_API, params)
+    if not data:
         return None
 
-    # Ответ может быть списком или {"items": [...]}
-    items = data if isinstance(data, list) else (data.get("items") or [])
+    items = data.get("items") or []
     if not items:
         return None
 
     item = items[0]
 
-    # Пробуем разные названия поля с бюджетом (уточнить после первого реального ответа)
     nmck = (
         item.get("budget")
         or item.get("initialPrice")
         or item.get("startPrice")
         or item.get("maxPrice")
+        or item.get("price")
     )
 
     okpd_raw = item.get("okpd") or item.get("okpd2") or item.get("okpdCodes") or []
     if isinstance(okpd_raw, list):
         okpd_codes = [
-            o.get("code") or o if isinstance(o, str) else str(o)
+            o.get("code") if isinstance(o, dict) else str(o)
             for o in okpd_raw
         ]
     else:
