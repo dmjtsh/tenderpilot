@@ -16,7 +16,7 @@ import { FilterBar } from "@/components/filters/filter-bar"
 
 type Tab = "all" | "match"
 
-function usePipelineActions() {
+function usePipelineActions(profileId: number | null = null) {
   const qc = useQueryClient()
 
   const { data: entries = [] } = useQuery({
@@ -34,7 +34,7 @@ function usePipelineActions() {
 
   const createMut = useMutation({
     mutationFn: ({ tenderId, status }: { tenderId: number; status: PipelineStatus }) =>
-      pipelineApi.create(tenderId, status),
+      pipelineApi.create(tenderId, status, profileId),
     onSuccess: invalidate,
   })
 
@@ -65,12 +65,12 @@ function usePipelineActions() {
 // ─── All tenders tab ─────────────────────────────────────────────────────────
 
 function AllTab({ filters }: { filters: TenderFilters }) {
-  const { pipelineMap, setStatus, removeEntry } = usePipelineActions()
   const [query, setQuery] = useState("")
   const [input, setInput] = useState("")
   const [page, setPage] = useState(1)
   const [allTenders, setAllTenders] = useState<Tender[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+  const { pipelineMap, setStatus, removeEntry } = usePipelineActions(selectedProfileId)
 
   const { data: companies = [] } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
@@ -243,9 +243,9 @@ function ProfileSelector({
 // ─── Match tab ────────────────────────────────────────────────────────────────
 
 function MatchTab({ filters }: { filters: TenderFilters }) {
-  const { pipelineMap, setStatus, removeEntry } = usePipelineActions()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+  const { pipelineMap, setStatus, removeEntry } = usePipelineActions(selectedProfileId)
 
   const { data: companies = [] } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
