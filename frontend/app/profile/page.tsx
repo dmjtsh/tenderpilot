@@ -846,13 +846,29 @@ export default function ProfilePage() {
                 <div className="px-6 py-4 border-b border-gray-200">
                   <p className="text-base font-semibold text-[#111827]">Описание деятельности</p>
                 </div>
-                <div className="px-6 py-6">
+                <div className="px-6 py-6 space-y-4">
                   <textarea
                     className={textareaCls}
                     rows={4}
                     placeholder="Разработка и поставка медицинского оборудования, ИТ-решений..."
                     {...register("description")}
                   />
+                  <div className="flex items-center justify-end gap-3">
+                    {saveMutation.isError && (
+                      <p className="text-sm text-red-500">Ошибка сохранения</p>
+                    )}
+                    {saveMutation.isSuccess && !isDirty && (
+                      <p className="text-sm text-emerald-600">Сохранено</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSubmit((data) => saveMutation.mutateAsync(data))}
+                      disabled={!isDirty || isSubmitting}
+                      className="h-10 px-5 text-sm font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-40"
+                    >
+                      {isSubmitting ? "Сохранение..." : "Сохранить"}
+                    </button>
+                  </div>
                 </div>
               </div>
 
