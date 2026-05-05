@@ -1,0 +1,11 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "Профиль компании" [level=1] [ref=e4]
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - paragraph [ref=e9]: Компании
+        - button "Добавить компанию" [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+          - text: Добавить компанию
+      - paragraph [ref=e13]: Загрузка...
+  - alert [ref=e14]

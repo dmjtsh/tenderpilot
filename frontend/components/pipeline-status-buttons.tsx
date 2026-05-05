@@ -22,13 +22,11 @@ export function PipelineStatusButtons({ tenderId, profileId: profileIdProp }: { 
   const { data: companies = [], isPending: companiesLoading } = useQuery({
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
-    staleTime: 5 * 60 * 1000, // use cache for 5 min — avoids re-fetching on every tender page
-    // skip query if profile is already known from URL param
+    staleTime: 5 * 60 * 1000,
     enabled: profileIdProp == null,
   })
-  const activeProfile = companies.find((c) => c.is_active) ?? companies[0] ?? null
-  // Use URL param if provided, otherwise fall back to active company
-  const resolvedProfileId = profileIdProp ?? activeProfile?.id ?? null
+  // Use URL param if provided, otherwise fall back to first company
+  const resolvedProfileId = profileIdProp ?? companies[0]?.id ?? null
 
   const { data: entry, isLoading } = useQuery({
     queryKey: ["pipeline", tenderId],

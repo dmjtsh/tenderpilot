@@ -158,7 +158,6 @@ export interface CompanyProfile {
   okved_codes: string[]
   regions: string[]
   keywords: string[]
-  is_active: boolean
 }
 
 export interface CompanyDirection {
@@ -198,8 +197,6 @@ export const profileApi = {
     client.patch(`/users/me/companies/${id}/`, data).then((r) => r.data as CompanyProfile),
   deleteCompany: (id: number) =>
     client.delete(`/users/me/companies/${id}/`),
-  activateCompany: (id: number) =>
-    client.post(`/users/me/companies/${id}/activate/`).then((r) => r.data as { data: CompanyProfile; error: string | null }),
   lookupInn: (inn: string) =>
     client
       .post("/users/lookup-inn/", { inn })

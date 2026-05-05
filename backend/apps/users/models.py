@@ -12,14 +12,6 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
-    active_profile = models.ForeignKey(
-        "CompanyProfile",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="active_for_users",
-    )
-
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"

@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     RegisterView, MeView, ChangePasswordView,
-    CompanyProfileView, CompanyProfileListCreateView, CompanyProfileDetailView, CompanyProfileActivateView,
+    CompanyProfileView, CompanyProfileListCreateView, CompanyProfileDetailView,
     CompanyDirectionListCreateView, CompanyDirectionDetailView,
     InnLookupView,
 )
@@ -12,7 +12,7 @@ urlpatterns = [
     path("me/", MeView.as_view(), name="users-me"),
     path("me/password/", ChangePasswordView.as_view(), name="users-change-password"),
 
-    # backward-compat: работает с активным профилем
+    # backward-compat: работает с первым профилем
     path("me/company/", CompanyProfileView.as_view(), name="users-company"),
     path("me/directions/", CompanyDirectionListCreateView.as_view(), name="users-directions"),
     path("me/directions/<int:pk>/", CompanyDirectionDetailView.as_view(), name="users-direction-detail"),
@@ -20,7 +20,6 @@ urlpatterns = [
     # multi-company CRUD
     path("me/companies/", CompanyProfileListCreateView.as_view(), name="users-companies"),
     path("me/companies/<int:pk>/", CompanyProfileDetailView.as_view(), name="users-company-detail"),
-    path("me/companies/<int:pk>/activate/", CompanyProfileActivateView.as_view(), name="users-company-activate"),
 
     # directions scoped to a specific profile
     path("me/companies/<int:profile_pk>/directions/", CompanyDirectionListCreateView.as_view(), name="users-company-directions"),

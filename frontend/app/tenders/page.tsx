@@ -70,6 +70,20 @@ function AllTab({ filters }: { filters: TenderFilters }) {
   const [input, setInput] = useState("")
   const [page, setPage] = useState(1)
   const [allTenders, setAllTenders] = useState<Tender[]>([])
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+
+  const { data: companies = [] } = useQuery<CompanyProfile[]>({
+    queryKey: ["companies"],
+    queryFn: () => profileApi.listCompanies(),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Default to first (most recently created) profile
+  useEffect(() => {
+    if (companies.length > 0 && !selectedProfileId) {
+      setSelectedProfileId(companies[0].id)
+    }
+  }, [companies, selectedProfileId])
 
   const filterParams = filtersToApiParams(filters)
   const filterKey = JSON.stringify(filterParams)
@@ -117,8 +131,15 @@ function AllTab({ filters }: { filters: TenderFilters }) {
 
   return (
     <>
-      {/* Search bar */}
+      {/* Profile selector + Search bar */}
       <div className="flex items-center gap-3 px-6 py-3.5 border-b border-gray-200 shrink-0">
+        {companies.length > 1 && (
+          <ProfileSelector
+            companies={companies}
+            selectedId={selectedProfileId}
+            onSelect={(id) => setSelectedProfileId(id)}
+          />
+        )}
         <form onSubmit={handleSearch} className="flex items-center gap-3 flex-1">
           <div className="relative flex-1 max-w-lg">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
@@ -158,7 +179,7 @@ function AllTab({ filters }: { filters: TenderFilters }) {
         )}
         {tenders.map((t) => {
                 const p = pipelineMap.get(t.id)
-                return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} />
+                return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} profileId={selectedProfileId} />
               })}
         {hasMore && (
           <div className="flex justify-center py-4">
@@ -211,7 +232,6 @@ function ProfileSelector({
               }`}
             >
               <span className="flex-1 truncate">{c.name || "Без названия"}</span>
-              {c.is_active && <span className="text-[10px] text-emerald-600 shrink-0">● активный</span>}
             </button>
           ))}
         </div>
@@ -230,13 +250,13 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
   const { data: companies = [] } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
+    staleTime: 5 * 60 * 1000,
   })
 
-  // Set default profile: active one or first
+  // Default to first (most recently created) profile
   useEffect(() => {
     if (companies.length > 0 && !selectedProfileId) {
-      const active = companies.find((c) => c.is_active) ?? companies[0]
-      setSelectedProfileId(active.id)
+      setSelectedProfileId(companies[0].id)
     }
   }, [companies, selectedProfileId])
 

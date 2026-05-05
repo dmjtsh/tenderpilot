@@ -46,18 +46,10 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
-    is_active = serializers.SerializerMethodField()
-
     class Meta:
         model = CompanyProfile
-        fields = ["id", "name", "inn", "description", "okved_codes", "regions", "keywords", "created_at", "is_active"]
-        read_only_fields = ["id", "created_at", "is_active"]
-
-    def get_is_active(self, obj) -> bool:
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return request.user.active_profile_id == obj.pk
-        return False
+        fields = ["id", "name", "inn", "description", "okved_codes", "regions", "keywords", "created_at"]
+        read_only_fields = ["id", "created_at"]
 
 
 class CompanyDirectionSerializer(serializers.ModelSerializer):

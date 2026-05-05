@@ -121,9 +121,9 @@ class TenderMatchView(APIView):
             except CompanyProfile.DoesNotExist:
                 return Response({"data": [], "error": "Профиль не найден"}, status=404)
         else:
-            # fallback: активный или последний
-            from apps.users.views import _get_active_profile
-            profile = _get_active_profile(request.user)
+            # fallback: первый (последний созданный) профиль
+            from apps.users.views import _get_first_profile
+            profile = _get_first_profile(request.user)
         want = int(request.query_params.get("limit", 20))
 
         direction_ids_raw = request.query_params.get("direction_ids", "")

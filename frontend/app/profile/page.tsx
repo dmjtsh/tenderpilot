@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { isAuthenticated } from "@/lib/auth"
 import { profileApi, directionsApi, tendersApi, type CompanyProfile, type CompanyDirection, type InnLookupResult } from "@/lib/api"
-import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles, Building2, Check } from "lucide-react"
+import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles, Building2 } from "lucide-react"
 import { OkvedCombobox } from "@/components/okved-combobox"
 
 type FormValues = {
@@ -571,11 +571,10 @@ export default function ProfilePage() {
     queryFn: () => tendersApi.regions(),
   })
 
-  // Default to active profile, fallback to first
+  // Default to first profile
   useEffect(() => {
     if (companies.length > 0 && !selectedProfileId) {
-      const active = companies.find((c) => c.is_active) ?? companies[0]
-      setSelectedProfileId(active.id)
+      setSelectedProfileId(companies[0].id)
     }
   }, [companies, selectedProfileId])
 
@@ -603,11 +602,6 @@ export default function ProfilePage() {
       if (selectedProfileId === deletedId) setSelectedProfileId(null)
       qc.invalidateQueries({ queryKey: ["companies"] })
     },
-  })
-
-  const activateMutation = useMutation({
-    mutationFn: (id: number) => profileApi.activateCompany(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["companies"] }),
   })
 
   const createCompanyMutation = useMutation({
@@ -727,22 +721,6 @@ export default function ProfilePage() {
                           ? (currentName || company.name || "Без названия")
                           : (company.name || "Без названия")}
                       </span>
-                      {company.is_active && (
-                        <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5">
-                          <Check className="w-3 h-3" />
-                          Активный
-                        </span>
-                      )}
-                      {!company.is_active && selectedProfileId === company.id && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); activateMutation.mutate(company.id) }}
-                          disabled={activateMutation.isPending}
-                          className="text-[11px] text-violet-600 hover:underline disabled:opacity-50"
-                        >
-                          Сделать активным
-                        </button>
-                      )}
                       <button
                         type="button"
                         onClick={(e) => {

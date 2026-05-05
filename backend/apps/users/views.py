@@ -56,24 +56,12 @@ class ChangePasswordView(APIView):
         return Response({"data": {"detail": "Пароль изменён."}, "error": None})
 
 
-def _get_active_profile(user: User) -> CompanyProfile:
-    """Возвращает активный профиль (или последний созданный, или создаёт новый)."""
-    if user.active_profile_id:
-        try:
-            return CompanyProfile.objects.get(pk=user.active_profile_id, user=user)
-        except CompanyProfile.DoesNotExist:
-            pass
-    # fallback: последний созданный
+def _get_first_profile(user: User) -> CompanyProfile:
+    """Возвращает первый (последний созданный) профиль или создаёт пустой."""
     profile = CompanyProfile.objects.filter(user=user).order_by("-created_at").first()
     if profile:
-        User.objects.filter(pk=user.pk).update(active_profile=profile)
-        user.active_profile_id = profile.pk
         return profile
-    # создаём пустой профиль
-    profile = CompanyProfile.objects.create(user=user, name="")
-    User.objects.filter(pk=user.pk).update(active_profile=profile)
-    user.active_profile_id = profile.pk
-    return profile
+    return CompanyProfile.objects.create(user=user, name="")
 
 
 # ─── Backward-compat single-company endpoints ────────────────────────────────
@@ -82,13 +70,8 @@ class CompanyProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = CompanyProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_serializer_context(self):
-        ctx = super().get_serializer_context()
-        ctx["request"] = self.request
-        return ctx
-
     def get_object(self):
-        return _get_active_profile(self.request.user)
+        return _get_first_profile(self.request.user)
 
 
 # ─── Multi-company CRUD ───────────────────────────────────────────────────────
@@ -97,56 +80,19 @@ class CompanyProfileListCreateView(generics.ListCreateAPIView):
     serializer_class = CompanyProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_serializer_context(self):
-        ctx = super().get_serializer_context()
-        ctx["request"] = self.request
-        return ctx
-
     def get_queryset(self):
         return CompanyProfile.objects.filter(user=self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
-        profile = serializer.save(user=self.request.user)
-        # новый профиль становится активным
-        User.objects.filter(pk=self.request.user.pk).update(active_profile=profile)
-        self.request.user.active_profile_id = profile.pk
+        serializer.save(user=self.request.user)
 
 
 class CompanyProfileDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CompanyProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_serializer_context(self):
-        ctx = super().get_serializer_context()
-        ctx["request"] = self.request
-        return ctx
-
     def get_queryset(self):
         return CompanyProfile.objects.filter(user=self.request.user)
-
-    def perform_destroy(self, instance):
-        user = self.request.user
-        was_active = user.active_profile_id == instance.pk
-        instance.delete()
-        if was_active:
-            remaining = CompanyProfile.objects.filter(user=user).order_by("-created_at").first()
-            User.objects.filter(pk=user.pk).update(active_profile=remaining)
-
-
-class CompanyProfileActivateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, pk: int):
-        try:
-            profile = CompanyProfile.objects.get(pk=pk, user=request.user)
-        except CompanyProfile.DoesNotExist:
-            return Response({"data": None, "error": "Профиль не найден"}, status=status.HTTP_404_NOT_FOUND)
-        User.objects.filter(pk=request.user.pk).update(active_profile=profile)
-        request.user.active_profile_id = profile.pk
-        return Response({
-            "data": CompanyProfileSerializer(profile, context={"request": request}).data,
-            "error": None,
-        })
 
 
 # ─── Directions ───────────────────────────────────────────────────────────────
@@ -157,7 +103,7 @@ def _resolve_profile(request, profile_id: int | None = None) -> CompanyProfile |
             return CompanyProfile.objects.get(pk=profile_id, user=request.user)
         except CompanyProfile.DoesNotExist:
             return None
-    return _get_active_profile(request.user)
+    return _get_first_profile(request.user)
 
 
 class CompanyDirectionListCreateView(generics.ListCreateAPIView):

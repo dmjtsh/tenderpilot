@@ -1,0 +1,68 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "ТендерПилот ТендерПилот" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "ТендерПилот" [ref=e7]
+        - generic [ref=e8]: ТендерПилот
+      - navigation [ref=e9]:
+        - link "Тендеры" [ref=e10] [cursor=pointer]:
+          - /url: /tenders
+          - img [ref=e11]
+          - text: Тендеры
+        - link "Мои тендеры" [ref=e14] [cursor=pointer]:
+          - /url: /pipeline
+          - img [ref=e15]
+          - text: Мои тендеры
+        - link "Профиль" [ref=e17] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e18]
+          - text: Профиль
+      - button "Выйти" [ref=e22] [cursor=pointer]:
+        - img [ref=e23]
+        - text: Выйти
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - heading "Профиль компании" [level=1] [ref=e29]
+        - button "Сохранить" [disabled] [ref=e47]
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - paragraph [ref=e34]: Компании
+            - button "Добавить компанию" [ref=e35] [cursor=pointer]:
+              - img [ref=e36]
+              - text: Добавить компанию
+          - generic [ref=e48] [cursor=pointer]:
+            - img [ref=e49]
+            - generic [ref=e53]: Тест Компания 1
+            - generic [ref=e54]:
+              - img [ref=e55]
+              - text: Активный
+            - button [ref=e57]:
+              - img [ref=e58]
+        - generic [ref=e61]:
+          - paragraph [ref=e63]: Данные компании
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - paragraph [ref=e69]: Название
+              - textbox "ООО Технологии" [ref=e71]
+            - generic [ref=e72]:
+              - paragraph [ref=e74]: ИНН
+              - generic [ref=e76]:
+                - textbox "7700000000" [ref=e77]
+                - button "Найти" [ref=e78] [cursor=pointer]:
+                  - img [ref=e79]
+                  - text: Найти
+        - generic [ref=e82]:
+          - paragraph [ref=e84]: Описание деятельности
+          - generic [ref=e85]:
+            - textbox "Разработка и поставка медицинского оборудования, ИТ-решений..." [ref=e86]
+            - button "Сохранить" [disabled] [ref=e88]
+        - generic [ref=e90]:
+          - generic [ref=e91]:
+            - paragraph [ref=e92]: Направления поиска
+            - button "Добавить" [ref=e93] [cursor=pointer]:
+              - img [ref=e94]
+              - text: Добавить
+          - paragraph [ref=e96]: Добавьте направления чтобы настроить точный поиск с фильтрами по НМЦ и типу закона. HyDE-вектор строится автоматически через ~30 секунд после сохранения.
