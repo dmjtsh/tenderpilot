@@ -159,7 +159,7 @@ def generate_tender_summary(tender: Tender) -> dict:
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=800,
+        max_tokens=1500,
         temperature=0.3,
     )
     raw = response.choices[0].message.content.strip()

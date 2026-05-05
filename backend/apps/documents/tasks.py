@@ -15,6 +15,7 @@ from apps.documents.parsers import (
     detect_file_type_by_content,
     extract_archive,
     is_archive,
+    parse_doc,
     parse_docx,
     parse_pdf,
 )
@@ -126,6 +127,9 @@ def parse_document(self, document_id: int) -> str:
 
         elif doc.file_type == "docx":
             doc.parsed_text = parse_docx(data)
+
+        elif doc.file_type == "doc":
+            doc.parsed_text = parse_doc(data)
 
         doc.parse_status = TenderDocument.ParseStatus.DONE
         doc.parsed_at = timezone.now()

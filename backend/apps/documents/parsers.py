@@ -1,6 +1,7 @@
 import io
 import logging
 import os
+import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
@@ -11,7 +12,7 @@ from docx import Document as DocxDocument
 
 logger = logging.getLogger(__name__)
 
-PARSABLE_TYPES = {"pdf", "docx"}
+PARSABLE_TYPES = {"pdf", "docx", "doc"}
 ARCHIVE_TYPES = {"rar", "zip"}
 SCAN_TEXT_THRESHOLD = 100
 
@@ -75,6 +76,26 @@ def parse_docx(data: bytes) -> str:
     doc = DocxDocument(io.BytesIO(data))
     paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
     return "\n".join(paragraphs)
+
+
+def parse_doc(data: bytes) -> str:
+    """Parse legacy .doc using antiword (requires antiword installed on system)."""
+    with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        result = subprocess.run(
+            ["antiword", "-w", "0", tmp_path],
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            return result.stdout.decode("utf-8", errors="replace")
+        raise RuntimeError(f"antiword failed: {result.stderr.decode('utf-8', errors='replace')[:200]}")
+    except FileNotFoundError:
+        raise RuntimeError("antiword not installed — cannot parse .doc files (apt install antiword)")
+    finally:
+        os.unlink(tmp_path)
 
 
 def extract_archive(data: bytes, file_type: str) -> list[tuple[str, bytes]]:

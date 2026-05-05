@@ -51,6 +51,7 @@ apt-get install -y -qq \
     python3-pip build-essential \
     libpq-dev libxml2-dev libxslt1-dev \
     certbot python3-certbot-nginx \
+    antiword unrar-free \
     htop ncdu ufw > /dev/null
 success "Пакеты установлены"
 

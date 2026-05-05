@@ -155,6 +155,12 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                     if child.parse_status == TenderDocument.ParseStatus.SKIPPED:
                         continue
                     result.append(self._doc_to_dict(child, archive_name=d.filename))
+                # If all children were skipped, show parent archive so user sees the file
+                if not any(
+                    c.parse_status != TenderDocument.ParseStatus.SKIPPED
+                    for c in children
+                ):
+                    result.append(self._doc_to_dict(d))
             else:
                 result.append(self._doc_to_dict(d))
         return Response({"data": result, "error": None})
