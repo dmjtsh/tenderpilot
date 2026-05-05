@@ -23,7 +23,6 @@ export function PipelineStatusButtons({ tenderId, profileId: profileIdProp }: { 
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
     staleTime: 5 * 60 * 1000,
-    enabled: profileIdProp == null,
   })
   // Use URL param if provided, otherwise fall back to first company
   const resolvedProfileId = profileIdProp ?? companies[0]?.id ?? null
@@ -94,7 +93,7 @@ export function PipelineStatusButtons({ tenderId, profileId: profileIdProp }: { 
         </p>
         {resolvedProfileId != null && (
           <span className="text-xs text-gray-400">
-            {companies.find((c) => c.id === resolvedProfileId)?.name || activeProfile?.name || "Компания"}
+            {companies.find((c) => c.id === resolvedProfileId)?.name || "Компания"}
           </span>
         )}
       </div>
