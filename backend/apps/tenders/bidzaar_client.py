@@ -214,17 +214,52 @@ def fetch_tender_detail(bidzaar_id: str) -> dict | None:
 
 
 def _fetch_detail_authenticated(bidzaar_id: str) -> dict | None:
-    """GET /procedures/base с авторизацией."""
-    data = _get(DETAIL_API, {"ids": bidzaar_id}, auth=True)
-    if not data:
-        return None
+    """
+    Запрашивает детали тендера через sub-resources с авторизацией.
+    Requires: BIDZAAR_TOKEN from account with company profile on Bidzaar.
+    """
+    from django.conf import settings as _settings
+    token = getattr(_settings, "BIDZAAR_TOKEN", "") or ""
+    headers = {**HEADERS, "Authorization": f"Bearer {token}"}
+    base_url = f"{BASE_URL}/api/process/light/procedures/{bidzaar_id}"
 
-    items = data if isinstance(data, list) else (data.get("items") or [])
-    if not items:
-        return None
+    detail: dict = {}
 
-    item = items[0]
-    return _extract_detail_fields(item)
+    # Основные данные из /available (всегда доступно)
+    public = _fetch_detail_public(bidzaar_id)
+    if public:
+        detail.update(public)
+
+    # НМЦ и лоты из /positions (требует компанию на Bidzaar)
+    for attempt in range(3):
+        try:
+            resp = requests.get(f"{base_url}/positions", headers=headers, timeout=20)
+            if resp.status_code == 200:
+                positions = resp.json() or []
+                if isinstance(positions, list) and positions:
+                    nmck = sum(
+                        float(p.get("totalPrice") or p.get("price") or p.get("amount") or 0)
+                        for p in positions
+                    ) or None
+                    okpd_codes = []
+                    for p in positions:
+                        code = p.get("okpd2") or p.get("okpd") or p.get("okpdCode") or ""
+                        if code:
+                            okpd_codes.append(code)
+                    if nmck:
+                        detail["nmck"] = nmck
+                    if okpd_codes:
+                        detail["okpd_codes"] = okpd_codes
+                break
+            elif resp.status_code == 404:
+                break  # endpoint не доступен для этого тендера
+        except Exception as exc:
+            if attempt < 2:
+                time.sleep(3 * (attempt + 1))
+            else:
+                logger.warning("fetch positions %s: %s", bidzaar_id, exc)
+
+    return detail or None
 
 
 def _fetch_detail_public(bidzaar_id: str) -> dict | None:
