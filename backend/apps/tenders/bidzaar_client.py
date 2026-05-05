@@ -3,11 +3,17 @@ HTTP-клиент для Bidzaar (bidzaar.com).
 
 API обнаружен через DevTools:
   GET /api/process/light/procedures/available  — список тендеров (пагинация)
-  GET /api/process/light/procedures/base       — детали по UUID (бюджет, ОКПД)
+  GET /api/process/light/procedures/base       — детали по UUID (бюджет, ОКПД, требует auth)
 
 Два уровня данных:
-- search_tenders()        → быстрый список карточек (без бюджета)
-- fetch_tender_detail()   → обогащение одного тендера по UUID (бюджет, описание)
+- search_tenders()        → быстрый список карточек (без бюджета, без авторизации)
+- fetch_tender_detail()   → обогащение одного тендера (бюджет, описание — нужен BIDZAAR_TOKEN)
+
+Как получить BIDZAAR_TOKEN:
+  1. Зайти на bidzaar.com под своим аккаунтом
+  2. Открыть DevTools → Network → любой запрос к /api/process/...
+  3. Скопировать значение заголовка Authorization (без слова "Bearer ")
+  4. Записать в .env: BIDZAAR_TOKEN=<токен>
 """
 import logging
 import time
@@ -15,6 +21,7 @@ from datetime import date, timedelta
 from typing import Any
 
 import requests
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +39,14 @@ HEADERS = {
     "Referer": "https://bidzaar.com/",
     "Origin": "https://bidzaar.com",
 }
+
+
+def _auth_headers() -> dict:
+    """Возвращает заголовки с авторизацией если BIDZAAR_TOKEN задан."""
+    token = getattr(settings, "BIDZAAR_TOKEN", "") or ""
+    if token:
+        return {**HEADERS, "Authorization": f"Bearer {token}"}
+    return HEADERS
 
 PAGE_SIZE = 25
 
@@ -57,10 +72,11 @@ PROCEDURE_TYPE_MAP: dict[int, str] = {
 # Низкоуровневые утилиты
 # ---------------------------------------------------------------------------
 
-def _get(url: str, params: dict, retries: int = 2) -> dict | None:
+def _get(url: str, params: dict, retries: int = 2, auth: bool = False) -> dict | None:
+    headers = _auth_headers() if auth else HEADERS
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, headers=HEADERS, params=params, timeout=30)
+            resp = requests.get(url, headers=headers, params=params, timeout=30)
             resp.raise_for_status()
             return resp.json()
         except Exception as exc:
@@ -185,11 +201,34 @@ def search_tenders(
 
 def fetch_tender_detail(bidzaar_id: str) -> dict | None:
     """
-    Пытается получить детали тендера из публичного API Bidzaar.
-    Endpoint /procedures/base требует авторизацию — возвращает None.
-    Оставлен для совместимости; обогащение делается через /available фильтр.
+    Получает детали тендера:
+    - Если BIDZAAR_TOKEN задан → /procedures/base (полные данные: НМЦ, описание, ОКПД)
+    - Иначе → /available с фильтром по id (только публичные поля, без НМЦ)
     """
-    # Пробуем получить через /available с фильтром по id
+    token = getattr(settings, "BIDZAAR_TOKEN", "") or ""
+
+    if token:
+        return _fetch_detail_authenticated(bidzaar_id)
+    else:
+        return _fetch_detail_public(bidzaar_id)
+
+
+def _fetch_detail_authenticated(bidzaar_id: str) -> dict | None:
+    """GET /procedures/base с авторизацией."""
+    data = _get(DETAIL_API, {"ids": bidzaar_id}, auth=True)
+    if not data:
+        return None
+
+    items = data if isinstance(data, list) else (data.get("items") or [])
+    if not items:
+        return None
+
+    item = items[0]
+    return _extract_detail_fields(item)
+
+
+def _fetch_detail_public(bidzaar_id: str) -> dict | None:
+    """GET /available?filters[0].field=id (публичный, без НМЦ)."""
     params = {
         "filters[0].field": "id",
         "filters[0].operator": "eq",
@@ -203,8 +242,11 @@ def fetch_tender_detail(bidzaar_id: str) -> dict | None:
     if not items:
         return None
 
-    item = items[0]
+    return _extract_detail_fields(items[0])
 
+
+def _extract_detail_fields(item: dict) -> dict:
+    """Извлекает обогащённые поля из ответа API."""
     nmck = (
         item.get("budget")
         or item.get("initialPrice")

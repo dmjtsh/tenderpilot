@@ -186,5 +186,8 @@ TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 # DaData
 DADATA_TOKEN = config("DADATA_TOKEN", default="")
 
+# Bidzaar — токен берётся из DevTools (Authorization: Bearer <token>) или из env
+BIDZAAR_TOKEN = config("BIDZAAR_TOKEN", default="")
+
 if DEBUG:
     INSTALLED_APPS += ["django_extensions"]
