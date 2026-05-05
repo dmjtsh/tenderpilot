@@ -24,3 +24,8 @@ gunicorn
 openai>=1.30
 pymupdf>=1.24
 dadata>=21.10
+rarfile>=4.1
+python-docx>=1.1
+minio>=7.2
+numpy>=1.26
+tiktoken>=0.7
