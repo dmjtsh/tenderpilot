@@ -752,6 +752,61 @@ interface ChatMessage {
   sources?: TenderQASource[]
 }
 
+function renderMarkdown(text: string) {
+  const lines = text.split("\n")
+  const elements: React.ReactNode[] = []
+  let listItems: React.ReactNode[] = []
+  let listType: "ul" | "ol" | null = null
+
+  function flushList() {
+    if (listItems.length > 0 && listType) {
+      const Tag = listType
+      elements.push(<Tag key={`list-${elements.length}`} className={listType === "ol" ? "list-decimal pl-5 my-1 space-y-0.5" : "list-disc pl-5 my-1 space-y-0.5"}>{listItems}</Tag>)
+      listItems = []
+      listType = null
+    }
+  }
+
+  function inlineFmt(s: string): React.ReactNode[] {
+    const parts: React.ReactNode[] = []
+    const re = /\*\*(.+?)\*\*/g
+    let last = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(s)) !== null) {
+      if (m.index > last) parts.push(s.slice(last, m.index))
+      parts.push(<strong key={m.index}>{m[1]}</strong>)
+      last = re.lastIndex
+    }
+    if (last < s.length) parts.push(s.slice(last))
+    return parts
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const olMatch = line.match(/^\d+\.\s+(.*)/)
+    const ulMatch = line.match(/^[-·•]\s+(.*)/)
+
+    if (olMatch) {
+      if (listType !== "ol") flushList()
+      listType = "ol"
+      listItems.push(<li key={i}>{inlineFmt(olMatch[1])}</li>)
+    } else if (ulMatch) {
+      if (listType !== "ul") flushList()
+      listType = "ul"
+      listItems.push(<li key={i}>{inlineFmt(ulMatch[1])}</li>)
+    } else {
+      flushList()
+      if (line.trim() === "") {
+        elements.push(<br key={i} />)
+      } else {
+        elements.push(<p key={i} className="my-0.5">{inlineFmt(line)}</p>)
+      }
+    }
+  }
+  flushList()
+  return <>{elements}</>
+}
+
 function TenderChat({ tenderId }: { tenderId: number }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
@@ -844,7 +899,7 @@ function TenderChat({ tenderId }: { tenderId: number }) {
                         <p className="text-[15px] text-[#111827] font-medium">{msg.text}</p>
                       ) : (
                         <div>
-                          <p className="text-[15px] text-gray-700 whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                          <div className="text-[15px] text-gray-700 leading-relaxed">{renderMarkdown(msg.text)}</div>
                           {msg.sources && msg.sources.length > 0 && (
                             <div className="mt-3 space-y-2">
                               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Источники</p>
