@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderDoc, type TenderQASource, type SummaryExperimentResult, type ExperimentSummary, type ExperimentRun } from "@/lib/api"
+import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderDoc, type TenderQASource, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
 import { AlertTriangle, Building2, Check, ChevronDown, ChevronLeft, ClipboardList, Download, ExternalLink, FileText, Loader2, Minus, Send, Sparkles, XCircle } from "lucide-react"
 import Link from "next/link"
 import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
@@ -98,13 +98,13 @@ function BulletList({ items, className = "text-gray-700" }: { items: string[]; c
 }
 
 function SummaryBlock({ s }: { s: TenderSummary }) {
-  const ca = s.customer_analysis
-  const wd = s.work_description
-  const kr = s.key_risks
-  const rd = s.required_documents
+  const ca = s.customer_analysis ?? { name: "", inn: "", region: "", okved_main: "", tender_count: 0, total_volume: 0, risk_assessment: "", notes: [] }
+  const wd = s.work_description ?? { essence: "", payment_terms: null, execution_period: null, experience_requirements: [], deadline_info: null }
+  const kr = s.key_risks ?? { certifications: [], financial_risks: [], technical_risks: [], unusual_conditions: [] }
+  const rd = s.required_documents ?? { mandatory: [], optional: [], special_forms: [] }
 
-  const hasRisks = kr.certifications.length > 0 || kr.financial_risks.length > 0 || kr.technical_risks.length > 0 || kr.unusual_conditions.length > 0
-  const hasDocs = rd.mandatory.length > 0 || rd.optional.length > 0 || rd.special_forms.length > 0
+  const hasRisks = (kr.certifications?.length ?? 0) > 0 || (kr.financial_risks?.length ?? 0) > 0 || (kr.technical_risks?.length ?? 0) > 0 || (kr.unusual_conditions?.length ?? 0) > 0
+  const hasDocs = (rd.mandatory?.length ?? 0) > 0 || (rd.optional?.length ?? 0) > 0 || (rd.special_forms?.length ?? 0) > 0
 
   return (
     <div className="space-y-0">
@@ -146,7 +146,7 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
           {ca.risk_assessment && (
             <p className="text-sm text-amber-600">{ca.risk_assessment}</p>
           )}
-          <BulletList items={ca.notes} className="text-gray-500" />
+          <BulletList items={ca.notes ?? []} className="text-gray-500" />
         </div>
       </div>
 
@@ -166,7 +166,7 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
               <p className="text-sm text-gray-700"><span className="text-gray-400">Подача заявки:</span> {wd.deadline_info}</p>
             )}
           </div>
-          {wd.experience_requirements.length > 0 && (
+          {(wd.experience_requirements?.length ?? 0) > 0 && (
             <div>
               <p className="text-sm text-gray-400 mb-1.5">Требования к опыту</p>
               <BulletList items={wd.experience_requirements} />
@@ -180,25 +180,25 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
         <div className="border-t border-gray-100 py-5">
           <SectionHeader icon={AlertTriangle} title="Ключевые риски" />
           <div className="space-y-3">
-            {kr.certifications.length > 0 && (
+            {(kr.certifications?.length ?? 0) > 0 && (
               <div>
                 <p className="text-sm text-gray-400 mb-1.5">Лицензии и допуски</p>
                 <BulletList items={kr.certifications} className="text-amber-600" />
               </div>
             )}
-            {kr.financial_risks.length > 0 && (
+            {(kr.financial_risks?.length ?? 0) > 0 && (
               <div>
                 <p className="text-sm text-gray-400 mb-1.5">Финансовые риски</p>
                 <BulletList items={kr.financial_risks} className="text-amber-600" />
               </div>
             )}
-            {kr.technical_risks.length > 0 && (
+            {(kr.technical_risks?.length ?? 0) > 0 && (
               <div>
                 <p className="text-sm text-gray-400 mb-1.5">Технические риски</p>
                 <BulletList items={kr.technical_risks} className="text-amber-600" />
               </div>
             )}
-            {kr.unusual_conditions.length > 0 && (
+            {(kr.unusual_conditions?.length ?? 0) > 0 && (
               <div>
                 <p className="text-sm text-gray-400 mb-1.5">Необычные условия</p>
                 <BulletList items={kr.unusual_conditions} className="text-amber-600" />
@@ -213,19 +213,19 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
         <div className="border-t border-gray-100 py-5">
           <SectionHeader icon={ClipboardList} title="Документы для участия" />
           <div className="space-y-3">
-            {rd.mandatory.length > 0 && (
+            {(rd.mandatory?.length ?? 0) > 0 && (
               <div>
                 <p className="text-sm text-gray-400 mb-1.5">Обязательные</p>
                 <BulletList items={rd.mandatory} />
               </div>
             )}
-            {rd.optional.length > 0 && (
+            {(rd.optional?.length ?? 0) > 0 && (
               <div>
                 <p className="text-sm text-gray-400 mb-1.5">Рекомендуемые</p>
                 <BulletList items={rd.optional} />
               </div>
             )}
-            {rd.special_forms.length > 0 && (
+            {(rd.special_forms?.length ?? 0) > 0 && (
               <div>
                 <p className="text-sm text-gray-400 mb-1.5">Особые формы</p>
                 <BulletList items={rd.special_forms} />
@@ -567,25 +567,11 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
     staleTime: 30_000,
   })
 
-  const [expLoading, setExpLoading] = useState<string | null>(null)
   const [expError, setExpError] = useState<string | null>(null)
 
   const latestRag = legacyExperiments.find((e) => e.strategy === "rag")
   const latestFull = legacyExperiments.find((e) => e.strategy === "full")
   const canCompareLegacy = !!latestRag && !!latestFull && namedExperiments.length === 0
-
-  async function handleExperiment(strategy: "rag" | "full") {
-    setExpLoading(strategy)
-    setExpError(null)
-    try {
-      await tendersApi.runExperiment(tenderId, strategy)
-      refetchLegacy()
-    } catch (e: unknown) {
-      setExpError(e instanceof Error ? e.message : "Ошибка эксперимента")
-    } finally {
-      setExpLoading(null)
-    }
-  }
 
   useEffect(() => {
     if (initialSummary) setSummary(initialSummary)
