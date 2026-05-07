@@ -49,11 +49,29 @@ def download_and_parse_documents(self, tender_id: int) -> str:
 
         file_hash = hashlib.md5(data).hexdigest()
 
+        s3_key = f"original/{tender.number}/{filename}"
+
+        existing = TenderDocument.objects.filter(tender=tender, s3_key=s3_key).first()
+        if existing:
+            if existing.file_hash == file_hash:
+                logger.info("Skipping duplicate %s (hash=%s)", filename, file_hash)
+                if existing.parse_status == TenderDocument.ParseStatus.PENDING:
+                    created_ids.append(existing.id)
+                continue
+            existing.file_hash = file_hash
+            existing.file_size = len(data)
+            existing.file_type = file_type
+            existing.parse_status = TenderDocument.ParseStatus.PENDING
+            existing.parsed_text = ""
+            existing.save(update_fields=["file_hash", "file_size", "file_type", "parse_status", "parsed_text"])
+            upload_file(s3_key, data)
+            created_ids.append(existing.id)
+            continue
+
         if TenderDocument.objects.filter(tender=tender, file_hash=file_hash).exists():
             logger.info("Skipping duplicate %s (hash=%s)", filename, file_hash)
             continue
 
-        s3_key = f"original/{tender.number}/{filename}"
         upload_file(s3_key, data)
 
         doc = TenderDocument.objects.create(
