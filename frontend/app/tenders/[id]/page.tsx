@@ -543,7 +543,7 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
   })
   const isStaff = (me as Record<string, unknown>)?.is_staff === true
 
-  const { data: legacyExperiments = [], refetch: refetchLegacy } = useQuery({
+  const { data: legacyExperiments = [] } = useQuery({
     queryKey: ["experiments", tenderId],
     queryFn: () => tendersApi.getExperiments(tenderId),
     enabled: isStaff,
@@ -567,7 +567,7 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
     staleTime: 30_000,
   })
 
-  const [expError, setExpError] = useState<string | null>(null)
+  const [expError] = useState<string | null>(null)
 
   const latestRag = legacyExperiments.find((e) => e.strategy === "rag")
   const latestFull = legacyExperiments.find((e) => e.strategy === "full")
