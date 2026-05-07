@@ -283,7 +283,7 @@ def answer_question(tender_id: int, question: str) -> dict:
     from apps.documents.models import TenderDocument
     from apps.search.embedder import Embedder
     from apps.search.services import qdrant
-    from openai import OpenAI
+    from apps.tenders.services import get_llm_client
 
     has_any_docs = TenderDocument.objects.filter(
         tender_id=tender_id,
@@ -323,16 +323,115 @@ def answer_question(tender_id: int, question: str) -> dict:
     context = "\n\n---\n\n".join(context_parts)
     prompt = QA_PROMPT.format(context=context, question=question)
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=600,
-        temperature=0.2,
-    )
-    answer = response.choices[0].message.content.strip()
+    model_name = "deepseek-chat"
+    try:
+        client = get_llm_client(model_name)
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=600,
+            temperature=0.2,
+        )
+        answer = response.choices[0].message.content.strip()
+    except Exception:
+        logger.warning("DeepSeek QA failed for tender %d, falling back to gpt-4o-mini", tender_id)
+        model_name = "gpt-4o-mini"
+        client = get_llm_client(model_name)
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=600,
+            temperature=0.2,
+        )
+        answer = response.choices[0].message.content.strip()
 
     return {"answer": answer, "has_docs": True, "sources": sources, "needs_reindex": False}
+
+
+def answer_question_with_variant(tender_id: int, question: str, variant: dict) -> dict:
+    """Run QA with a specific model/prompt. Production answer_question() is not affected."""
+    import time
+    from apps.documents.models import TenderDocument
+    from apps.tenders.models import PromptTemplate
+    from apps.tenders.services import get_llm_client, calculate_cost
+    from apps.search.embedder import Embedder
+    from apps.search.services import qdrant
+
+    model_name = variant.get("model", "gpt-4o-mini")
+    prompt_slug = variant.get("prompt_template", "chat_qa_v1")
+
+    template = PromptTemplate.objects.filter(name=prompt_slug, is_active=True).order_by("-version").first()
+    if not template:
+        raise ValueError(f"PromptTemplate '{prompt_slug}' not found or inactive")
+
+    has_any_docs = TenderDocument.objects.filter(
+        tender_id=tender_id,
+        parse_status=TenderDocument.ParseStatus.DONE,
+    ).exists()
+
+    if not has_any_docs:
+        return {
+            "answer": None, "sources": [], "has_docs": False,
+            "metrics": {"model": model_name, "input_tokens": 0, "output_tokens": 0,
+                        "cost_usd": 0, "duration_ms": 0, "actual_model": ""},
+        }
+
+    embedder = Embedder()
+    vector = embedder.embed_query(question)
+    hits = qdrant.search_doc_chunks(vector=vector, tender_id=tender_id, limit=5, score_threshold=0.0)
+
+    if not hits:
+        return {
+            "answer": None, "sources": [], "has_docs": True, "needs_reindex": True,
+            "metrics": {"model": model_name, "input_tokens": 0, "output_tokens": 0,
+                        "cost_usd": 0, "duration_ms": 0, "actual_model": ""},
+        }
+
+    context_parts: list[str] = []
+    sources: list[dict] = []
+    for hit in hits:
+        filename = hit.get("filename", "документ")
+        text = hit.get("text", "")
+        chunk_index = hit.get("chunk_index", 0)
+        context_parts.append(f"[{filename}]\n{text}")
+        sources.append({
+            "filename": filename, "chunk_index": chunk_index,
+            "text": text, "document_id": hit.get("document_id"),
+        })
+
+    context = "\n\n---\n\n".join(context_parts)
+    prompt = template.user_template.format(context=context, question=question)
+
+    client = get_llm_client(model_name)
+    messages = [{"role": "user", "content": prompt}]
+
+    start_ns = time.monotonic_ns()
+    response = client.chat.completions.create(
+        model=model_name, messages=messages, max_tokens=600, temperature=0.2,
+    )
+    duration_ms = (time.monotonic_ns() - start_ns) // 1_000_000
+
+    answer = response.choices[0].message.content.strip()
+    actual_model = getattr(response, "model", "") or ""
+
+    usage = response.usage
+    input_tokens = usage.prompt_tokens if usage else 0
+    output_tokens = usage.completion_tokens if usage else 0
+    cost = calculate_cost(model_name, input_tokens, output_tokens)
+
+    return {
+        "answer": answer,
+        "sources": sources,
+        "has_docs": True,
+        "metrics": {
+            "model": model_name,
+            "actual_model": actual_model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cost_usd": float(cost),
+            "duration_ms": duration_ms,
+        },
+    }
 
 
 def get_summary_context(

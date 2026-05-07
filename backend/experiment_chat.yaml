@@ -1,0 +1,20 @@
+name: "Чат с тендером — DeepSeek vs mini"
+description: "Тестируем модели на RAG QA с цитатами из документов тендера"
+questions:
+  - "Какие штрафы за просрочку?"
+  - "Когда оплата по контракту?"
+  - "Какие документы нужны для участия?"
+  - "Кто фактический заказчик?"
+  - "Какой гарантийный срок?"
+  - "Какие СРО или лицензии нужны?"
+variants:
+  - label: A
+    name: "GPT-4o-mini"
+    strategy: rag
+    model: gpt-4o-mini
+    prompt_template: chat_qa_v1
+  - label: B
+    name: "DeepSeek V4 Flash"
+    strategy: rag
+    model: deepseek-chat
+    prompt_template: chat_qa_v1
