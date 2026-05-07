@@ -180,6 +180,10 @@ ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 OPENAI_BASE_URL = config("OPENAI_BASE_URL", default="")
 
+# DeepSeek
+DEEPSEEK_API_KEY = config("DEEPSEEK_API_KEY", default="")
+DEEPSEEK_BASE_URL = config("DEEPSEEK_BASE_URL", default="https://api.deepseek.com")
+
 # Telegram
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 

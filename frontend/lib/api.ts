@@ -33,22 +33,90 @@ export const authApi = {
 
 // Tenders
 export interface TenderSummary {
-  essence: string
-  requirements: string[]
-  days_left: number | null
-  urgency: "low" | "medium" | "high" | "critical"
-  execution_period?: string | null
-  finances: string
-  financials?: {
-    bid_security_rub: number | null
-    contract_security_pct: number | null
-    contract_security_note: string | null
+  version: number
+  customer_analysis: {
+    name: string
+    inn: string
+    region: string
+    okved_main: string
+    tender_count: number
+    total_volume: number
+    risk_assessment: string
+    notes: string[]
   }
-  red_flags: string[]
+  work_description: {
+    essence: string
+    payment_terms: string | null
+    execution_period: string | null
+    experience_requirements: string[]
+    deadline_info: string | null
+  }
+  key_risks: {
+    certifications: string[]
+    financial_risks: string[]
+    technical_risks: string[]
+    unusual_conditions: string[]
+  }
+  required_documents: {
+    mandatory: string[]
+    optional: string[]
+    special_forms: string[]
+  }
   verdict: "go" | "maybe" | "pass"
   verdict_reason: string
-  has_docs?: boolean
   tender_type?: string
+  has_docs?: boolean
+  days_left: number | null
+  urgency: "low" | "medium" | "high" | "critical"
+}
+
+export interface SummaryExperimentResult {
+  id: number
+  strategy: "rag" | "full"
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+  duration_ms: number
+  was_truncated: boolean
+  truncated_reason: string
+  original_total_tokens: number
+  result: TenderSummary
+  created_at: string
+}
+
+export interface ExperimentVariant {
+  label: string
+  name: string
+  strategy: string
+  model: string
+  prompt_template: string
+  params?: Record<string, unknown>
+}
+
+export interface ExperimentSummary {
+  id: number
+  name: string
+  status: "draft" | "running" | "completed"
+  variants: ExperimentVariant[]
+  completed_at: string | null
+}
+
+export interface ExperimentRun {
+  id: number
+  variant_label: string
+  variant_name: string
+  strategy: string
+  model: string
+  actual_model?: string
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+  duration_ms: number
+  was_truncated: boolean
+  truncated_reason: string
+  result: TenderSummary
+  created_at: string
 }
 
 export interface Tender {
@@ -128,6 +196,12 @@ export const tendersApi = {
 
   reindexDocs: (id: number) =>
     client.post(`/tenders/${id}/reindex-docs/`).then((r) => r.data.data),
+
+  runExperiment: (id: number, strategy: "rag" | "full") =>
+    client.post(`/tenders/${id}/summary/experiment/`, { strategy }).then((r) => r.data.data as SummaryExperimentResult),
+
+  getExperiments: (id: number) =>
+    client.get(`/tenders/${id}/summary/experiments/`).then((r) => r.data.data as SummaryExperimentResult[]),
 }
 
 // Search
@@ -277,4 +351,15 @@ export const directionsApi = {
     client.delete(
       profileId ? `/users/me/companies/${profileId}/directions/${id}/` : `/users/me/directions/${id}/`,
     ),
+}
+
+// Experiments
+export const experimentsApi = {
+  listForTender: (tenderId: number) =>
+    client.get("/experiments/", { params: { tender_id: tenderId } })
+      .then((r) => r.data.data as ExperimentSummary[]),
+
+  getRuns: (experimentId: number, tenderId: number) =>
+    client.get(`/experiments/${experimentId}/runs/`, { params: { tender_id: tenderId } })
+      .then((r) => r.data.data as ExperimentRun[]),
 }

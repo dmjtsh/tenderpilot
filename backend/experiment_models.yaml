@@ -1,0 +1,13 @@
+name: "Сравнение моделей на Full контексте"
+description: "DeepSeek V4 Flash vs GPT-4o-mini на идентичном промпте и Full стратегии"
+variants:
+  - label: A
+    name: "GPT-4o-mini Full"
+    strategy: full
+    model: gpt-4o-mini
+    prompt_template: summary_v1
+  - label: B
+    name: "DeepSeek Full"
+    strategy: full
+    model: deepseek-chat
+    prompt_template: summary_v1

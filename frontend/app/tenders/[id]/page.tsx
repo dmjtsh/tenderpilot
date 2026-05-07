@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { client, tendersApi, type Tender, type TenderSummary, type TenderDoc, type TenderQASource } from "@/lib/api"
-import { AlertTriangle, Check, ChevronDown, ChevronLeft, Download, ExternalLink, FileText, Loader2, Minus, Send, Sparkles, XCircle } from "lucide-react"
+import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderDoc, type TenderQASource, type SummaryExperimentResult, type ExperimentSummary, type ExperimentRun } from "@/lib/api"
+import { AlertTriangle, Building2, Check, ChevronDown, ChevronLeft, ClipboardList, Download, ExternalLink, FileText, Loader2, Minus, Send, Sparkles, XCircle } from "lucide-react"
 import Link from "next/link"
 import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
 
@@ -67,11 +67,49 @@ const VERDICT_LABEL: Record<string, string> = {
   pass: "Пропустить",
 }
 
-function SummaryBlock({ s }: { s: TenderSummary }) {
+function fmtVolume(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} млрд ₽`
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} млн ₽`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} тыс ₽`
+  return `${n} ₽`
+}
+
+function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
   return (
-    <div className="space-y-5">
-      {/* Verdict + has_docs badge */}
-      <div className="flex items-center gap-3 flex-wrap">
+    <div className="flex items-center gap-2 mb-3">
+      <Icon className="w-4 h-4 text-gray-400" />
+      <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">{title}</span>
+    </div>
+  )
+}
+
+function BulletList({ items, className = "text-gray-700" }: { items: string[]; className?: string }) {
+  if (!items.length) return null
+  return (
+    <ul className="space-y-1.5">
+      {items.map((item, i) => (
+        <li key={i} className={`flex items-start gap-2.5 text-[15px] ${className}`}>
+          <span className="text-gray-400 mt-0.5 shrink-0">·</span>
+          {item}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function SummaryBlock({ s }: { s: TenderSummary }) {
+  const ca = s.customer_analysis
+  const wd = s.work_description
+  const kr = s.key_risks
+  const rd = s.required_documents
+
+  const hasRisks = kr.certifications.length > 0 || kr.financial_risks.length > 0 || kr.technical_risks.length > 0 || kr.unusual_conditions.length > 0
+  const hasDocs = rd.mandatory.length > 0 || rd.optional.length > 0 || rd.special_forms.length > 0
+
+  return (
+    <div className="space-y-0">
+      {/* Verdict badges */}
+      <div className="flex items-center gap-3 flex-wrap pb-5">
         <span className={`text-sm px-3 py-1 font-medium ${VERDICT_BADGE[s.verdict] ?? "bg-gray-100 text-gray-600"}`}>
           {VERDICT_LABEL[s.verdict] ?? s.verdict}
         </span>
@@ -82,66 +120,130 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
           </span>
         )}
         {s.tender_type && (
-          <span className="text-sm px-3 py-1 bg-gray-100 text-gray-600">
-            {s.tender_type}
-          </span>
+          <span className="text-sm px-3 py-1 bg-gray-100 text-gray-600">{s.tender_type}</span>
         )}
         <span className="text-sm text-gray-500">{s.verdict_reason}</span>
       </div>
 
-      {/* Essence */}
-      <p className="text-[15px] leading-relaxed text-[#111827]">{s.essence}</p>
+      {/* Section 1: Customer Analysis */}
+      <div className="border-t border-gray-100 py-5">
+        <SectionHeader icon={Building2} title="Анализ заказчика" />
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 flex-wrap text-[15px]">
+            <span className="text-[#111827] font-medium">{ca.name || "Не указан"}</span>
+            {ca.inn && <span className="text-gray-400 font-mono text-sm">ИНН {ca.inn}</span>}
+            {ca.region && <span className="text-gray-500">{ca.region}</span>}
+          </div>
+          {ca.okved_main && (
+            <p className="text-sm text-gray-500">{ca.okved_main}</p>
+          )}
+          {ca.tender_count > 0 && (
+            <p className="text-sm text-gray-500">
+              {ca.tender_count} тендер{ca.tender_count === 1 ? "" : ca.tender_count < 5 ? "а" : "ов"} в базе
+              {ca.total_volume > 0 && <>, общий объём {fmtVolume(ca.total_volume)}</>}
+            </p>
+          )}
+          {ca.risk_assessment && (
+            <p className="text-sm text-amber-600">{ca.risk_assessment}</p>
+          )}
+          <BulletList items={ca.notes} className="text-gray-500" />
+        </div>
+      </div>
 
-      {/* Requirements */}
-      {s.requirements?.length > 0 && (
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-2">Требования</p>
-          <ul className="space-y-2">
-            {s.requirements.map((r, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-[15px] text-gray-700">
-                <span className="text-gray-400 mt-0.5 shrink-0">·</span>
-                {r}
-              </li>
-            ))}
-          </ul>
+      {/* Section 2: Work Description */}
+      <div className="border-t border-gray-100 py-5">
+        <SectionHeader icon={FileText} title="Описание работ" />
+        <div className="space-y-3">
+          <p className="text-[15px] leading-relaxed text-[#111827]">{wd.essence}</p>
+          <div className="space-y-1.5">
+            {wd.payment_terms && (
+              <p className="text-sm text-gray-700"><span className="text-gray-400">Оплата:</span> {wd.payment_terms}</p>
+            )}
+            {wd.execution_period && (
+              <p className="text-sm text-gray-700"><span className="text-gray-400">Срок выполнения:</span> {wd.execution_period}</p>
+            )}
+            {wd.deadline_info && (
+              <p className="text-sm text-gray-700"><span className="text-gray-400">Подача заявки:</span> {wd.deadline_info}</p>
+            )}
+          </div>
+          {wd.experience_requirements.length > 0 && (
+            <div>
+              <p className="text-sm text-gray-400 mb-1.5">Требования к опыту</p>
+              <BulletList items={wd.experience_requirements} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Section 3: Key Risks */}
+      {hasRisks && (
+        <div className="border-t border-gray-100 py-5">
+          <SectionHeader icon={AlertTriangle} title="Ключевые риски" />
+          <div className="space-y-3">
+            {kr.certifications.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Лицензии и допуски</p>
+                <BulletList items={kr.certifications} className="text-amber-600" />
+              </div>
+            )}
+            {kr.financial_risks.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Финансовые риски</p>
+                <BulletList items={kr.financial_risks} className="text-amber-600" />
+              </div>
+            )}
+            {kr.technical_risks.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Технические риски</p>
+                <BulletList items={kr.technical_risks} className="text-amber-600" />
+              </div>
+            )}
+            {kr.unusual_conditions.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Необычные условия</p>
+                <BulletList items={kr.unusual_conditions} className="text-amber-600" />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Finances */}
-      {s.finances && (
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-2">Финансы</p>
-          <p className="text-[15px] text-gray-700">{s.finances}</p>
+      {/* Section 4: Required Documents */}
+      {hasDocs && (
+        <div className="border-t border-gray-100 py-5">
+          <SectionHeader icon={ClipboardList} title="Документы для участия" />
+          <div className="space-y-3">
+            {rd.mandatory.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Обязательные</p>
+                <BulletList items={rd.mandatory} />
+              </div>
+            )}
+            {rd.optional.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Рекомендуемые</p>
+                <BulletList items={rd.optional} />
+              </div>
+            )}
+            {rd.special_forms.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Особые формы</p>
+                <BulletList items={rd.special_forms} />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Deadline urgency */}
-      <div className="flex items-center gap-3">
+      {/* Urgency footer */}
+      <div className="border-t border-gray-100 pt-5 flex items-center gap-3">
         <span className={`text-sm px-3 py-1 ${URGENCY_BADGE[s.urgency] ?? "bg-gray-100 text-gray-600"}`}>
           {URGENCY_LABEL[s.urgency] ?? s.urgency}
         </span>
         {s.days_left != null && (
           <span className="text-sm text-gray-500">{s.days_left} дней до дедлайна</span>
         )}
-        {s.execution_period && (
-          <span className="text-sm text-gray-500">· Срок: {s.execution_period}</span>
-        )}
       </div>
-
-      {/* Red flags */}
-      {s.red_flags?.length > 0 && (
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-2">Красные флаги</p>
-          <ul className="space-y-2">
-            {s.red_flags.map((f, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-[15px] text-amber-600">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                {f}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   )
 }
@@ -326,6 +428,104 @@ function DocsProgressInline({ docs, downloading, tenderId }: { docs: TenderDoc[]
 
 type SummaryPhase = "idle" | "downloading" | "analyzing"
 
+function RunMetrics({ run }: { run: ExperimentRun | SummaryExperimentResult }) {
+  return (
+    <div className="flex items-center gap-3 flex-wrap text-xs text-gray-400 mb-3">
+      <span>{run.input_tokens.toLocaleString("ru")} вх. токенов</span>
+      <span>${run.cost_usd.toFixed(4)}</span>
+      <span>{(run.duration_ms / 1000).toFixed(1)}с</span>
+      {run.was_truncated && (
+        <span className="text-amber-500">{run.truncated_reason}</span>
+      )}
+    </div>
+  )
+}
+
+function RunCard({ run, accent }: { run: ExperimentRun; accent?: boolean }) {
+  return (
+    <div className={`border ${accent ? "border-violet-200" : "border-gray-200"} rounded-lg p-4 overflow-auto min-w-[350px]`}>
+      <div className="mb-2">
+        <p className={`text-sm font-medium ${accent ? "text-violet-600" : "text-gray-500"}`}>
+          [{run.variant_label}] {run.variant_name}
+        </p>
+        <p className="text-xs text-gray-400">
+          {run.strategy} · {run.model}{run.actual_model && run.actual_model !== run.model ? ` (${run.actual_model})` : ""}
+        </p>
+      </div>
+      <RunMetrics run={run} />
+      <SummaryBlock s={run.result} />
+    </div>
+  )
+}
+
+function ExperimentComparisonView({ runs, experimentName }: { runs: ExperimentRun[]; experimentName?: string }) {
+  const [mobileIdx, setMobileIdx] = useState(0)
+
+  if (runs.length === 0) return null
+
+  return (
+    <div className="mt-4 border-t border-gray-100 pt-4">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded">A/B тест</span>
+        {experimentName && <span className="text-xs text-gray-400">{experimentName}</span>}
+      </div>
+
+      {/* Desktop */}
+      {runs.length <= 2 ? (
+        <div className="hidden md:grid grid-cols-2 gap-4">
+          {runs.map((run, i) => (
+            <RunCard key={run.id} run={run} accent={i > 0} />
+          ))}
+        </div>
+      ) : (
+        <div className="hidden md:flex gap-4 overflow-x-auto pb-2">
+          {runs.map((run, i) => (
+            <RunCard key={run.id} run={run} accent={i > 0} />
+          ))}
+        </div>
+      )}
+
+      {/* Mobile: tabs */}
+      <div className="md:hidden">
+        <div className="flex gap-2 mb-3">
+          {runs.map((run, i) => (
+            <button
+              key={run.id}
+              onClick={() => setMobileIdx(i)}
+              className={`flex-1 h-8 text-sm rounded-md transition-colors ${
+                mobileIdx === i
+                  ? i === 0 ? "bg-gray-100 text-[#111827] font-medium" : "bg-violet-50 text-violet-700 font-medium"
+                  : "text-gray-400"
+              }`}
+            >
+              [{run.variant_label}]
+            </button>
+          ))}
+        </div>
+        {runs[mobileIdx] && (
+          <>
+            <p className="text-sm font-medium text-gray-500 mb-1">{runs[mobileIdx].variant_name}</p>
+            <p className="text-xs text-gray-400 mb-2">{runs[mobileIdx].strategy} · {runs[mobileIdx].model}{runs[mobileIdx].actual_model && runs[mobileIdx].actual_model !== runs[mobileIdx].model ? ` (${runs[mobileIdx].actual_model})` : ""}</p>
+            <RunMetrics run={runs[mobileIdx]} />
+            <SummaryBlock s={runs[mobileIdx].result} />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function LegacyComparisonView({ ragExp, fullExp }: { ragExp: SummaryExperimentResult; fullExp: SummaryExperimentResult }) {
+  const runs: ExperimentRun[] = [ragExp, fullExp].map((exp, i) => ({
+    ...exp,
+    variant_label: i === 0 ? "A" : "B",
+    variant_name: i === 0 ? "RAG" : "Full",
+    strategy: exp.strategy,
+    model: exp.model,
+  }))
+  return <ExperimentComparisonView runs={runs} experimentName="RAG vs Full" />
+}
+
 function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initialSummary: TenderSummary | null }) {
   const queryClient = useQueryClient()
   const [summary, setSummary] = useState<TenderSummary | null>(initialSummary)
@@ -335,6 +535,57 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
   const downloadStartRef = useRef<number | null>(null)
 
   const { data: docs = [] } = useDocsQuery(tenderId, downloading)
+
+  const { data: me } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => profileApi.getMe(),
+    staleTime: 5 * 60 * 1000,
+  })
+  const isStaff = (me as Record<string, unknown>)?.is_staff === true
+
+  const { data: legacyExperiments = [], refetch: refetchLegacy } = useQuery({
+    queryKey: ["experiments", tenderId],
+    queryFn: () => tendersApi.getExperiments(tenderId),
+    enabled: isStaff,
+    staleTime: 30_000,
+  })
+
+  const { data: namedExperiments = [] } = useQuery({
+    queryKey: ["named-experiments", tenderId],
+    queryFn: () => experimentsApi.listForTender(tenderId),
+    enabled: isStaff,
+    staleTime: 30_000,
+  })
+
+  const [selectedExpId, setSelectedExpId] = useState<number | null>(null)
+  const activeExpId = selectedExpId ?? (namedExperiments.length > 0 ? namedExperiments[0].id : null)
+
+  const { data: expRuns = [] } = useQuery({
+    queryKey: ["experiment-runs", activeExpId, tenderId],
+    queryFn: () => experimentsApi.getRuns(activeExpId!, tenderId),
+    enabled: isStaff && activeExpId !== null,
+    staleTime: 30_000,
+  })
+
+  const [expLoading, setExpLoading] = useState<string | null>(null)
+  const [expError, setExpError] = useState<string | null>(null)
+
+  const latestRag = legacyExperiments.find((e) => e.strategy === "rag")
+  const latestFull = legacyExperiments.find((e) => e.strategy === "full")
+  const canCompareLegacy = !!latestRag && !!latestFull && namedExperiments.length === 0
+
+  async function handleExperiment(strategy: "rag" | "full") {
+    setExpLoading(strategy)
+    setExpError(null)
+    try {
+      await tendersApi.runExperiment(tenderId, strategy)
+      refetchLegacy()
+    } catch (e: unknown) {
+      setExpError(e instanceof Error ? e.message : "Ошибка эксперимента")
+    } finally {
+      setExpLoading(null)
+    }
+  }
 
   useEffect(() => {
     if (initialSummary) setSummary(initialSummary)
@@ -356,7 +607,6 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
   useEffect(() => {
     if (phase !== "downloading") return
     const elapsed = downloadStartRef.current ? Date.now() - downloadStartRef.current : 0
-    // If docs are ready OR we've waited 30s with no docs (tender has no attachments)
     if (docsAreReady(docs) || (elapsed > 30_000 && docs.length === 0)) {
       setDownloading(false)
       generateSummary()
@@ -378,7 +628,6 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
       setPhase("downloading")
       setDownloading(true)
       downloadStartRef.current = Date.now()
-      // Safety-net: if docs never appear after 32s, force-proceed to summary
       const timeoutId = setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
       }, 32_000)
@@ -404,14 +653,16 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
       <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
         <Sparkles className="w-5 h-5 text-gray-400" />
         <p className="text-base font-semibold text-[#111827]">AI-резюме</p>
-        {summary && phase === "idle" && (
-          <button
-            onClick={() => handleGenerate(true)}
-            className="ml-auto text-sm text-gray-400 hover:text-[#111827] transition-colors"
-          >
-            обновить
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-3">
+          {summary && phase === "idle" && (
+            <button
+              onClick={() => handleGenerate(true)}
+              className="text-sm text-gray-400 hover:text-[#111827] transition-colors"
+            >
+              обновить
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="px-6 py-5">
@@ -442,6 +693,42 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
             <Sparkles className="w-5 h-5 group-hover:text-[#111827] transition-colors" />
             Сгенерировать резюме
           </button>
+        )}
+
+        {expError && (
+          <p className="mt-3 text-sm text-red-500">{expError}</p>
+        )}
+
+        {isStaff && namedExperiments.length > 0 && (
+          <div className="mt-4 border-t border-gray-100 pt-4">
+            {namedExperiments.length > 1 && (
+              <div className="flex items-center gap-2 mb-3 overflow-x-auto">
+                {namedExperiments.map((exp) => (
+                  <button
+                    key={exp.id}
+                    onClick={() => setSelectedExpId(exp.id)}
+                    className={`shrink-0 text-xs px-3 py-1 rounded-md transition-colors ${
+                      activeExpId === exp.id
+                        ? "bg-violet-100 text-violet-700 font-medium"
+                        : "text-gray-400 hover:text-gray-600"
+                    }`}
+                  >
+                    {exp.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {expRuns.length > 0 && (
+              <ExperimentComparisonView
+                runs={expRuns}
+                experimentName={namedExperiments.find((e) => e.id === activeExpId)?.name}
+              />
+            )}
+          </div>
+        )}
+
+        {canCompareLegacy && (
+          <LegacyComparisonView ragExp={latestRag!} fullExp={latestFull!} />
         )}
       </div>
     </div>
@@ -654,7 +941,11 @@ function TenderDetailPageInner() {
 
   const initialSummary: TenderSummary | null = (() => {
     if (!tender?.ai_summary) return null
-    try { return JSON.parse(tender.ai_summary) } catch { return null }
+    try {
+      const parsed = JSON.parse(tender.ai_summary)
+      if (parsed.version !== 2) return null
+      return parsed
+    } catch { return null }
   })()
 
   if (isLoading) {

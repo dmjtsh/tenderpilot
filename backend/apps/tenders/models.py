@@ -140,3 +140,69 @@ class TenderPipeline(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} → {self.tender.number} [{self.status}]"
+
+
+class PromptTemplate(models.Model):
+    name = models.CharField(max_length=50)
+    version = models.PositiveIntegerField(default=1)
+    system_prompt = models.TextField(blank=True)
+    user_template = models.TextField()
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("name", "version")
+        ordering = ["name", "-version"]
+
+    def __str__(self) -> str:
+        return f"{self.name} v{self.version}"
+
+
+class Experiment(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Черновик"
+        RUNNING = "running", "Выполняется"
+        COMPLETED = "completed", "Завершён"
+
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    tender_ids = models.JSONField(default=list)
+    variants = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.name} [{self.status}]"
+
+
+class SummaryExperiment(models.Model):
+    tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name="summary_experiments")
+    experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE, null=True, blank=True, related_name="runs")
+    variant_label = models.CharField(max_length=5, blank=True)
+    variant_name = models.CharField(max_length=100, blank=True)
+    strategy = models.CharField(max_length=10)
+    model = models.CharField(max_length=50, default="gpt-4o-mini")
+    actual_model = models.CharField(max_length=50, blank=True, default="")
+    prompt_template = models.ForeignKey(PromptTemplate, on_delete=models.SET_NULL, null=True, blank=True)
+    params = models.JSONField(default=dict)
+    input_tokens = models.PositiveIntegerField(default=0)
+    output_tokens = models.PositiveIntegerField(default=0)
+    cost_usd = models.DecimalField(max_digits=8, decimal_places=6, default=0)
+    duration_ms = models.PositiveIntegerField(default=0)
+    was_truncated = models.BooleanField(default=False)
+    truncated_reason = models.CharField(max_length=50, blank=True)
+    original_total_tokens = models.PositiveIntegerField(default=0)
+    result = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        label = f"[{self.variant_label}] " if self.variant_label else ""
+        return f"{self.tender.number} {label}[{self.strategy}] {self.created_at:%Y-%m-%d %H:%M}"

@@ -36,5 +36,10 @@ tenderpilot/tenders/
 frontend/.next/
 frontend/node_modules/
 
+# Experiment artifacts
+backend/experiment_*.txt
+backend/ab_test.txt
+backend/test_experiment*.txt
+
 # Claude Code
 .claude/settings.local.json

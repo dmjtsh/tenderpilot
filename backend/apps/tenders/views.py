@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Tender, TenderPipeline
+from .models import Experiment, SummaryExperiment, Tender, TenderPipeline
 from .serializers import TenderListSerializer, TenderDetailSerializer, TenderPipelineSerializer
 from .services import get_or_create_summary
 from apps.documents.services import answer_question
@@ -251,6 +251,72 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response({"data": {"action": "reparse", "count": count}, "error": None})
 
+    @action(detail=True, methods=["post"], url_path="summary/experiment",
+            permission_classes=[permissions.IsAdminUser])
+    def summary_experiment(self, request, pk=None):
+        from .models import SummaryExperiment
+        from .services import generate_experiment_summary
+
+        tender = self.get_object()
+        strategy = request.data.get("strategy", "full")
+        if strategy not in ("rag", "full"):
+            return Response({"data": None, "error": "strategy must be 'rag' or 'full'"}, status=400)
+
+        try:
+            result = generate_experiment_summary(tender, strategy=strategy)
+            exp = SummaryExperiment.objects.create(
+                tender=tender,
+                strategy=result["metrics"]["strategy"],
+                model=result["metrics"]["model"],
+                input_tokens=result["metrics"]["input_tokens"],
+                output_tokens=result["metrics"]["output_tokens"],
+                cost_usd=result["metrics"]["cost_usd"],
+                duration_ms=result["metrics"]["duration_ms"],
+                was_truncated=result["metrics"]["was_truncated"],
+                truncated_reason=result["metrics"]["truncated_reason"],
+                original_total_tokens=result["metrics"]["original_total_tokens"],
+                result=result["summary"],
+            )
+            return Response({"data": {
+                "id": exp.id,
+                "strategy": exp.strategy,
+                "model": exp.model,
+                "input_tokens": exp.input_tokens,
+                "output_tokens": exp.output_tokens,
+                "cost_usd": float(exp.cost_usd),
+                "duration_ms": exp.duration_ms,
+                "was_truncated": exp.was_truncated,
+                "truncated_reason": exp.truncated_reason,
+                "original_total_tokens": exp.original_total_tokens,
+                "result": exp.result,
+                "created_at": exp.created_at.isoformat(),
+            }, "error": None})
+        except Exception as e:
+            return Response({"data": None, "error": str(e)}, status=500)
+
+    @action(detail=True, methods=["get"], url_path="summary/experiments",
+            permission_classes=[permissions.IsAdminUser])
+    def summary_experiments(self, request, pk=None):
+        from .models import SummaryExperiment
+
+        tender = self.get_object()
+        experiments = SummaryExperiment.objects.filter(tender=tender)[:10]
+        data = [{
+            "id": e.id,
+            "strategy": e.strategy,
+            "model": e.model,
+            "input_tokens": e.input_tokens,
+            "output_tokens": e.output_tokens,
+            "cost_usd": float(e.cost_usd),
+            "duration_ms": e.duration_ms,
+            "was_truncated": e.was_truncated,
+            "truncated_reason": e.truncated_reason,
+            "original_total_tokens": e.original_total_tokens,
+            "result": e.result,
+            "created_at": e.created_at.isoformat(),
+        } for e in experiments]
+        return Response({"data": data, "error": None})
+
 
 class TenderPipelineViewSet(viewsets.ModelViewSet):
     serializer_class = TenderPipelineSerializer
@@ -290,3 +356,79 @@ class TenderPipelineViewSet(viewsets.ModelViewSet):
         if not entry:
             return Response({"data": None, "error": None})
         return Response({"data": TenderPipelineSerializer(entry).data, "error": None})
+
+
+class ExperimentViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Experiment.objects.all()
+        tender_id = self.request.query_params.get("tender_id")
+        if tender_id:
+            qs = qs.filter(tender_ids__contains=[int(tender_id)])
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        data = [{
+            "id": e.id,
+            "name": e.name,
+            "status": e.status,
+            "variants": e.variants,
+            "completed_at": e.completed_at.isoformat() if e.completed_at else None,
+        } for e in qs[:20]]
+        return Response({"data": data, "error": None})
+
+    def retrieve(self, request, *args, **kwargs):
+        exp = self.get_object()
+        return Response({"data": {
+            "id": exp.id,
+            "name": exp.name,
+            "description": exp.description,
+            "status": exp.status,
+            "tender_ids": exp.tender_ids,
+            "variants": exp.variants,
+            "created_at": exp.created_at.isoformat(),
+            "completed_at": exp.completed_at.isoformat() if exp.completed_at else None,
+        }, "error": None})
+
+    @action(detail=True, methods=["get"])
+    def runs(self, request, pk=None):
+        exp = self.get_object()
+        tender_id = request.query_params.get("tender_id")
+        qs = SummaryExperiment.objects.filter(experiment=exp)
+        if tender_id:
+            qs = qs.filter(tender_id=int(tender_id))
+        data = [{
+            "id": r.id,
+            "variant_label": r.variant_label,
+            "variant_name": r.variant_name,
+            "strategy": r.strategy,
+            "model": r.model,
+            "actual_model": r.actual_model,
+            "input_tokens": r.input_tokens,
+            "output_tokens": r.output_tokens,
+            "cost_usd": float(r.cost_usd),
+            "duration_ms": r.duration_ms,
+            "was_truncated": r.was_truncated,
+            "truncated_reason": r.truncated_reason,
+            "result": r.result,
+            "created_at": r.created_at.isoformat(),
+        } for r in qs]
+        return Response({"data": data, "error": None})
+
+    @action(detail=True, methods=["post"], url_path="run", permission_classes=[permissions.IsAdminUser])
+    def run_experiment(self, request, pk=None):
+        from .services import run_experiment_batch
+
+        exp = self.get_object()
+        if exp.status == Experiment.Status.RUNNING:
+            return Response({"data": None, "error": "Experiment is already running"}, status=400)
+
+        exp.status = Experiment.Status.DRAFT
+        exp.completed_at = None
+        exp.save(update_fields=["status", "completed_at"])
+        SummaryExperiment.objects.filter(experiment=exp).delete()
+
+        run_experiment_batch(exp)
+        return Response({"data": {"status": exp.status}, "error": None})

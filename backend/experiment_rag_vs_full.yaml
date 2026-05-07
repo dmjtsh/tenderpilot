@@ -1,0 +1,13 @@
+name: "RAG vs Full context"
+description: "Сравнение стратегий получения контекста: RAG (релевантные фрагменты) vs Full (все документы целиком)"
+variants:
+  - label: A
+    name: "RAG baseline"
+    strategy: rag
+    model: gpt-4o-mini
+    prompt_template: summary_v1
+  - label: B
+    name: "Full context"
+    strategy: full
+    model: gpt-4o-mini
+    prompt_template: summary_v1

@@ -1,0 +1,13 @@
+name: "GPT-5 Nano vs DeepSeek V4 Flash"
+description: "Проверяем самую дешёвую OpenAI модель против нашего текущего фаворита"
+variants:
+  - label: A
+    name: "DeepSeek V4 Flash"
+    strategy: full
+    model: deepseek-chat
+    prompt_template: summary_v1
+  - label: B
+    name: "GPT-5 Nano"
+    strategy: full
+    model: gpt-5-nano
+    prompt_template: summary_v1
