@@ -1124,7 +1124,7 @@ function TenderDetailPageInner() {
           {tender.source !== "bidzaar" && <DocumentsBlock tenderId={tender.id} />}
 
           {/* AI summary */}
-          <AiSummaryBlock tenderId={tender.id} initialSummary={initialSummary} />
+          {tender.source !== "bidzaar" && <AiSummaryBlock tenderId={tender.id} initialSummary={initialSummary} />}
 
           {/* Chat */}
           {tender.source !== "bidzaar" ? (
