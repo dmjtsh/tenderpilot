@@ -3,40 +3,46 @@ import { Button } from "@/components/ui/button"
 
 const plans = [
   {
-    name: "Solo",
-    subtitle: "Для специалиста",
-    price: "3 000",
-    popular: false,
+    name: "Бесплатный",
+    subtitle: "Попробовать",
+    price: "0",
     features: [
-      "1 пользователь",
-      "2 направления",
-      "ИИ резюме",
-      "Telegram алерты",
+      "1 компания",
+      "До 2 AI-резюме",
+      "До 10 RAG-вопросов",
+      "«Для вас» 10 тендеров",
     ],
   },
   {
-    name: "Team",
-    subtitle: "Для команды",
-    price: "9 000",
-    popular: true,
+    name: "Standard",
+    subtitle: "Для специалиста",
+    price: "2 990",
     features: [
-      "До 5 пользователей",
-      "До 5 направлений",
-      "Всё из Solo",
-      "Командная работа",
-      "Kanban доска",
+      "1 компания",
+      "До 60 AI-резюме",
+      "До 120 RAG-вопросов",
+      "«Для вас» без ограничений",
+    ],
+  },
+  {
+    name: "Premium",
+    subtitle: "Для команды",
+    price: "6 990",
+    features: [
+      "До 10 компаний",
+      "До 500 AI-резюме",
+      "До 1 000 RAG-вопросов",
+      "«Для вас» без ограничений",
     ],
   },
   {
     name: "Enterprise",
     subtitle: "Для крупных команд",
-    price: "По запросу",
-    popular: false,
+    price: "Договорная",
     features: [
-      "Безлимит пользователей",
-      "API доступ",
-      "White-label",
+      "Условия договорные",
       "Персональный менеджер",
+      "API доступ",
     ],
   },
 ]
@@ -51,30 +57,21 @@ export function Pricing() {
           </h2>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative border-2 bg-white p-8 ${
-                plan.popular
-                  ? "border-[#111827] shadow-lg"
-                  : "border-[#D1D5DB]"
-              }`}
+              className="border-2 border-[#D1D5DB] bg-white p-8"
             >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-[#111827] px-4 py-1 text-sm font-medium text-white">
-                    Популярный
-                  </span>
-                </div>
-              )}
 
               <div className="text-center">
                 <h3 className="text-lg font-semibold text-[#111827]">{plan.name}</h3>
                 <p className="mt-1 text-sm text-[#6B7280]">{plan.subtitle}</p>
                 <div className="mt-6">
-                  {plan.price === "По запросу" ? (
+                  {plan.price === "Договорная" ? (
                     <span className="text-3xl font-bold text-[#111827]">{plan.price}</span>
+                  ) : plan.price === "0" ? (
+                    <span className="text-4xl font-bold text-[#111827]">Бесплатно</span>
                   ) : (
                     <>
                       <span className="text-4xl font-bold text-[#111827]">{plan.price}</span>
@@ -94,18 +91,12 @@ export function Pricing() {
               </ul>
 
               <div className="mt-8">
-                {plan.popular ? (
-                  <Button className="w-full rounded-none bg-[#111827] text-white hover:bg-[#1f2937]">
-                    Начать
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-none border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6]"
-                  >
-                    {plan.price === "По запросу" ? "Связаться" : "Начать"}
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  className="w-full rounded-none border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6]"
+                >
+                  {plan.price === "Договорная" ? "Связаться" : "Начать"}
+                </Button>
               </div>
             </div>
           ))}

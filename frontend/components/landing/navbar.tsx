@@ -8,8 +8,8 @@ import { isAuthenticated } from "@/lib/auth"
 import Link from "next/link"
 
 const navLinks = [
-  { label: "Возможности", href: "#features" },
-  { label: "Отрасли", href: "#industries" },
+  { label: "Решение", href: "#solution" },
+  { label: "Как работает", href: "#how-it-works" },
   { label: "Тарифы", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
 ]
@@ -27,7 +27,7 @@ export function Navbar() {
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.png" width={28} height={28} className="rounded-xl" alt="ТендерПилот" />
+          <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="ТендерПилот" />
           <span className="text-lg font-bold text-[#111827]">ТендерПилот</span>
         </Link>
 

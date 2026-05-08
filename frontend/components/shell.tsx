@@ -22,7 +22,7 @@ function Sidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center px-5 border-b border-gray-200 shrink-0">
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/logo.png" width={28} height={28} className="rounded-xl" alt="ТендерПилот" />
+          <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="ТендерПилот" />
           <span className="text-lg font-bold text-[#111827]">ТендерПилот</span>
         </Link>
       </div>

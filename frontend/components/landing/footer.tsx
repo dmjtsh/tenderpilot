@@ -35,7 +35,7 @@ export function Footer() {
           {/* Logo Column */}
           <div className="col-span-2 md:col-span-4 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo.png" width={28} height={28} className="rounded-xl" alt="ТендерПилот" />
+              <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="ТендерПилот" />
               <span className="text-lg font-bold text-[#111827]">ТендерПилот</span>
             </Link>
             <p className="mt-4 text-sm text-[#6B7280]">
