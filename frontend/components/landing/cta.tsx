@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import Image from "next/image"
 import Link from "next/link"
 import { useScrollAnimation } from "@/hooks/use-scroll-animation"
 import { isAuthenticated } from "@/lib/auth"
@@ -39,15 +38,6 @@ export function CTA() {
             </div>
           </div>
 
-          <div className="hidden shrink-0 lg:block">
-            <Image
-              src="/sculptures/tomes.png"
-              alt=""
-              width={240}
-              height={240}
-              className="w-[180px] sm:w-[200px] lg:w-[240px] opacity-90"
-            />
-          </div>
         </div>
       </div>
     </section>
