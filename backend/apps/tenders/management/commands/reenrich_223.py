@@ -39,6 +39,11 @@ class Command(BaseCommand):
             help="Только активные тендеры (status=active)",
         )
         parser.add_argument(
+            "--all",
+            action="store_true",
+            help="Все 223-ФЗ тендеры, включая уже обогащённые (для исправления регионов)",
+        )
+        parser.add_argument(
             "--sync",
             action="store_true",
             help="Выполнить синхронно (без Celery), полезно для отладки",
@@ -60,7 +65,10 @@ class Command(BaseCommand):
         from apps.tenders.models import Tender
         from apps.tenders.tasks import enrich_tender
 
-        qs = Tender.objects.filter(law_type="223-ФЗ", deadline_at__isnull=True)
+        if options["all"]:
+            qs = Tender.objects.filter(law_type="223-ФЗ")
+        else:
+            qs = Tender.objects.filter(law_type="223-ФЗ", deadline_at__isnull=True)
         if options["active_only"]:
             qs = qs.filter(status=Tender.Status.ACTIVE)
 
@@ -71,7 +79,7 @@ class Command(BaseCommand):
             qs = qs[:limit]
             total = min(total, limit)
 
-        self.stdout.write(f"Найдено тендеров 223-ФЗ без дедлайна: {total}")
+        self.stdout.write(f"Найдено тендеров 223-ФЗ{'(все)' if options['all'] else ' без дедлайна'}: {total}")
         if total == 0:
             return
 
