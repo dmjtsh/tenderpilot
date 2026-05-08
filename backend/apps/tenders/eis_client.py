@@ -263,11 +263,143 @@ def _parse_search_entry(entry: lxml_html.HtmlElement) -> dict[str, Any] | None:
 # Детальный парсинг страницы тендера
 # ---------------------------------------------------------------------------
 
+def _is_223_url(url: str) -> bool:
+    return "/223/" in url or "notice223" in url
+
+
+def _fetch_tender_detail_223(purchase_number: str, source_url: str) -> dict[str, Any]:
+    """Парсит страницу common-info тендера 223-ФЗ."""
+    info_url = (
+        f"{BASE_URL}/223/purchase/public/purchase/info/common-info.html"
+        f"?regNumber={purchase_number}"
+    )
+    try:
+        resp = requests.get(info_url, headers=HEADERS, timeout=20, allow_redirects=True)
+        resp.raise_for_status()
+        final_url = resp.url
+        tree = _tree_from_html(resp.text)
+    except Exception as exc:
+        logger.error("Failed to fetch 223-FZ detail for %s: %s", purchase_number, exc)
+        return {}
+
+    f = lambda label: _field_after(tree, label)
+
+    # НМЦК
+    price_raw = ""
+    for el in tree.xpath('//*[contains(@class,"price-block__value")]'):
+        t = " ".join(s.strip() for s in el.xpath(".//text()") if s.strip())
+        if t and any(c.isdigit() for c in t):
+            price_raw = t
+            break
+    if not price_raw:
+        price_raw = (
+            f("Начальная (максимальная) цена договора")
+            or f("Начальная цена договора")
+            or f("Начальная (максимальная) цена контракта")
+        )
+    m_price = re.search(r"[\d\s]+[,.][\d]+", price_raw)
+    nmck = _parse_price(m_price.group(0) if m_price else price_raw)
+
+    # Заказчик
+    customer_name = f("Заказчик") or f("Организация, осуществляющая закупку")
+    customer_inn = ""
+    inn_el = tree.xpath('//*[normalize-space(text())="ИНН"]/following-sibling::*[1]')
+    if inn_el:
+        candidate = inn_el[0].text_content().strip()
+        if re.match(r"^\d{10,12}$", candidate):
+            customer_inn = candidate
+
+    # Регион из адреса места нахождения
+    # Формат адреса ЕИС: "693020, САХАЛИНСКАЯ ОБЛАСТЬ, г.о. ГОРОД ЮЖНО-САХАЛИНСК, ..."
+    # Первая часть — почтовый индекс (6 цифр), вторая — регион
+    customer_region = ""
+    location_raw = f("Место нахождения") or f("Место поставки, выполнения работ или оказания услуг")
+    if location_raw:
+        parts = [p.strip() for p in location_raw.split(",")]
+        # Пропускаем почтовый индекс (6 цифр) в начале
+        if parts and re.match(r"^\d{6}$", parts[0]):
+            parts = parts[1:]
+        # Ищем часть с ключевым словом региона
+        REGION_KEYWORDS = ["ОБЛАСТЬ", "КРАЙ", "РЕСПУБЛИКА", "ОКРУГ", "МОСКВА", "САНКТ-ПЕТЕРБУРГ", "СЕВАСТОПОЛЬ", "БАЙКОНУР"]
+        for part in parts:
+            if any(word in part.upper() for word in REGION_KEYWORDS):
+                customer_region = part.strip().title()
+                break
+        # Fallback: первая непустая часть, если не цифры
+        if not customer_region:
+            for part in parts:
+                if part and not re.match(r"^\d+$", part):
+                    customer_region = part.strip().title()
+                    break
+
+    # ОКПД2
+    okpd_codes: list[str] = []
+    for row in tree.xpath('//*[contains(@class,"tableBlock__row") or contains(@class,"lots-position")]'):
+        cells = row.xpath('.//*[contains(@class,"col") or self::td]')
+        texts = [
+            " ".join(t.strip() for t in c.xpath(".//text()") if t.strip())
+            for c in cells
+        ]
+        texts = [t for t in texts if t]
+        if texts and re.match(r"\d{2}\.\d{2}", texts[0]):
+            code = re.match(r"[\d.]+", texts[0]).group(0).rstrip(".")
+            okpd_codes.append(code)
+
+    # Дедлайн — 223-ФЗ использует другой лейбл с уточнением "по местному времени"
+    deadline_raw = (
+        f("Дата и время окончания срока подачи заявок (по местному времени заказчика)")
+        or f("Дата и время окончания срока подачи заявок")
+        or f("Окончание подачи заявок")
+    )
+    auction_date_raw = (
+        f("Дата подведения итогов")
+        or f("Дата и время проведения торгов")
+        or f("Дата рассмотрения и оценки заявок")
+    )
+    published_raw = f("Дата размещения извещения") or f("Размещено")
+
+    # Торговая площадка
+    platform = (
+        f("Наименование электронной торговой площадки")
+        or f("Наименование электронной площадки")
+        or f("Место проведения")
+    )
+    platform_url = f("Адрес электронной торговой площадки") or f("Адрес электронной площадки") or ""
+
+    return {
+        "number": purchase_number,
+        "title": f("Наименование закупки") or f("Наименование объекта закупки"),
+        "nmck": nmck,
+        "customer_name": customer_name,
+        "customer_region": customer_region,
+        "customer_inn": customer_inn,
+        "region": customer_region,
+        "okpd_codes": okpd_codes,
+        "published_at": _parse_date(published_raw),
+        "deadline_at": _parse_date(deadline_raw),
+        "auction_date": _parse_date(auction_date_raw) if auction_date_raw else None,
+        "law_type": "223-ФЗ",
+        "trading_platform": platform,
+        "trading_platform_url": platform_url,
+        "bid_security_amount": None,
+        "bid_security_required": None,
+        "contract_security_amount": None,
+        "contract_security_percent": None,
+        "status": "active",
+        "source_url": final_url,
+        "raw_json": {},
+    }
+
+
 def fetch_tender_detail(purchase_number: str, fallback_url: str = "") -> dict[str, Any]:
     """
-    Парсит страницу common-info тендера (44-ФЗ).
+    Парсит страницу common-info тендера (44-ФЗ или 223-ФЗ).
+    Определяет тип закона по fallback_url и вызывает нужный парсер.
     Возвращает нормализованный словарь, совместимый с services.upsert_tender().
     """
+    if _is_223_url(fallback_url):
+        return _fetch_tender_detail_223(purchase_number, fallback_url)
+
     info_url = (
         f"{BASE_URL}/epz/order/notice/ea44/view/common-info.html"
         f"?regNumber={purchase_number}"

@@ -85,6 +85,8 @@ class RegionsListView(APIView):
     def get(self, request):
         regions = (
             Tender.objects.exclude(region="")
+            .exclude(region__regex=r"^\d+$")   # убираем почтовые индексы и числа
+            .exclude(region__startswith="#")   # убираем #empty# и подобное
             .values_list("region", flat=True)
             .distinct()
             .order_by("region")
@@ -122,7 +124,8 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         now = timezone.now()
         return Tender.objects.select_related("customer").filter(
-            deadline_at__gt=now
+            Q(deadline_at__gt=now) | Q(deadline_at__isnull=True),
+            status=Tender.Status.ACTIVE,
         )
 
     def get_serializer_class(self):
