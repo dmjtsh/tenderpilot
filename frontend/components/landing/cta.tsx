@@ -24,7 +24,7 @@ export function CTA() {
         <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl text-center lg:text-left">
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Каждый день в Excel это упущенные тендеры и потерянная прибыль.
+              Каждый день обработки тендеров вручную это упущенные тендеры и потерянная прибыль.
             </h2>
             <div className="mt-8">
               <Link href="/login">
@@ -37,9 +37,6 @@ export function CTA() {
                 </Button>
               </Link>
             </div>
-            <p className="mt-4 text-base text-gray-400">
-              7 дней без оплаты. Без привязки карты.
-            </p>
           </div>
 
           <div className="hidden shrink-0 lg:block">
