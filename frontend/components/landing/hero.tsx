@@ -12,20 +12,20 @@ export function Hero() {
         <div className="flex flex-col items-center gap-10 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl text-center lg:text-left">
             <div className="animate-hero" style={{ animationDelay: "0.15s" }}>
-              <h1 className="text-4xl font-bold tracking-tight text-[#111827] sm:text-5xl lg:text-6xl">
+              <h1 className="text-5xl font-bold tracking-tight leading-tight text-[#111827] sm:text-6xl lg:text-7xl">
                 <span className="text-balance">Находите нужные тендеры.</span>
                 <br />
                 <span className="font-serif italic text-[#111827]">Пока конкуренты ищут вручную.</span>
               </h1>
             </div>
 
-            <p className="mt-6 text-lg font-semibold text-[#111827] animate-hero" style={{ animationDelay: "0.3s" }}>
+            <p className="mt-6 text-lg font-medium text-[#6B7280] animate-hero" style={{ animationDelay: "0.3s" }}>
               Первый ИИ-автоматизатор тендеров в России.
             </p>
 
             <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row lg:justify-start animate-hero" style={{ animationDelay: "0.45s" }}>
               <Link href="/login">
-                <Button size="lg" className="rounded-none bg-[#111827] text-white hover:bg-[#1f2937] btn-hover-lift">
+                <Button size="lg" className="rounded-none bg-[#111827] text-white hover:bg-[#1f2937] btn-hover-lift h-12 px-8 text-base font-semibold">
                   Начать бесплатно
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -34,7 +34,7 @@ export function Hero() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="rounded-none border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6] btn-hover-lift"
+                  className="rounded-none border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6] btn-hover-lift h-12 px-8 text-base font-semibold"
                 >
                   <Play className="mr-2 h-4 w-4" />
                   Смотреть демо

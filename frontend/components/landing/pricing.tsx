@@ -61,7 +61,7 @@ export function Pricing() {
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className="border-2 border-[#D1D5DB] bg-white p-8"
+              className="flex flex-col border-2 border-[#D1D5DB] bg-white p-8"
             >
 
               <div className="text-center">
@@ -90,10 +90,10 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <div className="mt-8">
+              <div className="mt-auto pt-8">
                 <Button
                   variant="outline"
-                  className="w-full rounded-none border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6]"
+                  className="w-full rounded-none border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6] h-12 text-base font-semibold"
                 >
                   {plan.price === "Договорная" ? "Связаться" : "Начать"}
                 </Button>

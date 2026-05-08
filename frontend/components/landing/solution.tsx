@@ -8,19 +8,19 @@ import { useScrollAnimation } from "@/hooks/use-scroll-animation"
 const facts = [
   {
     title: "Все площадки в одной ленте",
-    text: <><strong>ЕИС, РТС, Сбер-АСТ, Росэлторг, Фабрикант</strong> плюс <strong>B2B-площадки</strong> (Бидзаар, B2B-Center, ОТС.Маркет). Один поиск, <strong>все тендеры</strong>.</>,
+    text: "ЕИС, РТС, Сбер-АСТ, Росэлторг, Фабрикант плюс B2B-площадки (Бидзаар, B2B-Center, ОТС.Маркет). Один поиск, все тендеры.",
   },
   {
     title: "ИИ понимает деятельность вашей компании",
-    text: <>По профилю компании ИИ определяет <strong>суть её деятельности</strong> и подбирает <strong>по-настоящему релевантные</strong> тендеры.</>,
+    text: "По профилю компании ИИ определяет суть её деятельности и подбирает по-настоящему релевантные тендеры.",
   },
   {
     title: "AI-резюме за 10 секунд",
-    text: <>Извлекает <strong>суть работ</strong>, <strong>условия оплаты</strong>, <strong>штрафы</strong>, <strong>гарантийные обязательства</strong> и <strong>красные флаги</strong> из всей документации.</>,
+    text: "Извлекает суть работ, условия оплаты, штрафы, гарантийные обязательства и красные флаги из всей документации.",
   },
   {
     title: "Чат с тендером",
-    text: <>Спрашиваете напрямую, получаете ответ с <strong>цитатой из конкретного пункта</strong> документа.</>,
+    text: "Спрашиваете напрямую, получаете ответ с цитатой из конкретного пункта документа.",
   },
 ]
 
@@ -35,8 +35,8 @@ export function Solution() {
             <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
               <span className="font-serif italic">ТендерПилот делает это за вас</span>
             </h2>
-            <p className="mt-6 text-lg leading-relaxed text-gray-300 [&_strong]:text-white [&_strong]:font-semibold">
-              ИИ читает <strong>200 страниц</strong> ТЗ за <strong>10 секунд</strong>, находит <strong>подводные камни</strong>,
+            <p className="mt-6 text-lg leading-relaxed text-gray-300">
+              ИИ читает 200 страниц ТЗ за 10 секунд, находит подводные камни,
               подбирает тендеры под профиль вашего бизнеса и отвечает на любые
               вопросы по документации.
             </p>
@@ -73,7 +73,7 @@ export function Solution() {
                 <h3 className="text-lg font-semibold text-white">
                   {fact.title}
                 </h3>
-                <p className="mt-2 text-base leading-relaxed text-gray-300 [&_strong]:text-white [&_strong]:font-semibold">
+                <p className="mt-2 text-base leading-relaxed text-gray-300">
                   {fact.text}
                 </p>
               </div>

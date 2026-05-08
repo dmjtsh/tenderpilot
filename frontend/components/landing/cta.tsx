@@ -29,7 +29,7 @@ export function CTA() {
               <Link href="/login">
                 <Button
                   size="lg"
-                  className="rounded-none bg-white text-[#111827] hover:bg-gray-100 btn-hover-lift"
+                  className="rounded-none bg-white text-[#111827] hover:bg-gray-100 btn-hover-lift h-12 px-8 text-base font-semibold"
                 >
                   Начать бесплатно
                   <ArrowRight className="ml-2 h-4 w-4" />
