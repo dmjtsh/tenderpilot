@@ -347,8 +347,13 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
   }
 
   useEffect(() => {
-    if (docs.length > 0 && !isProcessing) setDownloading(false)
-  }, [docs.length, isProcessing])
+    if (downloading && docs.length > 0 && !isProcessing) {
+      // Docs already exist and are all done/skipped — reset after short delay
+      // to allow refetch to settle (handles repeated clicks)
+      const t = setTimeout(() => setDownloading(false), 2000)
+      return () => clearTimeout(t)
+    }
+  }, [downloading, docs.length, isProcessing])
 
   return (
     <div className="mb-8 border border-gray-200 bg-white">
