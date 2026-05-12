@@ -155,8 +155,6 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
         result: list[dict] = []
         for d in top_level:
-            if d.parse_status == TenderDocument.ParseStatus.SKIPPED:
-                continue
             children = list(d.children.order_by("content_priority", "filename"))
             if children:
                 for child in children:
@@ -170,6 +168,8 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 ):
                     result.append(self._doc_to_dict(d))
             else:
+                # Always show top-level docs without children, including skipped
+                # (user should see the file even if we couldn't parse its content)
                 result.append(self._doc_to_dict(d))
         return Response({"data": result, "error": None})
 
