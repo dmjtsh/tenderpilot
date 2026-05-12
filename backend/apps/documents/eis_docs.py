@@ -39,7 +39,7 @@ def fetch_document_links(purchase_number: str, source_url: str = "") -> list[dic
     Для 223-ФЗ (notice223) использует двухшаговый парсинг через noticeInfoId.
     Для 44-ФЗ пробует несколько шаблонов URL (ea44, ea20, zk44, ok44).
     """
-    if "notice223" in source_url:
+    if "notice223" in source_url or "/223/" in source_url:
         links = _fetch_notice223_links(purchase_number)
         if links:
             return links
@@ -70,25 +70,28 @@ def fetch_document_links(purchase_number: str, source_url: str = "") -> list[dic
 def _fetch_notice223_links(purchase_number: str) -> list[dict[str, str]]:
     """
     Двухшаговый парсинг документов 223-ФЗ:
-    1. Получаем noticeInfoId из common-info страницы по regNumber
+    1. Получаем noticeInfoId из common-info страницы по regNumber (пробуем оба URL-формата)
     2. Парсим documents.html?noticeInfoId=XXX
     """
-    common_info_url = (
-        f"{BASE_URL}/epz/order/notice/notice223/common-info.html"
-        f"?regNumber={purchase_number}"
-    )
-    try:
-        resp = requests.get(common_info_url, headers=HEADERS, timeout=20, allow_redirects=True)
-        if resp.status_code != 200:
-            logger.warning("notice223 common-info returned %d for %s", resp.status_code, purchase_number)
-            return []
-        match = re.search(r'noticeInfoId=(\d+)', resp.text)
-        if not match:
-            logger.warning("noticeInfoId not found in common-info for %s", purchase_number)
-            return []
-        notice_info_id = match.group(1)
-    except Exception as exc:
-        logger.warning("Error fetching notice223 common-info for %s: %s", purchase_number, exc)
+    common_info_urls = [
+        f"{BASE_URL}/epz/order/notice/notice223/common-info.html?regNumber={purchase_number}",
+        f"{BASE_URL}/223/purchase/public/purchase/info/common-info.html?regNumber={purchase_number}",
+    ]
+    notice_info_id = None
+    for common_info_url in common_info_urls:
+        try:
+            resp = requests.get(common_info_url, headers=HEADERS, timeout=20, allow_redirects=True)
+            if resp.status_code != 200:
+                continue
+            match = re.search(r'noticeInfoId=(\d+)', resp.text)
+            if match:
+                notice_info_id = match.group(1)
+                break
+        except Exception as exc:
+            logger.warning("Error fetching notice223 common-info %s: %s", common_info_url, exc)
+
+    if not notice_info_id:
+        logger.warning("noticeInfoId not found for 223-FZ tender %s", purchase_number)
         return []
 
     docs_url = (
