@@ -19,7 +19,10 @@ SCAN_TEXT_THRESHOLD = 100
 
 def detect_file_type(filename: str) -> str:
     ext = Path(filename).suffix.lower().lstrip(".")
-    return ext
+    # Реальные расширения не длиннее 10 символов.
+    # Если суффикс длиннее — это часть имени файла (напр. "1. Приказ..."),
+    # а не расширение.
+    return ext if len(ext) <= 10 else ""
 
 
 def detect_file_type_by_content(data: bytes) -> str:
