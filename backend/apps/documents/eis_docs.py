@@ -30,6 +30,7 @@ DOCUMENTS_URL_TEMPLATES = [
     "/epz/order/notice/ea20/view/documents.html?regNumber={number}",
     "/epz/order/notice/zk44/view/documents.html?regNumber={number}",
     "/epz/order/notice/ok44/view/documents.html?regNumber={number}",
+    "/epz/order/notice/notice223/view/documents.html?regNumber={number}",
 ]
 
 

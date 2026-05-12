@@ -145,6 +145,17 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
+
+# Пользовательские действия идут в очередь high_priority,
+# фоновые задачи — в default очередь celery.
+# Воркер запускается с -Q high_priority,celery (порядок = приоритет)
+CELERY_TASK_ROUTES = {
+    "apps.documents.tasks.download_and_parse_documents": {"queue": "high_priority"},
+    "apps.documents.tasks.parse_document": {"queue": "high_priority"},
+    "apps.documents.tasks.index_document_chunks": {"queue": "high_priority"},
+    "apps.search.tasks.rebuild_direction_vector": {"queue": "high_priority"},
+}
+
 CELERY_BEAT_SCHEDULE = {
     "sync-active-tenders": {
         "task": "apps.tenders.tasks.sync_active_tenders",
