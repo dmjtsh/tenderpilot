@@ -135,9 +135,21 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="summary")
     def summary(self, request, pk=None):
+        from apps.billing.services import check_and_increment
+        from apps.billing.exceptions import QuotaExceeded
+
         tender = self.get_object()
+        is_refresh = request.query_params.get("refresh") == "true"
+        needs_generation = is_refresh or not tender.ai_summary
+
+        if needs_generation:
+            try:
+                check_and_increment(request.user, "ai_summary")
+            except QuotaExceeded as e:
+                return Response({"data": None, "error": e.detail}, status=402)
+
         try:
-            if request.query_params.get("refresh") == "true":
+            if is_refresh:
                 tender.ai_summary = ""
                 tender.save(update_fields=["ai_summary"])
             data = get_or_create_summary(tender)
@@ -203,12 +215,19 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="ask")
     def ask(self, request, pk=None):
+        from apps.billing.services import check_and_increment
+        from apps.billing.exceptions import QuotaExceeded
+
         tender = self.get_object()
         question = (request.data.get("question") or "").strip()
         if not question:
             return Response({"data": None, "error": "Вопрос не может быть пустым"}, status=400)
         if len(question) > 500:
             return Response({"data": None, "error": "Вопрос слишком длинный (макс. 500 символов)"}, status=400)
+        try:
+            check_and_increment(request.user, "rag_question")
+        except QuotaExceeded as e:
+            return Response({"data": None, "error": e.detail}, status=402)
         try:
             result = answer_question(tender.id, question)
             return Response({"data": result, "error": None})

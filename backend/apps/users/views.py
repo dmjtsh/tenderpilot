@@ -84,6 +84,14 @@ class CompanyProfileListCreateView(generics.ListCreateAPIView):
         return CompanyProfile.objects.filter(user=self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
+        from apps.billing.services import check_company_limit
+        from apps.billing.exceptions import QuotaExceeded
+        from rest_framework.exceptions import PermissionDenied
+
+        try:
+            check_company_limit(self.request.user)
+        except QuotaExceeded as e:
+            raise PermissionDenied(detail=e.detail)
         serializer.save(user=self.request.user)
 
 

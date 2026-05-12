@@ -590,7 +590,12 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
       setSummary(data)
       setPhase("idle")
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Ошибка генерации")
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 402) {
+        setError("quota_exceeded")
+      } else {
+        setError(e instanceof Error ? e.message : "Ошибка генерации")
+      }
       setPhase("idle")
     }
   }
@@ -665,6 +670,13 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
           <div className="flex items-center gap-3 text-[15px] text-gray-500">
             <Loader2 className="w-5 h-5 animate-spin" />
             Анализируем тендер...
+          </div>
+        ) : error === "quota_exceeded" ? (
+          <div className="space-y-2">
+            <p className="text-[15px] text-amber-600">Лимит AI-резюме исчерпан на этом тарифе.</p>
+            <a href="/#pricing" className="text-sm text-violet-600 hover:text-violet-700 font-medium">
+              Улучшить тариф →
+            </a>
           </div>
         ) : error ? (
           <div className="space-y-3">
@@ -819,6 +831,7 @@ function TenderChat({ tenderId }: { tenderId: number }) {
   const [noDocs, setNoDocs] = useState(false)
   const [needsReindex, setNeedsReindex] = useState(false)
   const [reindexing, setReindexing] = useState(false)
+  const [quotaExceeded, setQuotaExceeded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -846,8 +859,14 @@ function TenderChat({ tenderId }: { tenderId: number }) {
       } else {
         setMessages((prev) => [...prev, { role: "assistant", text: "Не удалось найти ответ в документах." }])
       }
-    } catch {
-      setMessages((prev) => [...prev, { role: "assistant", text: "Ошибка при получении ответа." }])
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 402) {
+        setQuotaExceeded(true)
+        setMessages((prev) => prev.slice(0, -1))
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", text: "Ошибка при получении ответа." }])
+      }
     } finally {
       setLoading(false)
     }
@@ -868,7 +887,14 @@ function TenderChat({ tenderId }: { tenderId: number }) {
       </div>
 
       <div className="px-6 py-5">
-        {noDocs ? (
+        {quotaExceeded ? (
+          <div className="space-y-2">
+            <p className="text-[15px] text-amber-600">Лимит вопросов исчерпан на этом тарифе.</p>
+            <a href="/#pricing" className="text-sm text-violet-600 hover:text-violet-700 font-medium">
+              Улучшить тариф →
+            </a>
+          </div>
+        ) : noDocs ? (
           <p className="text-[15px] text-gray-500">
             Загрузите документы тендера, чтобы задавать вопросы.
           </p>

@@ -353,6 +353,21 @@ export const directionsApi = {
     ),
 }
 
+// Billing
+export interface UserPlan {
+  plan: "free" | "standard" | "premium"
+  expires_at: string | null
+  ai_summaries: { used: number; limit: number }
+  rag_questions: { used: number; limit: number }
+  companies: { used: number; limit: number }
+  reset_at: string
+}
+
+export const billingApi = {
+  getInfo: () =>
+    client.get("/billing/me/").then((r) => r.data.data as UserPlan),
+}
+
 // Experiments
 export const experimentsApi = {
   listForTender: (tenderId: number) =>

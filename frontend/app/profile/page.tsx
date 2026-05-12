@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { isAuthenticated } from "@/lib/auth"
-import { profileApi, directionsApi, tendersApi, type CompanyProfile, type CompanyDirection, type InnLookupResult } from "@/lib/api"
+import { profileApi, directionsApi, tendersApi, billingApi, type CompanyProfile, type CompanyDirection, type InnLookupResult, type UserPlan } from "@/lib/api"
 import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles, Building2 } from "lucide-react"
 import { OkvedCombobox } from "@/components/okved-combobox"
 
@@ -547,6 +547,66 @@ function InnSuggestPanel({
   )
 }
 
+// ─── PlanBlock ────────────────────────────────────────────────────────────────
+
+const PLAN_LABEL: Record<string, string> = { free: "Free", standard: "Standard", premium: "Premium" }
+const PLAN_COLOR: Record<string, string> = {
+  free: "bg-gray-100 text-gray-600",
+  standard: "bg-violet-100 text-violet-700",
+  premium: "bg-amber-100 text-amber-700",
+}
+
+function UsageBar({ used, limit, label }: { used: number; limit: number; label: string }) {
+  const pct = Math.min(100, Math.round((used / limit) * 100))
+  const nearLimit = pct >= 80
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-gray-600">{label}</span>
+        <span className={`font-medium tabular-nums ${nearLimit ? "text-amber-600" : "text-gray-700"}`}>
+          {used} / {limit}
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${nearLimit ? "bg-amber-500" : "bg-violet-500"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function PlanBlock({ plan }: { plan: UserPlan }) {
+  const resetDate = new Date(plan.reset_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })
+  return (
+    <div className="border border-gray-200 bg-white">
+      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <p className="text-base font-semibold text-[#111827]">Тариф</p>
+          <span className={`text-sm px-2.5 py-0.5 font-medium ${PLAN_COLOR[plan.plan] ?? PLAN_COLOR.free}`}>
+            {PLAN_LABEL[plan.plan] ?? plan.plan}
+          </span>
+        </div>
+        {plan.plan === "free" && (
+          <a
+            href="/#pricing"
+            className="text-sm text-violet-600 hover:text-violet-700 font-medium transition-colors"
+          >
+            Улучшить тариф
+          </a>
+        )}
+      </div>
+      <div className="px-6 py-5 space-y-4">
+        <UsageBar used={plan.ai_summaries.used} limit={plan.ai_summaries.limit} label="AI-резюме" />
+        <UsageBar used={plan.rag_questions.used} limit={plan.rag_questions.limit} label="Вопросы по тендеру" />
+        <UsageBar used={plan.companies.used} limit={plan.companies.limit} label="Компании" />
+        <p className="text-xs text-gray-400">Счётчики сбрасываются {resetDate}</p>
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
@@ -564,6 +624,12 @@ export default function ProfilePage() {
   const { data: companies = [], isLoading: companiesLoading } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
+  })
+
+  const { data: billingInfo } = useQuery<UserPlan>({
+    queryKey: ["billing"],
+    queryFn: () => billingApi.getInfo(),
+    staleTime: 60_000,
   })
 
   const { data: regionOptions = [] } = useQuery<string[]>({
@@ -684,6 +750,9 @@ export default function ProfilePage() {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+
+          {/* Plan */}
+          {billingInfo && <PlanBlock plan={billingInfo} />}
 
           {/* Company selector */}
           <div className="border border-gray-200 bg-white">
