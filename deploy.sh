@@ -34,6 +34,11 @@ cd "$APP/frontend"
 npx next build 2>&1 | tail -3
 ok "frontend собран"
 
+step "Обновление systemd сервисов"
+cp "$APP/infra/tenderpilot-worker.service" /etc/systemd/system/tenderpilot-worker.service
+systemctl daemon-reload
+ok "systemd обновлён"
+
 step "Рестарт сервисов"
 systemctl restart tenderpilot-web tenderpilot-worker tenderpilot-beat tenderpilot-frontend
 systemctl reload nginx

@@ -1,0 +1,15 @@
+[Unit]
+Description=TenderPilot Celery Worker
+After=network.target docker.service tenderpilot-web.service
+Requires=docker.service
+
+[Service]
+User=root
+WorkingDirectory=/opt/tenderpilot/backend
+EnvironmentFile=/opt/tenderpilot/backend/.env
+ExecStart=/opt/tenderpilot/venv/bin/celery -A config worker --loglevel=info --concurrency=1 -Q high_priority,celery --logfile=/var/log/tenderpilot/celery-worker.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
