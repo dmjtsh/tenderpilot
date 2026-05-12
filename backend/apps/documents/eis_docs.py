@@ -5,7 +5,6 @@
 import logging
 import re
 import time
-from typing import Any
 from urllib.parse import urljoin
 
 import requests
@@ -25,21 +24,30 @@ HEADERS = {
     "Accept-Language": "ru-RU,ru;q=0.9",
 }
 
-DOCUMENTS_URL_TEMPLATES = [
+# Шаблоны для 44-ФЗ: ea44, ea20, zk44, ok44 + прочие
+DOCUMENTS_URL_TEMPLATES_44 = [
     "/epz/order/notice/ea44/view/documents.html?regNumber={number}",
     "/epz/order/notice/ea20/view/documents.html?regNumber={number}",
     "/epz/order/notice/zk44/view/documents.html?regNumber={number}",
     "/epz/order/notice/ok44/view/documents.html?regNumber={number}",
-    "/epz/order/notice/notice223/view/documents.html?regNumber={number}",
 ]
 
 
-def fetch_document_links(purchase_number: str) -> list[dict[str, str]]:
+def fetch_document_links(purchase_number: str, source_url: str = "") -> list[dict[str, str]]:
     """
     Возвращает список {url, filename} для документов тендера.
-    Пробует несколько шаблонов URL (ea44, ea20, zk44, ok44).
+    Для 223-ФЗ (notice223) использует двухшаговый парсинг через noticeInfoId.
+    Для 44-ФЗ пробует несколько шаблонов URL (ea44, ea20, zk44, ok44).
     """
-    for template in DOCUMENTS_URL_TEMPLATES:
+    if "notice223" in source_url:
+        links = _fetch_notice223_links(purchase_number)
+        if links:
+            return links
+        logger.info("No documents found for 223-FZ tender %s", purchase_number)
+        return []
+
+    # 44-ФЗ и остальные форматы
+    for template in DOCUMENTS_URL_TEMPLATES_44:
         url = BASE_URL + template.format(number=purchase_number)
         try:
             resp = requests.get(url, headers=HEADERS, timeout=20, allow_redirects=True)
@@ -59,7 +67,85 @@ def fetch_document_links(purchase_number: str) -> list[dict[str, str]]:
     return []
 
 
+def _fetch_notice223_links(purchase_number: str) -> list[dict[str, str]]:
+    """
+    Двухшаговый парсинг документов 223-ФЗ:
+    1. Получаем noticeInfoId из common-info страницы по regNumber
+    2. Парсим documents.html?noticeInfoId=XXX
+    """
+    common_info_url = (
+        f"{BASE_URL}/epz/order/notice/notice223/common-info.html"
+        f"?regNumber={purchase_number}"
+    )
+    try:
+        resp = requests.get(common_info_url, headers=HEADERS, timeout=20, allow_redirects=True)
+        if resp.status_code != 200:
+            logger.warning("notice223 common-info returned %d for %s", resp.status_code, purchase_number)
+            return []
+        match = re.search(r'noticeInfoId=(\d+)', resp.text)
+        if not match:
+            logger.warning("noticeInfoId not found in common-info for %s", purchase_number)
+            return []
+        notice_info_id = match.group(1)
+    except Exception as exc:
+        logger.warning("Error fetching notice223 common-info for %s: %s", purchase_number, exc)
+        return []
+
+    docs_url = (
+        f"{BASE_URL}/epz/order/notice/notice223/documents.html"
+        f"?noticeInfoId={notice_info_id}"
+    )
+    try:
+        resp = requests.get(docs_url, headers=HEADERS, timeout=20, allow_redirects=True)
+        if resp.status_code != 200:
+            logger.warning("notice223 documents page returned %d for noticeInfoId=%s", resp.status_code, notice_info_id)
+            return []
+        links = _extract_notice223_links(resp.text)
+        if links:
+            logger.info(
+                "Found %d documents for 223-FZ tender %s (noticeInfoId=%s)",
+                len(links), purchase_number, notice_info_id,
+            )
+        return links
+    except Exception as exc:
+        logger.warning("Error fetching notice223 documents for %s: %s", purchase_number, exc)
+        return []
+
+
+def _extract_notice223_links(html_text: str) -> list[dict[str, str]]:
+    """Парсит ссылки на файлы со страницы документов 223-ФЗ."""
+    tree = lxml_html.fromstring(html_text)
+    results: list[dict[str, str]] = []
+    seen_urls: set[str] = set()
+
+    for a in tree.xpath('//a[contains(@href, "/223/purchase/public/download/download.html")]'):
+        href = a.get("href", "").strip()
+        if not href:
+            continue
+        if not href.startswith("http"):
+            href = urljoin(BASE_URL, href)
+        if href in seen_urls:
+            continue
+        seen_urls.add(href)
+
+        filename = re.sub(r'\s+', ' ', a.text_content()).strip()
+        if not filename or len(filename) > 300:
+            # Fallback: имя из data-tooltip
+            tooltip = a.get("data-tooltip", "")
+            m = re.search(r'custom-tooltiptext["\']?>([^<]+)<', tooltip)
+            if m:
+                filename = m.group(1).strip()
+        if not filename:
+            filename = href.split("id=")[-1]
+        filename = re.sub(r'[<>:"/\\|?*]', "_", filename)
+
+        results.append({"url": href, "filename": filename})
+
+    return results
+
+
 def _extract_links(html_text: str) -> list[dict[str, str]]:
+    """Парсит ссылки на файлы со страниц документов 44-ФЗ."""
     tree = lxml_html.fromstring(html_text)
     results: list[dict[str, str]] = []
     seen_urls: set[str] = set()

@@ -33,7 +33,7 @@ def download_and_parse_documents(self, tender_id: int) -> str:
     except Tender.DoesNotExist:
         return f"tender {tender_id} not found"
 
-    links = fetch_document_links(tender.number)
+    links = fetch_document_links(tender.number, source_url=tender.source_url or "")
 
     if not links:
         return f"no documents for tender {tender.number}"
