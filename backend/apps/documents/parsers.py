@@ -36,6 +36,9 @@ def detect_file_type_by_content(data: bytes) -> str:
         return "zip"
     if data[:7] == b"Rar!\x1a\x07\x00" or data[:8] == b"Rar!\x1a\x07\x01\x00":
         return "rar"
+    # OLE2 Compound Document (старый .doc, .xls, .ppt и др.)
+    if data[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
+        return "doc"
     return ""
 
 
