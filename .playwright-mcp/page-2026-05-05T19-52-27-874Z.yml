@@ -1,0 +1,211 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - navigation [ref=e4]:
+      - link "ТендерПилот ТендерПилот" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "ТендерПилот" [ref=e6]
+        - generic [ref=e7]: ТендерПилот
+      - generic [ref=e8]:
+        - link "Возможности" [ref=e9] [cursor=pointer]:
+          - /url: "#features"
+        - link "Отрасли" [ref=e10] [cursor=pointer]:
+          - /url: "#industries"
+        - link "Тарифы" [ref=e11] [cursor=pointer]:
+          - /url: "#pricing"
+        - link "FAQ" [ref=e12] [cursor=pointer]:
+          - /url: "#faq"
+      - generic [ref=e13]:
+        - link "Войти" [ref=e14] [cursor=pointer]:
+          - /url: /login
+        - link "Попробовать бесплатно" [ref=e15] [cursor=pointer]:
+          - /url: /login
+          - button "Попробовать бесплатно" [ref=e16]
+    - generic [ref=e18]:
+      - heading "Находите нужные тендеры. Пока конкуренты ищут вручную." [level=1] [ref=e20]:
+        - text: Находите нужные тендеры.
+        - text: Пока конкуренты ищут вручную.
+      - paragraph [ref=e21]:
+        - text: Первый ИИ-анализатор тендеров в России.
+        - text: Анализирует рынок госзакупок и подбирает тендеры под профиль вашей компании. Документация, резюме и риски за секунды.
+      - generic [ref=e22]:
+        - link "Начать бесплатно" [ref=e23] [cursor=pointer]:
+          - /url: /login
+          - button "Начать бесплатно" [ref=e24]:
+            - text: Начать бесплатно
+            - img
+        - link "Смотреть демо" [ref=e25] [cursor=pointer]:
+          - /url: "#features"
+          - button "Смотреть демо" [ref=e26]:
+            - img
+            - text: Смотреть демо
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: 5 000+
+            - generic [ref=e32]: тендеров анализируется ежедневно
+          - generic [ref=e33]:
+            - generic [ref=e34]: 30 сек
+            - generic [ref=e35]: ИИ читает 200 страниц ТЗ за вас
+          - generic [ref=e36]:
+            - generic [ref=e37]: 24/7
+            - generic [ref=e38]: нейросеть ищет тендеры пока вы спите
+        - img "ИИ-анализ тендеров" [ref=e40]
+    - generic [ref=e42]:
+      - heading "Как это работает" [level=2] [ref=e44]
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - img [ref=e50]
+            - generic [ref=e54]: "1"
+          - heading "Настройте профиль" [level=3] [ref=e55]
+          - paragraph [ref=e56]: Укажите направления деятельности, регионы и диапазон НМЦ
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: "2"
+          - heading "Получайте тендеры" [level=3] [ref=e63]
+          - paragraph [ref=e64]: ИИ автоматически подберёт релевантные закупки под ваш профиль
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - img [ref=e67]
+            - generic [ref=e72]: "3"
+          - heading "Анализируйте документы" [level=3] [ref=e73]
+          - paragraph [ref=e74]: Получите резюме, требования и риски за 30 секунд
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - img [ref=e77]
+            - generic [ref=e79]: "4"
+          - heading "Задавайте вопросы" [level=3] [ref=e80]
+          - paragraph [ref=e81]: Спросите нейросеть о любом пункте документации и получите ответ с источником
+        - generic [ref=e82]:
+          - generic [ref=e83]:
+            - img [ref=e84]
+            - generic [ref=e87]: "5"
+          - heading "Принимайте решения" [level=3] [ref=e88]
+          - paragraph [ref=e89]: Оценивайте шансы на победу и участвуйте в лучших тендерах
+    - generic [ref=e92]:
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - img [ref=e96]
+            - generic [ref=e99]: Умный поиск
+          - heading "ИИ подбирает тендеры под вашу компанию" [level=3] [ref=e100]
+          - paragraph [ref=e101]: Не просто ключевые слова. Семантический поиск понимает суть деятельности компании. Настройте направления с НМЦ и регионами, получайте только релевантное.
+        - img "Анализ тендерной документации за ноутбуком" [ref=e104]
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - img [ref=e108]
+            - generic [ref=e111]: Анализ документов
+          - heading "Резюме тендера за 30 секунд" [level=3] [ref=e112]
+          - paragraph [ref=e113]: ИИ читает техническое задание, проект контракта и другие документы закупки. Извлекает ключевые требования, сроки, штрафы и потенциальные риски.
+        - img "Анализ документов и отчётов" [ref=e116]
+      - generic [ref=e117]:
+        - generic [ref=e118]:
+          - generic [ref=e119]:
+            - img [ref=e120]
+            - generic [ref=e122]: RAG чат
+          - heading "Задайте вопрос документу" [level=3] [ref=e123]
+          - paragraph [ref=e124]: Не можете найти нужный пункт? Просто спросите, и ИИ найдёт ответ и покажет источник в документе.
+        - img "Интеллектуальный поиск по документам" [ref=e127]
+    - generic [ref=e129]:
+      - heading "Подходит для любой отрасли" [level=2] [ref=e131]
+      - generic [ref=e132]:
+        - generic [ref=e133]:
+          - img [ref=e135]
+          - heading "Строительство" [level=3] [ref=e139]
+          - paragraph [ref=e140]: кровля, дороги, капремонт
+        - generic [ref=e141]:
+          - img [ref=e143]
+          - heading "Медицина" [level=3] [ref=e145]
+          - paragraph [ref=e146]: оборудование, расходники
+        - generic [ref=e147]:
+          - img [ref=e149]
+          - heading "IT" [level=3] [ref=e151]
+          - paragraph [ref=e152]: ПО, инфраструктура, разработка
+        - generic [ref=e153]:
+          - img [ref=e155]
+          - heading "Производство" [level=3] [ref=e166]
+          - paragraph [ref=e167]: оборудование, материалы
+        - generic [ref=e168]:
+          - img [ref=e170]
+          - heading "Благоустройство" [level=3] [ref=e172]
+          - paragraph [ref=e173]: парки, озеленение
+        - generic [ref=e174]:
+          - img [ref=e176]
+          - heading "Услуги" [level=3] [ref=e179]
+          - paragraph [ref=e180]: консалтинг, обслуживание
+    - generic [ref=e182]:
+      - generic [ref=e183]:
+        - heading "Есть вопросы?" [level=2] [ref=e184]
+        - paragraph [ref=e185]: Ответили на самые частые из них
+      - generic [ref=e186]:
+        - 'button "01 Какие площадки охватывает ТендерПилот? Мы отслеживаем все федеральные площадки госзакупок: ЕИС, Сбербанк-АСТ, РТС-Тендер, Росэлторг и другие. Поддерживаем закупки по 44-ФЗ, 223-ФЗ и 615-ПП." [ref=e187] [cursor=pointer]':
+          - text: "01"
+          - heading "Какие площадки охватывает ТендерПилот?" [level=3] [ref=e188]
+          - paragraph [ref=e189]: "Мы отслеживаем все федеральные площадки госзакупок: ЕИС, Сбербанк-АСТ, РТС-Тендер, Росэлторг и другие. Поддерживаем закупки по 44-ФЗ, 223-ФЗ и 615-ПП."
+        - button "02 Как работает ИИ-анализ документов? ИИ читает техническое задание, проект контракта и другие документы закупки. Извлекает ключевые требования, сроки, штрафы и потенциальные риски. Также вы можете задавать вопросы нейросети по документам и получать точные ответы с указанием источника." [ref=e190] [cursor=pointer]:
+          - text: "02"
+          - heading "Как работает ИИ-анализ документов?" [level=3] [ref=e191]
+          - paragraph [ref=e192]: ИИ читает техническое задание, проект контракта и другие документы закупки. Извлекает ключевые требования, сроки, штрафы и потенциальные риски. Также вы можете задавать вопросы нейросети по документам и получать точные ответы с указанием источника.
+        - button "03 Насколько точно ИИ подбирает тендеры? Мы используем семантический поиск на основе нейросетей, а не простое совпадение по ключевым словам. Вы настраиваете направления с ОКВЭД, регионами и диапазоном НМЦ, и система подбирает тендеры по смыслу вашей деятельности." [ref=e193] [cursor=pointer]:
+          - text: "03"
+          - heading "Насколько точно ИИ подбирает тендеры?" [level=3] [ref=e194]
+          - paragraph [ref=e195]: Мы используем семантический поиск на основе нейросетей, а не простое совпадение по ключевым словам. Вы настраиваете направления с ОКВЭД, регионами и диапазоном НМЦ, и система подбирает тендеры по смыслу вашей деятельности.
+        - button "04 Есть ли пробный период? Да, мы предлагаем 7 дней бесплатного доступа ко всем функциям платформы. Без привязки карты, просто зарегистрируйтесь и начните работать." [ref=e196] [cursor=pointer]:
+          - text: "04"
+          - heading "Есть ли пробный период?" [level=3] [ref=e197]
+          - paragraph [ref=e198]: Да, мы предлагаем 7 дней бесплатного доступа ко всем функциям платформы. Без привязки карты, просто зарегистрируйтесь и начните работать.
+    - generic [ref=e200]:
+      - heading "Начните находить нужные тендеры сегодня" [level=2] [ref=e201]
+      - paragraph [ref=e202]: 7 дней бесплатно. Без привязки карты. Отмена в любой момент.
+      - link "Попробовать бесплатно" [ref=e204] [cursor=pointer]:
+        - /url: /login
+        - button "Попробовать бесплатно" [ref=e205]:
+          - text: Попробовать бесплатно
+          - img
+    - generic [ref=e207]:
+      - generic [ref=e208]:
+        - generic [ref=e209]:
+          - link "ТендерПилот ТендерПилот" [ref=e210] [cursor=pointer]:
+            - /url: /
+            - img "ТендерПилот" [ref=e211]
+            - generic [ref=e212]: ТендерПилот
+          - paragraph [ref=e213]: ИИ-платформа для поиска и анализа государственных закупок
+        - generic [ref=e214]:
+          - heading "Продукт" [level=3] [ref=e215]
+          - list [ref=e216]:
+            - listitem [ref=e217]:
+              - link "Возможности" [ref=e218] [cursor=pointer]:
+                - /url: "#features"
+            - listitem [ref=e219]:
+              - link "Тарифы" [ref=e220] [cursor=pointer]:
+                - /url: "#pricing"
+            - listitem [ref=e221]:
+              - link "FAQ" [ref=e222] [cursor=pointer]:
+                - /url: "#faq"
+        - generic [ref=e223]:
+          - heading "Компания" [level=3] [ref=e224]
+          - list [ref=e225]:
+            - listitem [ref=e226]:
+              - link "О нас" [ref=e227] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e228]:
+              - link "Контакты" [ref=e229] [cursor=pointer]:
+                - /url: "#"
+        - generic [ref=e230]:
+          - heading "Юридическая информация" [level=3] [ref=e231]
+          - list [ref=e232]:
+            - listitem [ref=e233]:
+              - link "Политика конфиденциальности" [ref=e234] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e235]:
+              - link "Условия использования" [ref=e236] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e237]:
+              - link "Оферта" [ref=e238] [cursor=pointer]:
+                - /url: "#"
+      - generic [ref=e239]:
+        - paragraph [ref=e240]: 2026 ТендерПилот. Все права защищены.
+        - paragraph [ref=e241]: Сделано в России
+  - alert [ref=e242]

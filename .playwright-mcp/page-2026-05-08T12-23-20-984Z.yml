@@ -1,0 +1,599 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]: menu
+      - link "ООО \"ТАТНЕФТЬ - АКТИВ\"" [ref=e44] [cursor=pointer]:
+        - /url: https://bidzaar.com/home
+        - img [ref=e46]
+        - generic [ref=e49]: ООО "ТАТНЕФТЬ - АКТИВ"
+    - generic [ref=e21]:
+      - link "Мерч" [ref=e50] [cursor=pointer]:
+        - /url: https://hello.bidzaar.com/merch/?from=app
+        - generic [ref=e51]: Мерч
+      - button "Техподдержка" [ref=e53] [cursor=pointer]:
+        - img [ref=e54]: support_agent
+        - generic [ref=e55]: Техподдержка
+      - button [ref=e23] [cursor=pointer]:
+        - img [ref=e24]: language
+      - link [ref=e59] [cursor=pointer]:
+        - /url: https://bidzaar.yonote.ru/share/bb465fa2-d732-4446-85b0-a80f5f870f94
+        - img [ref=e60]: school
+      - button [ref=e64] [cursor=pointer]:
+        - img [ref=e65]: smart_display
+      - button [ref=e69] [cursor=pointer]:
+        - img [ref=e70]: notifications
+      - generic [ref=e33] [cursor=pointer]:
+        - generic [ref=e75]: RV
+        - generic [ref=e76]: Ruzal V.
+        - img [ref=e77]: keyboard_arrow_down
+  - generic [ref=e35]:
+    - generic [ref=e36]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - link "Главная" [ref=e81] [cursor=pointer]:
+            - /url: https://bidzaar.com/home
+            - img [ref=e82]: home
+            - generic: Главная
+          - separator [ref=e83]
+        - generic [ref=e84]:
+          - link "Избранное" [ref=e85] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/favorites
+            - img [ref=e86]: star
+            - generic: Избранное
+          - link "Мои предложения" [ref=e87] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/participations
+            - img [ref=e88]: work
+            - generic: Мои предложения
+          - link "Участие в реестраx" [ref=e89] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/applications
+            - img [ref=e90]: verified_user
+            - generic: Участие в реестраx
+          - separator [ref=e91]
+        - generic [ref=e92]:
+          - link "Все закупки России" [ref=e93] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/external
+            - img [ref=e94]:
+              - img [ref=e95]
+            - generic: Все закупки России
+          - link "Все закупки" [ref=e101] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/buy
+            - img [ref=e102]: enable
+            - generic: Все закупки
+          - link "Все продажи" [ref=e103] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/sell
+            - img [ref=e104]: enable
+            - generic: Все продажи
+          - link "Все реестры" [ref=e105] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/registries
+            - img [ref=e106]: policy
+            - generic: Все реестры
+          - separator [ref=e107]
+        - generic [ref=e108]:
+          - link "Профиль компании" [ref=e109] [cursor=pointer]:
+            - /url: https://bidzaar.com/companies/current
+            - img [ref=e110]: domain
+            - generic: Профиль компании
+          - separator [ref=e111]
+      - generic [ref=e114]:
+        - link [ref=e115] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e116]
+        - link "Последний конверт" [ref=e117] [cursor=pointer]:
+          - /url: https://t.me/v_kodanev
+          - img [ref=e118]:
+            - img [ref=e119]
+          - generic: Последний конверт
+        - link "Больше о bidzaar" [ref=e121] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/
+          - img [ref=e122]:
+            - img [ref=e123]
+          - generic: Больше о bidzaar
+    - generic [ref=e37]:
+      - generic [ref=e130]:
+        - text: Ваш email неподтверждённый. Доставка писем с Bidzaar не гарантирована.
+        - link "Подтвердить email" [ref=e131] [cursor=pointer]:
+          - /url: https://bidzaar.com/users/current
+      - generic [ref=e38]:
+        - generic [ref=e135]:
+          - generic [ref=e137]:
+            - generic [ref=e138]:
+              - generic [ref=e140]: Все закупки Bidzaar
+              - generic [ref=e141]:
+                - generic [ref=e145]:
+                  - button [ref=e147] [cursor=pointer]:
+                    - img [ref=e148]: info_outline
+                  - textbox "Найти..." [ref=e151]
+                  - button [ref=e153] [cursor=pointer]:
+                    - img [ref=e154]: search
+                - dialog
+            - generic [ref=e156]:
+              - generic [ref=e157]: "Записи: 2936"
+              - button "Подписаться" [ref=e161] [cursor=pointer]:
+                - img [ref=e162]:
+                  - img [ref=e163]
+                - generic [ref=e165]: Подписаться
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - generic [ref=e172]:
+                - switch "Рекомендации Bidzaar AI" [ref=e173] [cursor=pointer]:
+                  - generic [ref=e179]:
+                    - img [ref=e180]
+                    - img [ref=e182]
+                - generic [ref=e184] [cursor=pointer]:
+                  - img [ref=e185]:
+                    - img [ref=e186]
+                  - generic [ref=e189]: Рекомендации Bidzaar AI
+              - generic [ref=e193]: Фильтры
+              - generic [ref=e194]:
+                - generic [ref=e195]:
+                  - generic [ref=e196]:
+                    - generic [ref=e197]: ★ Только избранное
+                    - switch [ref=e201] [cursor=pointer]:
+                      - generic [ref=e207]:
+                        - img [ref=e208]
+                        - img [ref=e210]
+                  - dialog
+                - generic [ref=e212]:
+                  - generic [ref=e213]:
+                    - generic [ref=e214]: Тип торгов
+                    - button [ref=e217] [cursor=pointer]:
+                      - img [ref=e218]: filter_alt
+                  - dialog
+                - generic [ref=e220]:
+                  - generic [ref=e221]:
+                    - generic [ref=e222]: Организатор
+                    - button [ref=e225] [cursor=pointer]:
+                      - img [ref=e226]: filter_alt
+                  - dialog
+                - generic [ref=e228]:
+                  - generic [ref=e229]:
+                    - generic [ref=e230]: Место поставки
+                    - button [ref=e233] [cursor=pointer]:
+                      - img [ref=e234]: filter_alt
+                  - dialog
+                - generic [ref=e236]:
+                  - generic [ref=e237]:
+                    - generic [ref=e238]: Теги
+                    - button [ref=e241] [cursor=pointer]:
+                      - img [ref=e242]: filter_alt
+                  - dialog
+                - generic [ref=e244]:
+                  - generic [ref=e245]:
+                    - generic [ref=e246]: Статус запроса
+                    - generic [ref=e247]:
+                      - button [ref=e248] [cursor=pointer]:
+                        - img [ref=e249]: close
+                      - button [ref=e252] [cursor=pointer]:
+                        - img [ref=e253]: filter_alt
+                  - generic [ref=e259]:
+                    - text: •
+                    - generic [ref=e260]: Прием предложений
+                  - dialog
+                - generic [ref=e261]:
+                  - generic [ref=e262]:
+                    - generic [ref=e263]: Дата публикации
+                    - button [ref=e266] [cursor=pointer]:
+                      - img [ref=e267]: filter_alt
+                  - dialog
+                - generic [ref=e269]:
+                  - generic [ref=e270]:
+                    - generic [ref=e271]: Окончание приема предложений
+                    - button [ref=e274] [cursor=pointer]:
+                      - img [ref=e275]: filter_alt
+                  - dialog
+                - generic [ref=e277]:
+                  - generic [ref=e278]:
+                    - generic [ref=e279]: Дата завершения
+                    - button [ref=e282] [cursor=pointer]:
+                      - img [ref=e283]: filter_alt
+                  - dialog
+              - generic [ref=e285]:
+                - button "Очистить" [ref=e287] [cursor=pointer]:
+                  - generic [ref=e288]: Очистить
+                - button "Сохранить" [ref=e292] [cursor=pointer]:
+                  - generic [ref=e293]: Сохранить
+            - generic [ref=e296]:
+              - generic [ref=e298]:
+                - generic [ref=e299]: "Сортировать:"
+                - button "Дата публикации" [ref=e300] [cursor=pointer]:
+                  - img [ref=e301]: sort
+                  - generic [ref=e302]: Дата публикации
+                - button "Прием предложений" [ref=e304] [cursor=pointer]:
+                  - generic [ref=e305]: Прием предложений
+              - generic [ref=e308]:
+                - generic [ref=e312]:
+                  - generic [ref=e313]:
+                    - img [ref=e317] [cursor=pointer]: star_border
+                    - link "328-459 • Компьютерные комплектующие, СПб Прием предложений до 13.05.2026 • 14:01 ( Остаётся 4 дня ) Торги заданного объема • Опубликован 08.05.2026" [ref=e318] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0776-7e4a-7268-8cb3-404a1fcadc6a
+                      - generic [ref=e320]: 328-459 • Компьютерные комплектующие, СПб
+                      - generic [ref=e321]:
+                        - generic [ref=e323]:
+                          - generic [ref=e324]: Прием предложений
+                          - generic [ref=e325]: до
+                          - generic [ref=e326]: 13.05.2026 • 14:01
+                          - generic [ref=e327]:
+                            - text: (
+                            - generic [ref=e328]:
+                              - generic [ref=e329]: Остаётся
+                              - generic [ref=e330]: 4 дня
+                            - text: )
+                        - generic [ref=e331]:
+                          - generic [ref=e332]: Торги заданного объема
+                          - generic [ref=e333]: • Опубликован 08.05.2026
+                  - link "ООО \"ИНФОРМ\"" [ref=e336] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/ooo-inform-004-2719
+                    - img [ref=e338]
+                    - generic [ref=e339]:
+                      - generic [ref=e340]: ООО "ИНФОРМ"
+                      - generic [ref=e341]:
+                        - img [ref=e342]: verified
+                        - dialog
+                - generic [ref=e346]:
+                  - generic [ref=e347]:
+                    - img [ref=e351] [cursor=pointer]: star_border
+                    - link "328-458 • Закупка смазочно-охлаждающих жидкостей по заявкам II кв Прием предложений до 18.05.2026 • 10:00 ( Остаётся 9 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e352] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0776-547b-7178-95f8-7f313e31ff0c
+                      - generic [ref=e354]: 328-458 • Закупка смазочно-охлаждающих жидкостей по заявкам II кв
+                      - generic [ref=e355]:
+                        - generic [ref=e357]:
+                          - generic [ref=e358]: Прием предложений
+                          - generic [ref=e359]: до
+                          - generic [ref=e360]: 18.05.2026 • 10:00
+                          - generic [ref=e361]:
+                            - text: (
+                            - generic [ref=e362]:
+                              - generic [ref=e363]: Остаётся
+                              - generic [ref=e364]: 9 дней
+                            - text: )
+                        - generic [ref=e365]:
+                          - generic [ref=e366]: Торги заданного объема
+                          - generic [ref=e367]: • Опубликован 08.05.2026
+                  - link "АО \"МСЗ\"" [ref=e370] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/ao-msz-006-1628
+                    - img [ref=e372]
+                    - generic [ref=e373]:
+                      - generic [ref=e374]: АО "МСЗ"
+                      - generic [ref=e375]:
+                        - img [ref=e376]: verified
+                        - dialog
+                - generic [ref=e380]:
+                  - generic [ref=e381]:
+                    - img [ref=e385] [cursor=pointer]: star_border
+                    - link "328-463 • Закупка запасных частей (Рессора -аналог допустим ) на самоходный кормосмеситель KUHNдля ООО \"Заречное\" (СП \"Фидлот\" ) Прием предложений до 14.05.2026 • 15:17 ( Остаётся 5 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e386] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0785-3904-7f05-a6f6-56c64930ce1a
+                      - generic [ref=e388]: 328-463 • Закупка запасных частей (Рессора -аналог допустим ) на самоходный кормосмеситель KUHNдля ООО "Заречное" (СП "Фидлот" )
+                      - generic [ref=e389]:
+                        - generic [ref=e391]:
+                          - generic [ref=e392]: Прием предложений
+                          - generic [ref=e393]: до
+                          - generic [ref=e394]: 14.05.2026 • 15:17
+                          - generic [ref=e395]:
+                            - text: (
+                            - generic [ref=e396]:
+                              - generic [ref=e397]: Остаётся
+                              - generic [ref=e398]: 5 дней
+                            - text: )
+                        - generic [ref=e399]:
+                          - generic [ref=e400]: Торги заданного объема
+                          - generic [ref=e401]: • Опубликован 08.05.2026
+                  - link "АГРОХОЛДИНГ ПРОСТОРЫ" [ref=e404] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/agrokholding-prostory-015-6582
+                    - img [ref=e406]
+                    - generic [ref=e407]:
+                      - generic [ref=e408]: АГРОХОЛДИНГ ПРОСТОРЫ
+                      - generic [ref=e409]:
+                        - img [ref=e410]: verified
+                        - dialog
+                - generic [ref=e414]:
+                  - generic [ref=e415]:
+                    - img [ref=e419] [cursor=pointer]: star_border
+                    - link "328-297 • Проектирование противопожарных систем по объекту ООО «ГТС» ОП Красноярск Прием предложений до 20.05.2026 • 18:00 ( Остаётся 12 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e420] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e06a5-0e0b-7240-91c7-7bd25e74a88f
+                      - generic [ref=e422]: 328-297 • Проектирование противопожарных систем по объекту ООО «ГТС» ОП Красноярск
+                      - generic [ref=e423]:
+                        - generic [ref=e425]:
+                          - generic [ref=e426]: Прием предложений
+                          - generic [ref=e427]: до
+                          - generic [ref=e428]: 20.05.2026 • 18:00
+                          - generic [ref=e429]:
+                            - text: (
+                            - generic [ref=e430]:
+                              - generic [ref=e431]: Остаётся
+                              - generic [ref=e432]: 12 дней
+                            - text: )
+                        - generic [ref=e433]:
+                          - generic [ref=e434]: Торги заданного объема
+                          - generic [ref=e435]: • Опубликован 08.05.2026
+                  - link "ГЛОБАЛ ТРАК СЕРВИС" [ref=e438] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/global-trak-servis-001-6675
+                    - img [ref=e440]
+                    - generic [ref=e441]:
+                      - generic [ref=e442]: ГЛОБАЛ ТРАК СЕРВИС
+                      - generic [ref=e443]:
+                        - img [ref=e444]: verified
+                        - dialog
+                - generic [ref=e448]:
+                  - generic [ref=e449]:
+                    - img [ref=e453] [cursor=pointer]: star_border
+                    - link "328-456 • Закупка насоса на гидравлический погрузчик Bobcat ООО \"Заречное\" (СП \"Фидлот\") Прием предложений до 13.05.2026 • 16:00 ( Остаётся 5 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e454] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0774-f7d5-77b5-906a-dbed5b790913
+                      - generic [ref=e456]: 328-456 • Закупка насоса на гидравлический погрузчик Bobcat ООО "Заречное" (СП "Фидлот")
+                      - generic [ref=e457]:
+                        - generic [ref=e459]:
+                          - generic [ref=e460]: Прием предложений
+                          - generic [ref=e461]: до
+                          - generic [ref=e462]: 13.05.2026 • 16:00
+                          - generic [ref=e463]:
+                            - text: (
+                            - generic [ref=e464]:
+                              - generic [ref=e465]: Остаётся
+                              - generic [ref=e466]: 5 дней
+                            - text: )
+                        - generic [ref=e467]:
+                          - generic [ref=e468]: Торги заданного объема
+                          - generic [ref=e469]: • Опубликован 08.05.2026
+                  - link "АГРОХОЛДИНГ ПРОСТОРЫ" [ref=e472] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/agrokholding-prostory-015-6582
+                    - img [ref=e474]
+                    - generic [ref=e475]:
+                      - generic [ref=e476]: АГРОХОЛДИНГ ПРОСТОРЫ
+                      - generic [ref=e477]:
+                        - img [ref=e478]: verified
+                        - dialog
+                - generic [ref=e482]:
+                  - generic [ref=e483]:
+                    - img [ref=e487] [cursor=pointer]: star_border
+                    - link "328-321 • Закупка полиэтиленовых пакетов (ширина 210 мм., длина 260 мм., 35 мкм, клапан, ПСД, ВР, с одноразовым скотчем) для нужд Филиала АО \"НПК \"Катрен\" в г. Санкт- Петербург Прием предложений до 19.05.2026 • 11:39 ( Остаётся 10 дней ) Торги за единицу • Опубликован 08.05.2026" [ref=e488] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e06bd-e6b2-7dde-950a-b96e5d4c10f0
+                      - generic [ref=e490]: 328-321 • Закупка полиэтиленовых пакетов (ширина 210 мм., длина 260 мм., 35 мкм, клапан, ПСД, ВР, с одноразовым скотчем) для нужд Филиала АО "НПК "Катрен" в г. Санкт- Петербург
+                      - generic [ref=e491]:
+                        - generic [ref=e493]:
+                          - generic [ref=e494]: Прием предложений
+                          - generic [ref=e495]: до
+                          - generic [ref=e496]: 19.05.2026 • 11:39
+                          - generic [ref=e497]:
+                            - text: (
+                            - generic [ref=e498]:
+                              - generic [ref=e499]: Остаётся
+                              - generic [ref=e500]: 10 дней
+                            - text: )
+                        - generic [ref=e501]:
+                          - generic [ref=e502]: Торги за единицу
+                          - generic [ref=e503]: • Опубликован 08.05.2026
+                  - link "КАТРЕН" [ref=e506] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/katren-011-5832
+                    - img [ref=e508]
+                    - generic [ref=e509]:
+                      - generic [ref=e510]: КАТРЕН
+                      - generic [ref=e511]:
+                        - img [ref=e512]: verified
+                        - dialog
+                - generic [ref=e516]:
+                  - generic [ref=e517]:
+                    - img [ref=e521] [cursor=pointer]: star_border
+                    - link "328-457 • Закупка лотков мгк ИЮНЬ 2026 ГК РОСТ Прием предложений до 14.05.2026 • 11:00 ( Остаётся 5 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e522] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0775-9f75-7621-b4b7-af46f6d2bf06
+                      - generic [ref=e524]: 328-457 • Закупка лотков мгк ИЮНЬ 2026 ГК РОСТ
+                      - generic [ref=e525]:
+                        - generic [ref=e527]:
+                          - generic [ref=e528]: Прием предложений
+                          - generic [ref=e529]: до
+                          - generic [ref=e530]: 14.05.2026 • 11:00
+                          - generic [ref=e531]:
+                            - text: (
+                            - generic [ref=e532]:
+                              - generic [ref=e533]: Остаётся
+                              - generic [ref=e534]: 5 дней
+                            - text: )
+                        - generic [ref=e535]:
+                          - generic [ref=e536]: Торги заданного объема
+                          - generic [ref=e537]: • Опубликован 08.05.2026
+                  - link "ООО \"УК \"РОСТ\"" [ref=e540] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/ooo-uk-rost-004-6258
+                    - img [ref=e542]
+                    - generic [ref=e543]:
+                      - generic [ref=e544]: ООО "УК "РОСТ"
+                      - generic [ref=e545]:
+                        - img [ref=e546]: verified
+                        - dialog
+                - generic [ref=e550]:
+                  - generic [ref=e551]:
+                    - img [ref=e555] [cursor=pointer]: star_border
+                    - link "328-444 • Приобретение фронтального и полочного стеллажного оборудования Прием предложений до 18.05.2026 • 14:47 ( Остаётся 9 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e556] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0769-c327-7e4c-a160-6cb431856f00
+                      - generic [ref=e558]: 328-444 • Приобретение фронтального и полочного стеллажного оборудования
+                      - generic [ref=e559]:
+                        - generic [ref=e561]:
+                          - generic [ref=e562]: Прием предложений
+                          - generic [ref=e563]: до
+                          - generic [ref=e564]: 18.05.2026 • 14:47
+                          - generic [ref=e565]:
+                            - text: (
+                            - generic [ref=e566]:
+                              - generic [ref=e567]: Остаётся
+                              - generic [ref=e568]: 9 дней
+                            - text: )
+                        - generic [ref=e569]:
+                          - generic [ref=e570]: Торги заданного объема
+                          - generic [ref=e571]: • Опубликован 08.05.2026
+                  - link "ТракМоторс" [ref=e574] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/trakmotors-001-7996
+                    - img [ref=e576]
+                    - generic [ref=e577]:
+                      - generic [ref=e578]: ТракМоторс
+                      - generic [ref=e579]:
+                        - img [ref=e580]: verified
+                        - dialog
+                - generic [ref=e584]:
+                  - generic [ref=e585]:
+                    - img [ref=e589] [cursor=pointer]: star_border
+                    - link "328-455 • Закупка услуг по ремонту офисных помещений для нужд Сахалинского филиала ООО \"Везерфорд\" Прием предложений до 19.05.2026 • 14:00 ( Остаётся 10 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e590] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0773-ddce-71b2-b792-ddd4acece540
+                      - generic [ref=e592]: 328-455 • Закупка услуг по ремонту офисных помещений для нужд Сахалинского филиала ООО "Везерфорд"
+                      - generic [ref=e593]:
+                        - generic [ref=e595]:
+                          - generic [ref=e596]: Прием предложений
+                          - generic [ref=e597]: до
+                          - generic [ref=e598]: 19.05.2026 • 14:00
+                          - generic [ref=e599]:
+                            - text: (
+                            - generic [ref=e600]:
+                              - generic [ref=e601]: Остаётся
+                              - generic [ref=e602]: 10 дней
+                            - text: )
+                        - generic [ref=e603]:
+                          - generic [ref=e604]: Торги заданного объема
+                          - generic [ref=e605]: • Опубликован 08.05.2026
+                  - link "ВЕЗЕРФОРД" [ref=e608] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/vezerford-011-0418
+                    - img [ref=e610]
+                    - generic [ref=e611]:
+                      - generic [ref=e612]: ВЕЗЕРФОРД
+                      - generic [ref=e613]:
+                        - img [ref=e614]: verified
+                        - dialog
+                - generic [ref=e618]:
+                  - generic [ref=e619]:
+                    - img [ref=e623] [cursor=pointer]: star_border
+                    - link "328-452 • Батареи для рации Kenwood Прием предложений до 19.05.2026 • 14:00 ( Остаётся 10 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e624] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0772-0807-74e2-8fd2-a43c9ab708d5
+                      - generic [ref=e626]: 328-452 • Батареи для рации Kenwood
+                      - generic [ref=e627]:
+                        - generic [ref=e629]:
+                          - generic [ref=e630]: Прием предложений
+                          - generic [ref=e631]: до
+                          - generic [ref=e632]: 19.05.2026 • 14:00
+                          - generic [ref=e633]:
+                            - text: (
+                            - generic [ref=e634]:
+                              - generic [ref=e635]: Остаётся
+                              - generic [ref=e636]: 10 дней
+                            - text: )
+                        - generic [ref=e637]:
+                          - generic [ref=e638]: Торги заданного объема
+                          - generic [ref=e639]: • Опубликован 08.05.2026
+                  - link "КОНСТАНТА ТОРГ" [ref=e642] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/konstanta-torg-010-8732
+                    - img [ref=e644]
+                    - generic [ref=e645]:
+                      - generic [ref=e646]: КОНСТАНТА ТОРГ
+                      - generic [ref=e647]:
+                        - img [ref=e648]: verified
+                        - dialog
+                - generic [ref=e652]:
+                  - generic [ref=e653]:
+                    - img [ref=e657] [cursor=pointer]: star_border
+                    - link "328-443 • закупка комплектующих КИПиА г.Щекино, май 2026 Прием предложений до 19.05.2026 • 12:00 ( Остаётся 10 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e658] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e0768-c8be-77d7-9061-424d59e925ab
+                      - generic [ref=e660]: 328-443 • закупка комплектующих КИПиА г.Щекино, май 2026
+                      - generic [ref=e661]:
+                        - generic [ref=e663]:
+                          - generic [ref=e664]: Прием предложений
+                          - generic [ref=e665]: до
+                          - generic [ref=e666]: 19.05.2026 • 12:00
+                          - generic [ref=e667]:
+                            - text: (
+                            - generic [ref=e668]:
+                              - generic [ref=e669]: Остаётся
+                              - generic [ref=e670]: 10 дней
+                            - text: )
+                        - generic [ref=e671]:
+                          - generic [ref=e672]: Торги заданного объема
+                          - generic [ref=e673]: • Опубликован 08.05.2026
+                  - link "ТОРГОВЫЙ ДОМ ЩЕКИНОАЗОТ" [ref=e676] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/torgovyy-dom-shchekinoazot-013-2535
+                    - img [ref=e678]
+                    - generic [ref=e679]:
+                      - generic [ref=e680]: ТОРГОВЫЙ ДОМ ЩЕКИНОАЗОТ
+                      - generic [ref=e681]:
+                        - img [ref=e682]: verified
+                        - dialog
+                - generic [ref=e686]:
+                  - generic [ref=e687]:
+                    - img [ref=e691] [cursor=pointer]: star_border
+                    - link "328-433 • Двусторонний дисплеи Lumien, LCAD65, серия Clear Прием предложений до 15.05.2026 • 11:00 ( Остаётся 6 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e692] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e075b-f1e1-7f49-a226-cde220d916c3
+                      - generic [ref=e694]: 328-433 • Двусторонний дисплеи Lumien, LCAD65, серия Clear
+                      - generic [ref=e695]:
+                        - generic [ref=e697]:
+                          - generic [ref=e698]: Прием предложений
+                          - generic [ref=e699]: до
+                          - generic [ref=e700]: 15.05.2026 • 11:00
+                          - generic [ref=e701]:
+                            - text: (
+                            - generic [ref=e702]:
+                              - generic [ref=e703]: Остаётся
+                              - generic [ref=e704]: 6 дней
+                            - text: )
+                        - generic [ref=e705]:
+                          - generic [ref=e706]: Торги заданного объема
+                          - generic [ref=e707]: • Опубликован 08.05.2026
+                  - link "ООО \"ИНВЕНТИВ ТЕХ\"" [ref=e710] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/ooo-inventiv-tekh-008-1585
+                    - img [ref=e712]
+                    - generic [ref=e713]:
+                      - generic [ref=e714]: ООО "ИНВЕНТИВ ТЕХ"
+                      - generic [ref=e715]:
+                        - img [ref=e716]: verified
+                        - dialog
+                - generic [ref=e720]:
+                  - generic [ref=e721]:
+                    - img [ref=e725] [cursor=pointer]: star_border
+                    - link "328-448 • Мониторинг рынка цен по направлению Железногорск, Курская область=Павлодар, Казахстан, ТС 20 тн 33 европаллеты Прием предложений до 14.05.2026 • 14:00 ( Остаётся 5 дней ) Торги за единицу • Опубликован 08.05.2026" [ref=e726] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019e076c-da11-7e32-90b1-5dce7887d117
+                      - generic [ref=e728]: 328-448 • Мониторинг рынка цен по направлению Железногорск, Курская область=Павлодар, Казахстан, ТС 20 тн 33 европаллеты
+                      - generic [ref=e729]:
+                        - generic [ref=e731]:
+                          - generic [ref=e732]: Прием предложений
+                          - generic [ref=e733]: до
+                          - generic [ref=e734]: 14.05.2026 • 14:00
+                          - generic [ref=e735]:
+                            - text: (
+                            - generic [ref=e736]:
+                              - generic [ref=e737]: Остаётся
+                              - generic [ref=e738]: 5 дней
+                            - text: )
+                        - generic [ref=e739]:
+                          - generic [ref=e740]: Торги за единицу
+                          - generic [ref=e741]: • Опубликован 08.05.2026
+                  - link "СДЭК-ГЛОБАЛ" [ref=e744] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/sdek-global-000-7924
+                    - img [ref=e746]
+                    - generic [ref=e747]:
+                      - generic [ref=e748]: СДЭК-ГЛОБАЛ
+                      - generic [ref=e749]:
+                        - img [ref=e750]: verified
+                        - dialog
+                - generic [ref=e754]:
+                  - generic [ref=e755]:
+                    - img [ref=e759] [cursor=pointer]: star_border
+                    - link "326-933 • Техническое обслуживание и планово-предупредительный ремонт установок пожарной автоматики и локальной системы оповещения объектов защиты_Ростов-н/Д Прием предложений до 15.05.2026 • 17:00 ( Остаётся 7 дней ) Торги заданного объема • Опубликован 08.05.2026" [ref=e760] [cursor=pointer]:
+                      - /url: https://bidzaar.com/process/light/019df859-6d52-7def-b370-0b9698d6cb1b
+                      - generic [ref=e762]: 326-933 • Техническое обслуживание и планово-предупредительный ремонт установок пожарной автоматики и локальной системы оповещения объектов защиты_Ростов-н/Д
+                      - generic [ref=e763]:
+                        - generic [ref=e765]:
+                          - generic [ref=e766]: Прием предложений
+                          - generic [ref=e767]: до
+                          - generic [ref=e768]: 15.05.2026 • 17:00
+                          - generic [ref=e769]:
+                            - text: (
+                            - generic [ref=e770]:
+                              - generic [ref=e771]: Остаётся
+                              - generic [ref=e772]: 7 дней
+                            - text: )
+                        - generic [ref=e773]:
+                          - generic [ref=e774]: Торги заданного объема
+                          - generic [ref=e775]: • Опубликован 08.05.2026
+                  - link "ООО ПК \"Балтика\"" [ref=e778] [cursor=pointer]:
+                    - /url: https://bidzaar.com/companies/tendery/ooo-pk-baltika-000-4963
+                    - img [ref=e780]
+                    - generic [ref=e781]:
+                      - generic [ref=e782]: ООО ПК "Балтика"
+                      - generic [ref=e783]:
+                        - img [ref=e784]: verified
+                        - dialog
+        - button "ЧАТЫ" [ref=e788] [cursor=pointer]:
+          - img [ref=e789]: message
+          - generic [ref=e790]: ЧАТЫ

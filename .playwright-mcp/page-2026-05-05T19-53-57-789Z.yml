@@ -1,0 +1,60 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "ТендерПилот ТендерПилот" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "ТендерПилот" [ref=e7]
+        - generic [ref=e8]: ТендерПилот
+      - navigation [ref=e9]:
+        - link "Тендеры" [ref=e10] [cursor=pointer]:
+          - /url: /tenders
+          - img [ref=e11]
+          - text: Тендеры
+        - link "Мои тендеры" [ref=e14] [cursor=pointer]:
+          - /url: /pipeline
+          - img [ref=e15]
+          - text: Мои тендеры
+        - link "Профиль" [ref=e17] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e18]
+          - text: Профиль
+      - button "Выйти" [ref=e22] [cursor=pointer]:
+        - img [ref=e23]
+        - text: Выйти
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - button "Все тендеры" [ref=e29] [cursor=pointer]
+        - button "Для вас" [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+          - text: Для вас
+      - generic [ref=e34]:
+        - generic [ref=e35]: Фильтры
+        - button "Процедура" [ref=e37] [cursor=pointer]:
+          - text: Процедура
+          - img [ref=e38]
+        - button "Закон" [ref=e41] [cursor=pointer]:
+          - text: Закон
+          - img [ref=e42]
+        - button "НМЦК" [ref=e45] [cursor=pointer]:
+          - text: НМЦК
+          - img [ref=e46]
+        - button "Регион" [ref=e49] [cursor=pointer]:
+          - text: Регион
+          - img [ref=e50]
+        - button "Дедлайн" [ref=e53] [cursor=pointer]:
+          - text: Дедлайн
+          - img [ref=e54]
+        - button "ОКВЭД" [ref=e57] [cursor=pointer]:
+          - text: ОКВЭД
+          - img [ref=e58]
+        - button "Заказчик" [ref=e61] [cursor=pointer]:
+          - text: Заказчик
+          - img [ref=e62]
+      - generic [ref=e64]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - img
+            - textbox "Семантический поиск..." [ref=e68]
+          - button "Найти" [ref=e69] [cursor=pointer]
+        - generic [ref=e72]: Загрузка...

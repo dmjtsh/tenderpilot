@@ -1,0 +1,16 @@
+- generic [ref=e6]:
+  - generic [ref=e7]:
+    - button [ref=e9] [cursor=pointer]:
+      - img [ref=e10]: menu
+    - link "bidzaar" [ref=e16] [cursor=pointer]:
+      - /url: https://bidzaar.com/home
+      - img [ref=e17]
+      - generic [ref=e18]: bidzaar
+  - generic [ref=e21]:
+    - button [ref=e23] [cursor=pointer]:
+      - img [ref=e24]: language
+    - button "ВХОД" [ref=e27] [cursor=pointer]:
+      - generic [ref=e28]: ВХОД
+    - button "РЕГИСТРАЦИЯ" [ref=e31] [cursor=pointer]:
+      - generic [ref=e32]: РЕГИСТРАЦИЯ
+    - img [ref=e36] [cursor=pointer]: account_circle

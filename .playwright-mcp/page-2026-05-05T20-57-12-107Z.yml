@@ -1,0 +1,88 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]: menu
+      - link "bidzaar" [ref=e16] [cursor=pointer]:
+        - /url: https://bidzaar.com/home
+        - img [ref=e17]
+        - generic [ref=e18]: bidzaar
+    - generic [ref=e21]:
+      - link "Мерч" [ref=e46] [cursor=pointer]:
+        - /url: https://hello.bidzaar.com/merch/?from=app
+        - generic [ref=e47]: Мерч
+      - button "Техподдержка" [ref=e49] [cursor=pointer]:
+        - img [ref=e50]: support_agent
+        - generic [ref=e51]: Техподдержка
+      - button [ref=e23] [cursor=pointer]:
+        - img [ref=e24]: language
+      - button [ref=e55] [cursor=pointer]:
+        - img [ref=e56]: notifications
+      - generic [ref=e35] [cursor=pointer]:
+        - generic [ref=e61]: RV
+        - generic [ref=e62]: Ruzal V.
+        - img [ref=e63]: keyboard_arrow_down
+  - generic [ref=e37]:
+    - generic [ref=e38]:
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - link "Главная" [ref=e67] [cursor=pointer]:
+            - /url: https://bidzaar.com/home
+            - img [ref=e68]: home
+            - generic: Главная
+          - separator [ref=e69]
+        - generic [ref=e70]:
+          - link "Избранное" [ref=e71] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/favorites
+            - img [ref=e72]: star
+            - generic: Избранное
+          - separator [ref=e73]
+        - generic [ref=e74]:
+          - link "Все закупки России" [ref=e75] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/external
+            - img [ref=e76]:
+              - img [ref=e77]
+            - generic: Все закупки России
+          - link "Все закупки" [ref=e83] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/buy
+            - img [ref=e84]: enable
+            - generic: Все закупки
+          - link "Все продажи" [ref=e85] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/sell
+            - img [ref=e86]: enable
+            - generic: Все продажи
+          - link "Все реестры" [ref=e87] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/registries
+            - img [ref=e88]: policy
+            - generic: Все реестры
+          - separator [ref=e89]
+      - generic [ref=e92]:
+        - link [ref=e93] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e94]
+        - link "Последний конверт" [ref=e95] [cursor=pointer]:
+          - /url: https://t.me/v_kodanev
+          - img [ref=e96]:
+            - img [ref=e97]
+          - generic: Последний конверт
+        - link "Больше о bidzaar" [ref=e99] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/
+          - img [ref=e100]:
+            - img [ref=e101]
+          - generic: Больше о bidzaar
+    - generic [ref=e39]:
+      - generic [ref=e108]:
+        - text: Ваш email неподтверждённый. Доставка писем с Bidzaar не гарантирована.
+        - link "Подтвердить email" [ref=e109] [cursor=pointer]:
+          - /url: https://bidzaar.com/users/current
+      - generic [ref=e110]:
+        - generic [ref=e112]:
+          - generic [ref=e113]: Добро пожаловать на bidzaar
+          - generic [ref=e115]:
+            - generic [ref=e116]: Найдите свою компанию или зарегистрируйте свой бизнес на Bidzaar
+            - generic [ref=e117]: Присоединитесь к своей компании как сотрудник. Если вашей компании ещё нет на площадке – зарегистрируйте свой бизнес за несколько простых шагов
+            - button "Найти или создать компанию" [ref=e118] [cursor=pointer]:
+              - generic [ref=e119]: Найти или создать компанию
+        - link "BidConf" [ref=e124] [cursor=pointer]:
+          - /url: https://bidconf.ru/?utm_source=product&utm_medium=home
+          - img "BidConf" [ref=e125]

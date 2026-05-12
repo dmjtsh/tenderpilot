@@ -26,7 +26,6 @@ const LAW_OPTIONS = [
 
 const SOURCE_OPTIONS = [
   { value: "eis", label: "ЕИС (госзакупки)" },
-  { value: "bidzaar", label: "Bidzaar (B2B)" },
 ]
 
 interface Props {

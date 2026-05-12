@@ -1,0 +1,50 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]: menu
+      - link "bidzaar" [ref=e16] [cursor=pointer]:
+        - /url: https://bidzaar.com/home
+        - img [ref=e17]
+        - generic [ref=e18]: bidzaar
+    - generic [ref=e21]:
+      - button [ref=e23] [cursor=pointer]:
+        - img [ref=e24]: language
+      - button [ref=e27] [cursor=pointer]
+      - button [ref=e30] [cursor=pointer]
+      - img [ref=e34] [cursor=pointer]: account_circle
+  - generic [ref=e35]:
+    - generic [ref=e36]:
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - link [ref=e40] [cursor=pointer]:
+            - /url: https://bidzaar.com/home
+            - img [ref=e41]: home
+          - separator [ref=e42]
+        - generic [ref=e43]:
+          - link [ref=e44] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/external
+            - img [ref=e45]:
+              - img [ref=e46]
+          - link [ref=e52] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/buy
+            - img [ref=e53]: enable
+          - link [ref=e54] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/sell
+            - img [ref=e55]: enable
+          - link [ref=e56] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/registries
+            - img [ref=e57]: policy
+          - separator [ref=e58]
+      - generic [ref=e61]:
+        - link [ref=e62] [cursor=pointer]:
+          - /url: https://t.me/v_kodanev
+          - img [ref=e63]:
+            - img [ref=e64]
+        - link [ref=e66] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/
+          - img [ref=e67]:
+            - img [ref=e68]
+    - link "BidConf" [ref=e80] [cursor=pointer]:
+      - /url: https://bidconf.ru/?utm_source=product&utm_medium=home
+      - img "BidConf" [ref=e81]

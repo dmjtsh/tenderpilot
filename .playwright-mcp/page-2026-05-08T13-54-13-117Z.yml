@@ -1,0 +1,423 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]: menu
+      - link "ООО \"ТАТНЕФТЬ - АКТИВ\"" [ref=e44] [cursor=pointer]:
+        - /url: https://bidzaar.com/home
+        - img [ref=e46]
+        - generic [ref=e49]: ООО "ТАТНЕФТЬ - АКТИВ"
+    - generic [ref=e21]:
+      - link "Мерч" [ref=e50] [cursor=pointer]:
+        - /url: https://hello.bidzaar.com/merch/?from=app
+        - generic [ref=e51]: Мерч
+      - button "Техподдержка" [ref=e53] [cursor=pointer]:
+        - img [ref=e54]: support_agent
+        - generic [ref=e55]: Техподдержка
+      - button [ref=e23] [cursor=pointer]:
+        - img [ref=e24]: language
+      - link [ref=e59] [cursor=pointer]:
+        - /url: https://bidzaar.yonote.ru/share/bb465fa2-d732-4446-85b0-a80f5f870f94
+        - img [ref=e60]: school
+      - button [ref=e64] [cursor=pointer]:
+        - img [ref=e65]: smart_display
+      - button [ref=e69] [cursor=pointer]:
+        - img [ref=e70]: notifications
+        - generic: "2"
+      - generic [ref=e33] [cursor=pointer]:
+        - generic [ref=e75]: RV
+        - generic [ref=e76]: Ruzal V.
+        - img [ref=e77]: keyboard_arrow_down
+  - generic [ref=e35]:
+    - generic [ref=e36]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - link "Главная" [ref=e81] [cursor=pointer]:
+            - /url: https://bidzaar.com/home
+            - img [ref=e82]: home
+            - generic: Главная
+          - separator [ref=e83]
+        - generic [ref=e84]:
+          - link "Избранное" [ref=e85] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/favorites
+            - img [ref=e86]: star
+            - generic: Избранное
+          - link "Мои предложения" [ref=e87] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/participations
+            - img [ref=e88]: work
+            - generic: Мои предложения
+          - link "Участие в реестраx" [ref=e89] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/applications
+            - img [ref=e90]: verified_user
+            - generic: Участие в реестраx
+          - separator [ref=e91]
+        - generic [ref=e92]:
+          - link "Все закупки России" [ref=e93] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/external
+            - img [ref=e94]:
+              - img [ref=e95]
+            - generic: Все закупки России
+          - link "Все закупки" [ref=e101] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/buy
+            - img [ref=e102]: enable
+            - generic: Все закупки
+          - link "Все продажи" [ref=e103] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/sell
+            - img [ref=e104]: enable
+            - generic: Все продажи
+          - link "Все реестры" [ref=e105] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/registries
+            - img [ref=e106]: policy
+            - generic: Все реестры
+          - separator [ref=e107]
+        - generic [ref=e108]:
+          - link "Профиль компании" [ref=e109] [cursor=pointer]:
+            - /url: https://bidzaar.com/companies/current
+            - img [ref=e110]: domain
+            - generic: Профиль компании
+          - separator [ref=e111]
+      - generic [ref=e114]:
+        - link [ref=e115] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e116]
+        - link "Последний конверт" [ref=e117] [cursor=pointer]:
+          - /url: https://t.me/v_kodanev
+          - img [ref=e118]:
+            - img [ref=e119]
+          - generic: Последний конверт
+        - link "Больше о bidzaar" [ref=e121] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/
+          - img [ref=e122]:
+            - img [ref=e123]
+          - generic: Больше о bidzaar
+    - generic [ref=e37]:
+      - generic [ref=e130]:
+        - text: Ваш email неподтверждённый. Доставка писем с Bidzaar не гарантирована.
+        - link "Подтвердить email" [ref=e131] [cursor=pointer]:
+          - /url: https://bidzaar.com/users/current
+      - generic [ref=e38]:
+        - generic [ref=e135]:
+          - generic [ref=e139]:
+            - button [ref=e142] [cursor=pointer]:
+              - img [ref=e143]: arrow_back
+            - generic [ref=e146]:
+              - generic [ref=e147]: Услуги по сбору, обработке, транспортированию, утилизации, обезвреживанию, размещению мусора и смета от уборки складских помещений практически неопасный в г. Екатеринбург (3343)
+              - generic [ref=e148]:
+                - generic [ref=e149]: "Код: 328-482 •"
+                - generic [ref=e150]:
+                  - text: Прием предложений
+                  - text: •
+                - generic [ref=e152]:
+                  - img [ref=e153]: access_time
+                  - generic [ref=e154]: 9 дней
+            - generic [ref=e155]:
+              - tablist [ref=e156]:
+                - generic [ref=e159]:
+                  - tab "1. ЗАПРОС" [selected] [ref=e160] [cursor=pointer]:
+                    - generic [ref=e162]: 1. ЗАПРОС
+                  - tab "2. ПРЕДЛОЖЕНИЕ" [ref=e163] [cursor=pointer]:
+                    - generic [ref=e165]: 2. ПРЕДЛОЖЕНИЕ
+                  - tab "3. СРАВНЕНИЕ" [ref=e166] [cursor=pointer]:
+                    - generic [ref=e168]: 3. СРАВНЕНИЕ
+                  - tab "4. ИТОГИ" [ref=e169] [cursor=pointer]:
+                    - generic [ref=e171]: 4. ИТОГИ
+              - tabpanel "1. ЗАПРОС"
+          - generic [ref=e176]:
+            - generic [ref=e178]:
+              - generic [ref=e181] [cursor=pointer]: Описание и документы
+              - generic [ref=e185] [cursor=pointer]: Спецификация по позициям
+              - generic [ref=e189] [cursor=pointer]: Неценовые критерии запроса
+              - generic [ref=e193] [cursor=pointer]: Правила проведения запроса
+            - link "О2О ХОЛДИНГ" [ref=e196] [cursor=pointer]:
+              - /url: https://bidzaar.com/companies/tendery/o2o-kholding-009-1754
+              - img [ref=e198]
+              - generic [ref=e199]: О2О ХОЛДИНГ
+              - img [ref=e200]: chevron_right
+            - generic [ref=e203]:
+              - img [ref=e206] [cursor=pointer]: star_border
+              - generic [ref=e207]: Услуги по сбору, обработке, транспортированию, утилизации, обезвреживанию, размещению мусора и смета от уборки складских помещений практически неопасный в г. Екатеринбург (3343)
+            - generic [ref=e208]:
+              - generic [ref=e209]:
+                - generic [ref=e210]:
+                  - generic [ref=e211]:
+                    - img [ref=e212]:
+                      - img [ref=e213]
+                    - text: Похожие запросы от Bidzaar AI
+                  - button "Показать все похожие" [ref=e216] [cursor=pointer]:
+                    - generic [ref=e217]: Показать все похожие
+                    - img [ref=e218]: chevron_right
+                - generic [ref=e226]:
+                  - generic [ref=e230]:
+                    - generic [ref=e232]:
+                      - paragraph [ref=e233]:
+                        - strong [ref=e234]: "Предмет закупки:"
+                        - text: Услуги по сбору, обработке, транспортированию, утилизации, обезвреживанию, размещению мусора и смета от уборки складских помещений практически неопасный (ФККО 7 33 220 02 72 5) в г. Екатеринбург.
+                      - paragraph [ref=e235]:
+                        - strong [ref=e236]: "Критерии выбора победителя:"
+                        - text: в соответствии с Техническим заданием
+                      - paragraph [ref=e237]:
+                        - strong [ref=e238]: "Сроки и этапы закупки:"
+                        - text: в соответствии с информацией на ЭТП
+                      - paragraph [ref=e239]:
+                        - strong [ref=e240]: "Фиксация цены:"
+                        - text: на срок действия контракта
+                      - paragraph [ref=e241]:
+                        - strong [ref=e242]: "Условия оплаты:"
+                        - text: в соответствии с Техническим заданием
+                      - paragraph [ref=e243]:
+                        - strong [ref=e244]: "Адрес, условия и сроки исполнения:"
+                        - text: в соответствии с Техническим заданием
+                    - generic [ref=e246]:
+                      - generic [ref=e248]:
+                        - link "Документация о закупке 3343 docx • 256.5 КБ • 08.05.2026, 16:38" [ref=e251] [cursor=pointer]:
+                          - /url: https://bidzaar.com/api/filestorage/files/download/186fd666-2b31-4fba-b2f9-e52043897e8f
+                          - img [ref=e253]: article
+                          - generic [ref=e254]:
+                            - generic [ref=e255]: Документация о закупке 3343
+                            - generic [ref=e256]: docx • 256.5 КБ • 08.05.2026, 16:38
+                        - link "Образцы форм 3343 docx • 48.3 КБ • 08.05.2026, 16:38" [ref=e259] [cursor=pointer]:
+                          - /url: https://bidzaar.com/api/filestorage/files/download/b495f1dd-5c3d-45e6-91e9-4c54a9a4d523
+                          - img [ref=e261]: article
+                          - generic [ref=e262]:
+                            - generic [ref=e263]: Образцы форм 3343
+                            - generic [ref=e264]: docx • 48.3 КБ • 08.05.2026, 16:38
+                        - link "ТЗ Вывоз смета ЕКБ pdf • 129.2 КБ • 08.05.2026, 16:38" [ref=e267] [cursor=pointer]:
+                          - /url: https://bidzaar.com/api/filestorage/files/download/4d4e91f1-3825-438b-bac9-12b7e4d0d57d
+                          - img [ref=e269]: article
+                          - generic [ref=e270]:
+                            - generic [ref=e271]: ТЗ Вывоз смета ЕКБ
+                            - generic [ref=e272]: pdf • 129.2 КБ • 08.05.2026, 16:38
+                        - link "Заверения о добросовестности docx • 28.2 КБ • 08.05.2026, 16:38" [ref=e275] [cursor=pointer]:
+                          - /url: https://bidzaar.com/api/filestorage/files/download/41157895-8e1e-40bb-8a0b-7ad3cccf1f34
+                          - img [ref=e277]: article
+                          - generic [ref=e278]:
+                            - generic [ref=e279]: Заверения о добросовестности
+                            - generic [ref=e280]: docx • 28.2 КБ • 08.05.2026, 16:38
+                      - link "Скачать все файлы (.zip)" [ref=e282] [cursor=pointer]:
+                        - /url: https://bidzaar.com/api/filestorage/files/download?ids=186fd666-2b31-4fba-b2f9-e52043897e8f&ids=b495f1dd-5c3d-45e6-91e9-4c54a9a4d523&ids=4d4e91f1-3825-438b-bac9-12b7e4d0d57d&ids=41157895-8e1e-40bb-8a0b-7ad3cccf1f34
+                        - img [ref=e283]: archive
+                        - generic [ref=e284]: Скачать все файлы (.zip)
+                  - generic [ref=e286]:
+                    - generic [ref=e290]: Контакты
+                    - generic [ref=e293]: Сведения доступны после начала работы над предложением.
+                  - generic [ref=e295]:
+                    - generic [ref=e297]:
+                      - generic [ref=e299]: Место поставки
+                      - link "Рассчитайте стоимость доставки" [ref=e301] [cursor=pointer]:
+                        - /url: https://bidzaar.ot.do/?utm_source=site&utm_medium=button&utm_campaign=logistics
+                        - img [ref=e302]
+                        - text: Рассчитайте стоимость доставки
+                    - generic [ref=e308]: Россия, Свердловская обл, город Екатеринбург
+                  - generic [ref=e310]:
+                    - generic [ref=e314]: Теги
+                    - generic [ref=e320]:
+                      - option "# вывоз мусора" [ref=e322] [cursor=pointer]:
+                        - generic:
+                          - generic:
+                            - img
+                        - generic [ref=e323]: "# вывоз мусора"
+                      - option "# вывоз строительного мусора" [ref=e325] [cursor=pointer]:
+                        - generic:
+                          - generic:
+                            - img
+                        - generic [ref=e326]: "# вывоз строительного мусора"
+                      - option "# мусорные контейнеры" [ref=e328] [cursor=pointer]:
+                        - generic:
+                          - generic:
+                            - img
+                        - generic [ref=e329]: "# мусорные контейнеры"
+                      - option "# производственные отходы" [ref=e331] [cursor=pointer]:
+                        - generic:
+                          - generic:
+                            - img
+                        - generic [ref=e332]: "# производственные отходы"
+                - generic [ref=e335]:
+                  - generic [ref=e341]: Спецификация по позициям (12)
+                  - generic [ref=e344]:
+                    - generic [ref=e345]:
+                      - generic [ref=e347]:
+                        - generic [ref=e348]: 1. Вывоз мусора контейнером 8 куб.м. (1 раз в месяц)
+                        - generic [ref=e349]: 1 куб.м.
+                      - generic [ref=e351]:
+                        - generic [ref=e352]: 2. Вывоз мусора контейнером 8 куб.м. (2 раза в месяц)
+                        - generic [ref=e353]: 1 куб.м.
+                      - generic [ref=e355]:
+                        - generic [ref=e356]: 3. Вывоз мусора контейнером 8 куб.м. (3 раза в месяц)
+                        - generic [ref=e357]: 1 куб.м.
+                      - generic [ref=e359]:
+                        - generic [ref=e360]: 4. Вывоз мусора контейнером 8 куб.м. (4 раза в месяц)
+                        - generic [ref=e361]: 1 куб.м.
+                      - generic [ref=e363]:
+                        - generic [ref=e364]: 5. Аренда контейнера 8 куб.м.
+                        - generic [ref=e365]: 1 месяц
+                      - generic [ref=e366]:
+                        - generic [ref=e367]:
+                          - generic [ref=e368]: 6. Разовый вывоз мусора с предоставлением контейнера 8 куб.м под загрузку (без аренды)
+                          - generic [ref=e369]: 1 куб.м.
+                        - generic [ref=e370]: Спецтехника привозит контейнер 8 куб.м., Заказчик осуществляет загрузку Отходов собственными силами в контейнер Исполнителя в течение не более 2-х часов. Далее Исполнитель увозит контейнер.
+                      - generic [ref=e372]:
+                        - generic [ref=e373]: 7. Вывоз мусора контейнером 8 куб.м. (1 раз в месяц)
+                        - generic [ref=e374]: 1 куб.м.
+                    - button "Открыть полную спецификацию" [ref=e377] [cursor=pointer]:
+                      - generic [ref=e378]: Открыть полную спецификацию
+                - generic [ref=e383]:
+                  - generic [ref=e389]: Неценовые критерии запроса (9)
+                  - generic [ref=e392]:
+                    - generic [ref=e394]:
+                      - generic [ref=e395]: 1. Правила и условия проведения закупки
+                      - generic [ref=e396]:
+                        - generic [ref=e397]: 1.1. Обязательства организатора
+                        - generic [ref=e398]: Настоящий запрос ценовых предложений не является торгами, тендером или публичным конкурсом в понимании ст.447-449, 1057-1061 ГК РФ. Все действия до момента подписания договора с Участником-Победителем запроса ценовых предложений считаются преддоговорной работой и не накладывают на Организатора обязательств, превышающих перечисленные в условиях Заявки. Организатор оставляет за собой право выбора Участника-Победителя путем коллегиального решения конкурсной комиссии, вне зависимости от результатов ЭТП.
+                    - button "Показать неценовые критерии" [ref=e401] [cursor=pointer]:
+                      - generic [ref=e402]: Показать неценовые критерии
+                - generic [ref=e406]:
+                  - generic [ref=e412]: Правила проведения запроса
+                  - generic [ref=e416]:
+                    - generic [ref=e418]:
+                      - generic [ref=e419]:
+                        - generic [ref=e420]: Прием предложений до
+                        - generic [ref=e422]:
+                          - generic [ref=e423]: 18.05.2026, 12:00
+                          - generic [ref=e425]:
+                            - img [ref=e426]: access_time
+                            - generic [ref=e427]: Остаётся
+                            - generic [ref=e428]: 9 дней
+                      - generic [ref=e429]:
+                        - generic [ref=e430]: Вид запроса
+                        - generic [ref=e432]:
+                          - generic [ref=e433]: Открытый
+                          - img [ref=e434]: info_outline
+                      - generic [ref=e435]:
+                        - generic [ref=e436]: После подачи предложения участники видят
+                        - generic [ref=e439]: Только своё предложение
+                      - generic [ref=e440]:
+                        - generic [ref=e441]: При выборе победителя учитывается
+                        - generic [ref=e444]: Цена без НДС
+                      - generic [ref=e445]:
+                        - generic [ref=e446]: Альтернативных предложений
+                        - generic [ref=e448]: Запрещено подавать альтернативные предложения
+                      - generic [ref=e449]:
+                        - generic [ref=e450]: Валюта запроса
+                        - generic [ref=e455]: RUB
+                    - generic [ref=e457]: Дополнительные параметры
+                    - list [ref=e460]:
+                      - listitem [ref=e461]:
+                        - text: "Автопродление приема предложений: 10 мин"
+                        - img [ref=e462]: info_outline
+                      - listitem [ref=e463]: "Напоминание участникам о завершении приема предложений за: 48 ч"
+                      - listitem [ref=e464]: Срок приёма документов участников после завершения приёма предложений неограничен
+                      - listitem [ref=e465]: "Организатор на этапе приема предложений: Не видит содержания предложения участников"
+                      - listitem [ref=e466]: "Ориентировочный срок подведения итогов: 30 календ. дн."
+                      - listitem [ref=e467]: Подача предложений с момента публикации
+                    - generic [ref=e469]: Ранжирование предложений
+                    - list [ref=e472]:
+                      - listitem [ref=e473]: "Для организатора: По цене и времени ставки"
+                      - listitem [ref=e474]: "Для участников: По цене и времени ставки"
+              - generic [ref=e475]:
+                - generic [ref=e476]:
+                  - generic [ref=e477]:
+                    - text: Прием предложений
+                    - generic [ref=e478]:
+                      - img [ref=e479]: access_time
+                      - generic [ref=e480]: 9 дней
+                  - generic [ref=e481]:
+                    - text: до 18.05.2026, 12:00
+                    - img [ref=e482] [cursor=pointer]: info_outline
+                - generic [ref=e483]:
+                  - generic [ref=e484]:
+                    - generic [ref=e485]: Закупка
+                    - generic [ref=e486]: •
+                    - generic [ref=e487]: Торги за единицу
+                  - generic [ref=e488]: Опубликован 08.05.2026, 16:49
+                - separator [ref=e489]
+                - generic [ref=e490]:
+                  - button "Принять участие" [ref=e492] [cursor=pointer]
+                  - generic [ref=e493]: Участие бесплатно — без ЭЦП, депозитов и блокировки средств! Комиссию оплачивает победитель
+                  - button "Подробнее о комиссии" [ref=e495] [cursor=pointer]:
+                    - generic [ref=e496]: Подробнее о комиссии
+                - generic [ref=e500]:
+                  - button "Написать в чат" [ref=e502] [cursor=pointer]:
+                    - img [ref=e503]: chat
+                    - generic [ref=e504]: Написать в чат
+                  - button "Скачать извещение" [ref=e508] [cursor=pointer]:
+                    - img [ref=e509]: get_app
+                    - generic [ref=e510]: Скачать извещение
+                - generic [ref=e513]:
+                  - link "⚡ ОФОРМИТЬ ФАКТОРИНГ" [ref=e514] [cursor=pointer]:
+                    - /url: https://hello.bidzaar.com/lending-request/?experiment=1&/process/light/019e079c-f462-77d1-899a-88eba5c8ed73
+                  - generic [ref=e515]:
+                    - strong [ref=e516]: Оформи факторинг от проверенного банка.
+                    - text: Полная оплата поставок без задержек от покупателей
+                - separator [ref=e517]
+                - generic [ref=e518]:
+                  - generic [ref=e519]:
+                    - generic [ref=e520]: Похожие запросы от bidzaar AI
+                    - img [ref=e521]:
+                      - img [ref=e522]
+                  - generic [ref=e525]:
+                    - generic [ref=e526]:
+                      - generic [ref=e528]:
+                        - link "Оказание комплекса услуг по управлению отходами 10 дней до завершения" [ref=e530] [cursor=pointer]:
+                          - /url: https://bidzaar.com/process/light/019df216-ad3e-7fee-815e-47bd7c33e6e0
+                          - generic [ref=e531]: Оказание комплекса услуг по управлению отходами
+                          - generic [ref=e532]:
+                            - img [ref=e533]: access_time
+                            - generic [ref=e534]: 10 дней
+                            - text: до завершения
+                        - generic:
+                          - link "Оказание услуг в области обращения с образующимися у Заказчика отходами производства и потребления для ТК ООО «Лента» 4 дня до завершения":
+                            - /url: https://bidzaar.com/process/light/019df709-1d2f-7515-9f62-c5991b2f7b2f
+                            - generic: Оказание услуг в области обращения с образующимися у Заказчика отходами производства и потребления для ТК ООО «Лента»
+                            - generic:
+                              - img: access_time
+                              - generic: 4 дня
+                              - text: до завершения
+                        - generic:
+                          - link "Управление отходами производства и потребления, АШАН Южные врата 17 дней до завершения":
+                            - /url: https://bidzaar.com/process/light/019e02a8-95c6-788b-9cd8-62de5b4a6767
+                            - generic: Управление отходами производства и потребления, АШАН Южные врата
+                            - generic:
+                              - img: access_time
+                              - generic: 17 дней
+                              - text: до завершения
+                        - generic:
+                          - link "Услуга по извлечению, транспортировке и обезвреживанию отходов очистных сооружений ливневой канализации (АО ЛВЗ ТОПАЗ) 6 дней до завершения":
+                            - /url: https://bidzaar.com/process/light/019e02f9-0ef3-74ae-84e0-ee45fca6da23
+                            - generic: Услуга по извлечению, транспортировке и обезвреживанию отходов очистных сооружений ливневой канализации (АО ЛВЗ ТОПАЗ)
+                            - generic:
+                              - img: access_time
+                              - generic: 6 дней
+                              - text: до завершения
+                        - generic:
+                          - link "Выбор поставщика по вывозу и утилизации / обезвреживанию пищевых ароматизаторов и этикеток ООО \"Аква Стар\" 6 дней до завершения":
+                            - /url: https://bidzaar.com/process/light/019e016e-2019-7fb1-808a-001f549f34b2
+                            - generic: Выбор поставщика по вывозу и утилизации / обезвреживанию пищевых ароматизаторов и этикеток ООО "Аква Стар"
+                            - generic:
+                              - img: access_time
+                              - generic: 6 дней
+                              - text: до завершения
+                        - generic:
+                          - img: pan_tool
+                          - generic: Нажмите, чтобы увидеть полный список предложений от Bidzaar AI
+                      - generic [ref=e535]:
+                        - button [disabled]:
+                          - img: arrow_back_ios
+                        - button [ref=e536] [cursor=pointer]:
+                          - img [ref=e537]: circle
+                        - button [ref=e540] [cursor=pointer]:
+                          - img [ref=e541]: circle
+                        - button [ref=e544] [cursor=pointer]:
+                          - img [ref=e545]: circle
+                        - button [ref=e548] [cursor=pointer]:
+                          - img [ref=e549]: circle
+                        - button [ref=e552] [cursor=pointer]:
+                          - img [ref=e553]: circle
+                        - button [ref=e556] [cursor=pointer]:
+                          - img [ref=e557]: circle
+                        - button [ref=e560] [cursor=pointer]:
+                          - img [ref=e561]: arrow_forward_ios
+                    - button "показать все похожие" [ref=e564] [cursor=pointer]:
+                      - generic [ref=e565]: показать все похожие
+        - button "ЧАТЫ" [ref=e570] [cursor=pointer]:
+          - img [ref=e571]: message
+          - generic [ref=e572]: ЧАТЫ

@@ -1,0 +1,559 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]: menu
+      - link "bidzaar" [ref=e16] [cursor=pointer]:
+        - /url: https://bidzaar.com/home
+        - img [ref=e17]
+        - generic [ref=e18]: bidzaar
+    - generic [ref=e21]:
+      - link "Мерч" [ref=e44] [cursor=pointer]:
+        - /url: https://hello.bidzaar.com/merch/?from=app
+        - generic [ref=e45]: Мерч
+      - button "Техподдержка" [ref=e47] [cursor=pointer]:
+        - img [ref=e48]: support_agent
+        - generic [ref=e49]: Техподдержка
+      - button [ref=e23] [cursor=pointer]:
+        - img [ref=e24]: language
+      - button [ref=e53] [cursor=pointer]:
+        - img [ref=e54]: notifications
+      - generic [ref=e33] [cursor=pointer]:
+        - generic [ref=e59]: RV
+        - generic [ref=e60]: Ruzal V.
+        - img [ref=e61]: keyboard_arrow_down
+  - generic [ref=e35]:
+    - generic [ref=e36]:
+      - generic [ref=e63]:
+        - generic [ref=e64]:
+          - link "Главная" [ref=e65] [cursor=pointer]:
+            - /url: https://bidzaar.com/home
+            - img [ref=e66]: home
+            - generic: Главная
+          - separator [ref=e67]
+        - generic [ref=e68]:
+          - link "Избранное" [ref=e69] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/favorites
+            - img [ref=e70]: star
+            - generic: Избранное
+          - separator [ref=e71]
+        - generic [ref=e72]:
+          - link "Все закупки России" [ref=e73] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/external
+            - img [ref=e74]:
+              - img [ref=e75]
+            - generic: Все закупки России
+          - link "Все закупки" [ref=e81] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/buy
+            - img [ref=e82]: enable
+            - generic: Все закупки
+          - link "Все продажи" [ref=e83] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/sell
+            - img [ref=e84]: enable
+            - generic: Все продажи
+          - link "Все реестры" [ref=e85] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/registries
+            - img [ref=e86]: policy
+            - generic: Все реестры
+          - separator [ref=e87]
+      - generic [ref=e90]:
+        - link [ref=e91] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e92]
+        - link "Последний конверт" [ref=e93] [cursor=pointer]:
+          - /url: https://t.me/v_kodanev
+          - img [ref=e94]:
+            - img [ref=e95]
+          - generic: Последний конверт
+        - link "Больше о bidzaar" [ref=e97] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/
+          - img [ref=e98]:
+            - img [ref=e99]
+          - generic: Больше о bidzaar
+    - generic [ref=e37]:
+      - generic [ref=e106]:
+        - text: Ваш email неподтверждённый. Доставка писем с Bidzaar не гарантирована.
+        - link "Подтвердить email" [ref=e107] [cursor=pointer]:
+          - /url: https://bidzaar.com/users/current
+      - generic [ref=e111]:
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - generic [ref=e116]: Все закупки Bidzaar
+            - generic [ref=e117]:
+              - generic [ref=e121]:
+                - button [ref=e123] [cursor=pointer]:
+                  - img [ref=e124]: info_outline
+                - textbox "Найти..." [ref=e127]
+                - button [ref=e129] [cursor=pointer]:
+                  - img [ref=e130]: search
+              - dialog
+          - generic [ref=e133]: "Записи: 2839"
+        - generic [ref=e134]:
+          - generic [ref=e135]:
+            - generic [ref=e139]: Фильтры
+            - generic [ref=e140]:
+              - generic [ref=e141]:
+                - generic [ref=e142]:
+                  - generic [ref=e143]: ★ Только избранное
+                  - switch [ref=e147] [cursor=pointer]:
+                    - generic [ref=e153]:
+                      - img [ref=e154]
+                      - img [ref=e156]
+                - dialog
+              - generic [ref=e158]:
+                - generic [ref=e159]:
+                  - generic [ref=e160]: Тип торгов
+                  - button [ref=e163] [cursor=pointer]:
+                    - img [ref=e164]: filter_alt
+                - dialog
+              - generic [ref=e166]:
+                - generic [ref=e167]:
+                  - generic [ref=e168]: Организатор
+                  - button [ref=e171] [cursor=pointer]:
+                    - img [ref=e172]: filter_alt
+                - dialog
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]: Место поставки
+                  - button [ref=e179] [cursor=pointer]:
+                    - img [ref=e180]: filter_alt
+                - dialog
+              - generic [ref=e182]:
+                - generic [ref=e183]:
+                  - generic [ref=e184]: Теги
+                  - button [ref=e187] [cursor=pointer]:
+                    - img [ref=e188]: filter_alt
+                - dialog
+              - generic [ref=e190]:
+                - generic [ref=e191]:
+                  - generic [ref=e192]: Статус запроса
+                  - generic [ref=e193]:
+                    - button [ref=e194] [cursor=pointer]:
+                      - img [ref=e195]: close
+                    - button [ref=e198] [cursor=pointer]:
+                      - img [ref=e199]: filter_alt
+                - generic [ref=e205]:
+                  - text: •
+                  - generic [ref=e206]: Прием предложений
+                - dialog
+              - generic [ref=e207]:
+                - generic [ref=e208]:
+                  - generic [ref=e209]: Дата публикации
+                  - button [ref=e212] [cursor=pointer]:
+                    - img [ref=e213]: filter_alt
+                - dialog
+              - generic [ref=e215]:
+                - generic [ref=e216]:
+                  - generic [ref=e217]: Окончание приема предложений
+                  - button [ref=e220] [cursor=pointer]:
+                    - img [ref=e221]: filter_alt
+                - dialog
+              - generic [ref=e223]:
+                - generic [ref=e224]:
+                  - generic [ref=e225]: Дата завершения
+                  - button [ref=e228] [cursor=pointer]:
+                    - img [ref=e229]: filter_alt
+                - dialog
+            - button "Очистить" [ref=e233] [cursor=pointer]:
+              - generic [ref=e234]: Очистить
+          - generic [ref=e237]:
+            - generic [ref=e239]:
+              - generic [ref=e240]: "Сортировать:"
+              - button "Дата публикации" [ref=e241] [cursor=pointer]:
+                - img [ref=e242]: sort
+                - generic [ref=e243]: Дата публикации
+              - button "Прием предложений" [ref=e245] [cursor=pointer]:
+                - generic [ref=e246]: Прием предложений
+            - generic [ref=e249]:
+              - generic [ref=e253]:
+                - generic [ref=e254]:
+                  - img [ref=e258] [cursor=pointer]: star_border
+                  - link "326-983 • Услуги по организации перевозок автомобильным транспортом (бестарные перевозки) сахара в сахаровозах Прием предложений до 12.05.2026 • 14:00 ( Остаётся 6 дней ) Торги за единицу • Опубликован 05.05.2026" [ref=e259] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df915-4aca-7a92-8807-aa466d5348d5
+                    - generic [ref=e261]: 326-983 • Услуги по организации перевозок автомобильным транспортом (бестарные перевозки) сахара в сахаровозах
+                    - generic [ref=e262]:
+                      - generic [ref=e264]:
+                        - generic [ref=e265]: Прием предложений
+                        - generic [ref=e266]: до
+                        - generic [ref=e267]: 12.05.2026 • 14:00
+                        - generic [ref=e268]:
+                          - text: (
+                          - generic [ref=e269]:
+                            - generic [ref=e270]: Остаётся
+                            - generic [ref=e271]: 6 дней
+                          - text: )
+                      - generic [ref=e272]:
+                        - generic [ref=e273]: Торги за единицу
+                        - generic [ref=e274]: • Опубликован 05.05.2026
+                - link "ГРУППА КОМПАНИЙ РУСАГРО" [ref=e277] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/gruppa-kompaniy-rusagro-003-8387
+                  - img [ref=e279]
+                  - generic [ref=e280]:
+                    - generic [ref=e281]: ГРУППА КОМПАНИЙ РУСАГРО
+                    - generic [ref=e282]:
+                      - img [ref=e283]: verified
+                      - dialog
+              - generic [ref=e287]:
+                - generic [ref=e288]:
+                  - img [ref=e292] [cursor=pointer]: star_border
+                  - 'link "326-978 • Закупка Фосфатов пищевых: ортофосфат калия (Е340ii) и полифосфат натрия (Е452i) для Молочных продуктов Русагро на период 01.08.2026г. - 31.01.2027г. Прием предложений до 14.05.2026 • 12:00 ( Остаётся 8 дней ) Торги заданного объема • Опубликован 05.05.2026" [ref=e293] [cursor=pointer]':
+                    - /url: https://bidzaar.com/process/light/019df8cc-7276-73ad-b183-afddb5d9bafc
+                    - generic [ref=e295]: "326-978 • Закупка Фосфатов пищевых: ортофосфат калия (Е340ii) и полифосфат натрия (Е452i) для Молочных продуктов Русагро на период 01.08.2026г. - 31.01.2027г."
+                    - generic [ref=e296]:
+                      - generic [ref=e298]:
+                        - generic [ref=e299]: Прием предложений
+                        - generic [ref=e300]: до
+                        - generic [ref=e301]: 14.05.2026 • 12:00
+                        - generic [ref=e302]:
+                          - text: (
+                          - generic [ref=e303]:
+                            - generic [ref=e304]: Остаётся
+                            - generic [ref=e305]: 8 дней
+                          - text: )
+                      - generic [ref=e306]:
+                        - generic [ref=e307]: Торги заданного объема
+                        - generic [ref=e308]: • Опубликован 05.05.2026
+                - link "ГРУППА КОМПАНИЙ РУСАГРО" [ref=e311] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/gruppa-kompaniy-rusagro-003-8387
+                  - img [ref=e313]
+                  - generic [ref=e314]:
+                    - generic [ref=e315]: ГРУППА КОМПАНИЙ РУСАГРО
+                    - generic [ref=e316]:
+                      - img [ref=e317]: verified
+                      - dialog
+              - generic [ref=e321]:
+                - generic [ref=e322]:
+                  - img [ref=e326] [cursor=pointer]: star_border
+                  - link "326-973 • Поставка оптического сетевого оборудования (мультиплексоры, патч-корды и SFP+-модули) для ООО «АКЦЕПТ» (Телевизионный канал РЕН ТВ), г. Москва Прием предложений до 14.05.2026 • 14:00 ( Остаётся 8 дней ) Торги заданного объема • Опубликован 05.05.2026" [ref=e327] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df8a6-fbef-7975-8eb6-5eb0a169a391
+                    - generic [ref=e329]: 326-973 • Поставка оптического сетевого оборудования (мультиплексоры, патч-корды и SFP+-модули) для ООО «АКЦЕПТ» (Телевизионный канал РЕН ТВ), г. Москва
+                    - generic [ref=e330]:
+                      - generic [ref=e332]:
+                        - generic [ref=e333]: Прием предложений
+                        - generic [ref=e334]: до
+                        - generic [ref=e335]: 14.05.2026 • 14:00
+                        - generic [ref=e336]:
+                          - text: (
+                          - generic [ref=e337]:
+                            - generic [ref=e338]: Остаётся
+                            - generic [ref=e339]: 8 дней
+                          - text: )
+                      - generic [ref=e340]:
+                        - generic [ref=e341]: Торги заданного объема
+                        - generic [ref=e342]: • Опубликован 05.05.2026
+                - link "ООО \"Медиа Бизнес Солюшенс\"" [ref=e345] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/ooo-media-biznes-solyushens-000-0829
+                  - img [ref=e347]
+                  - generic [ref=e348]:
+                    - generic [ref=e349]: ООО "Медиа Бизнес Солюшенс"
+                    - generic [ref=e350]:
+                      - img [ref=e351]: verified
+                      - dialog
+              - generic [ref=e355]:
+                - generic [ref=e356]:
+                  - img [ref=e360] [cursor=pointer]: star_border
+                  - link "326-979 • 05.05.26 Смартфоны Самсунг, Москва Прием предложений до 07.05.2026 • 13:00 ( Остаётся 37 часов ) Торги заданного объема • Опубликован 05.05.2026" [ref=e361] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df8cd-5d5c-763e-bcb2-c9e353d25dc0
+                    - generic [ref=e363]: 326-979 • 05.05.26 Смартфоны Самсунг, Москва
+                    - generic [ref=e364]:
+                      - generic [ref=e366]:
+                        - generic [ref=e367]: Прием предложений
+                        - generic [ref=e368]: до
+                        - generic [ref=e369]: 07.05.2026 • 13:00
+                        - generic [ref=e370]:
+                          - text: (
+                          - generic [ref=e371]:
+                            - generic [ref=e372]: Остаётся
+                            - generic [ref=e373]: 37 часов
+                          - text: )
+                      - generic [ref=e374]:
+                        - generic [ref=e375]: Торги заданного объема
+                        - generic [ref=e376]: • Опубликован 05.05.2026
+                - link "ООО \"ИНФОРМ\"" [ref=e379] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/ooo-inform-004-2719
+                  - img [ref=e381]
+                  - generic [ref=e382]:
+                    - generic [ref=e383]: ООО "ИНФОРМ"
+                    - generic [ref=e384]:
+                      - img [ref=e385]: verified
+                      - dialog
+              - generic [ref=e389]:
+                - generic [ref=e390]:
+                  - img [ref=e394] [cursor=pointer]: star_border
+                  - link "326-976 • Закупка кассового оборудования, программного обеспечения для проведения кассовых операций и сервисного обслуживания Прием предложений до 13.05.2026 • 18:00 ( Остаётся 7 дней ) Торги заданного объема • Опубликован 05.05.2026" [ref=e395] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df8b0-2c70-766a-8c75-58ab68d36492
+                    - generic [ref=e397]: 326-976 • Закупка кассового оборудования, программного обеспечения для проведения кассовых операций и сервисного обслуживания
+                    - generic [ref=e398]:
+                      - generic [ref=e400]:
+                        - generic [ref=e401]: Прием предложений
+                        - generic [ref=e402]: до
+                        - generic [ref=e403]: 13.05.2026 • 18:00
+                        - generic [ref=e404]:
+                          - text: (
+                          - generic [ref=e405]:
+                            - generic [ref=e406]: Остаётся
+                            - generic [ref=e407]: 7 дней
+                          - text: )
+                      - generic [ref=e408]:
+                        - generic [ref=e409]: Торги заданного объема
+                        - generic [ref=e410]: • Опубликован 05.05.2026
+                - link "IC-GROUP (АЙСИ ГРУПП)" [ref=e413] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/ao-aysi-invest-020-8658
+                  - img [ref=e415]
+                  - generic [ref=e416]:
+                    - generic [ref=e417]: IC-GROUP (АЙСИ ГРУПП)
+                    - generic [ref=e418]:
+                      - img [ref=e419]: verified
+                      - dialog
+              - generic [ref=e423]:
+                - generic [ref=e424]:
+                  - img [ref=e428] [cursor=pointer]: star_border
+                  - link "326-965 • Ремонтные работы на территории СХ предприятий Прием предложений до 14.05.2026 • 13:00 ( Остаётся 8 дней ) Торги заданного объема • Опубликован 05.05.2026" [ref=e429] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df898-6af2-74a1-9162-24c7362e5fdb
+                    - generic [ref=e431]: 326-965 • Ремонтные работы на территории СХ предприятий
+                    - generic [ref=e432]:
+                      - generic [ref=e434]:
+                        - generic [ref=e435]: Прием предложений
+                        - generic [ref=e436]: до
+                        - generic [ref=e437]: 14.05.2026 • 13:00
+                        - generic [ref=e438]:
+                          - text: (
+                          - generic [ref=e439]:
+                            - generic [ref=e440]: Остаётся
+                            - generic [ref=e441]: 8 дней
+                          - text: )
+                      - generic [ref=e442]:
+                        - generic [ref=e443]: Торги заданного объема
+                        - generic [ref=e444]: • Опубликован 05.05.2026
+                - link "БРЯНСКАГРОСТРОЙ" [ref=e447] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/bryanskagrostroy-003-7278
+                  - img [ref=e449]
+                  - generic [ref=e450]:
+                    - generic [ref=e451]: БРЯНСКАГРОСТРОЙ
+                    - generic [ref=e452]:
+                      - img [ref=e453]: verified
+                      - dialog
+              - generic [ref=e457]:
+                - generic [ref=e458]:
+                  - img [ref=e462] [cursor=pointer]: star_border
+                  - 'link "326-972 • Оказание услуг по SMM: поддержка аккаунтов МЕДСИ в социальных сетях, реализация и поддержка рекламных компаний (Москва и регионы) Прием предложений до 20.05.2026 • 17:00 ( Остаётся 14 дней ) Торги за единицу • Опубликован 05.05.2026" [ref=e463] [cursor=pointer]':
+                    - /url: https://bidzaar.com/process/light/019df8a4-3281-7009-8c68-34863fce748b
+                    - generic [ref=e465]: "326-972 • Оказание услуг по SMM: поддержка аккаунтов МЕДСИ в социальных сетях, реализация и поддержка рекламных компаний (Москва и регионы)"
+                    - generic [ref=e466]:
+                      - generic [ref=e468]:
+                        - generic [ref=e469]: Прием предложений
+                        - generic [ref=e470]: до
+                        - generic [ref=e471]: 20.05.2026 • 17:00
+                        - generic [ref=e472]:
+                          - text: (
+                          - generic [ref=e473]:
+                            - generic [ref=e474]: Остаётся
+                            - generic [ref=e475]: 14 дней
+                          - text: )
+                      - generic [ref=e476]:
+                        - generic [ref=e477]: Торги за единицу
+                        - generic [ref=e478]: • Опубликован 05.05.2026
+                - link "ГРУППА КОМПАНИЙ МЕДСИ" [ref=e481] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/gruppa-kompaniy-medsi-001-1255
+                  - img [ref=e483]
+                  - generic [ref=e484]:
+                    - generic [ref=e485]: ГРУППА КОМПАНИЙ МЕДСИ
+                    - generic [ref=e486]:
+                      - img [ref=e487]: verified
+                      - dialog
+              - generic [ref=e491]:
+                - generic [ref=e492]:
+                  - img [ref=e496] [cursor=pointer]: star_border
+                  - 'link "326-804 • Закупка - Поиск подрядной организации на ремонт полов Производственного корпуса в Структурном подразделении \"Мясокомбинат\" по адресу: Воронежская область, Рамонский район, с.Ступино\" Прием предложений до 14.05.2026 • 12:00 ( Остаётся 8 дней ) Торги заданного объема • Опубликован 05.05.2026" [ref=e497] [cursor=pointer]':
+                    - /url: https://bidzaar.com/process/light/019df7fe-de72-7fa1-91c2-c46aa0439986
+                    - generic [ref=e499]: "326-804 • Закупка - Поиск подрядной организации на ремонт полов Производственного корпуса в Структурном подразделении \"Мясокомбинат\" по адресу: Воронежская область, Рамонский район, с.Ступино\""
+                    - generic [ref=e500]:
+                      - generic [ref=e502]:
+                        - generic [ref=e503]: Прием предложений
+                        - generic [ref=e504]: до
+                        - generic [ref=e505]: 14.05.2026 • 12:00
+                        - generic [ref=e506]:
+                          - text: (
+                          - generic [ref=e507]:
+                            - generic [ref=e508]: Остаётся
+                            - generic [ref=e509]: 8 дней
+                          - text: )
+                      - generic [ref=e510]:
+                        - generic [ref=e511]: Торги заданного объема
+                        - generic [ref=e512]: • Опубликован 05.05.2026
+                - link "АГРОХОЛДИНГ ПРОСТОРЫ" [ref=e515] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/agrokholding-prostory-015-6582
+                  - img [ref=e517]
+                  - generic [ref=e518]:
+                    - generic [ref=e519]: АГРОХОЛДИНГ ПРОСТОРЫ
+                    - generic [ref=e520]:
+                      - img [ref=e521]: verified
+                      - dialog
+              - generic [ref=e525]:
+                - generic [ref=e526]:
+                  - img [ref=e530] [cursor=pointer]: star_border
+                  - link "326-966 • Выполнение технического обслуживания (ТО) и аварийно-восстановительных работ (АВР) в отношении автоматических систем пожаротушения (АСП), расположенных в ДатЦентрах Калужского филиала макрорегиона Центр до 01.01.2029 г. Прием предложений до 13.05.2026 • 16:00 ( Остаётся 7 дней ) Торги за единицу • Опубликован 05.05.2026" [ref=e531] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df89a-bb77-7d7f-93ec-97d92fd7dfd1
+                    - generic [ref=e533]: 326-966 • Выполнение технического обслуживания (ТО) и аварийно-восстановительных работ (АВР) в отношении автоматических систем пожаротушения (АСП), расположенных в ДатЦентрах Калужского филиала макрорегиона Центр до 01.01.2029 г.
+                    - generic [ref=e534]:
+                      - generic [ref=e536]:
+                        - generic [ref=e537]: Прием предложений
+                        - generic [ref=e538]: до
+                        - generic [ref=e539]: 13.05.2026 • 16:00
+                        - generic [ref=e540]:
+                          - text: (
+                          - generic [ref=e541]:
+                            - generic [ref=e542]: Остаётся
+                            - generic [ref=e543]: 7 дней
+                          - text: )
+                      - generic [ref=e544]:
+                        - generic [ref=e545]: Торги за единицу
+                        - generic [ref=e546]: • Опубликован 05.05.2026
+                - link "Т2 МОБАЙЛ" [ref=e549] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/t2-mobayl-000-7355
+                  - img [ref=e551]
+                  - generic [ref=e552]:
+                    - generic [ref=e553]: Т2 МОБАЙЛ
+                    - generic [ref=e554]:
+                      - img [ref=e555]: verified
+                      - dialog
+              - generic [ref=e559]:
+                - generic [ref=e560]:
+                  - img [ref=e564] [cursor=pointer]: star_border
+                  - link "326-975 • Расширенная техническая поддержка информационной системы СУПД IdM Прием предложений до 13.05.2026 • 18:00 ( Остаётся 7 дней ) Торги заданного объема • Опубликован 05.05.2026" [ref=e565] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df8a9-e512-7fa8-a88e-2c0661fe3ffd
+                    - generic [ref=e567]: 326-975 • Расширенная техническая поддержка информационной системы СУПД IdM
+                    - generic [ref=e568]:
+                      - generic [ref=e570]:
+                        - generic [ref=e571]: Прием предложений
+                        - generic [ref=e572]: до
+                        - generic [ref=e573]: 13.05.2026 • 18:00
+                        - generic [ref=e574]:
+                          - text: (
+                          - generic [ref=e575]:
+                            - generic [ref=e576]: Остаётся
+                            - generic [ref=e577]: 7 дней
+                          - text: )
+                      - generic [ref=e578]:
+                        - generic [ref=e579]: Торги заданного объема
+                        - generic [ref=e580]: • Опубликован 05.05.2026
+                - link "ГРУППА КОМПАНИЙ РУСАГРО" [ref=e583] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/gruppa-kompaniy-rusagro-003-8387
+                  - img [ref=e585]
+                  - generic [ref=e586]:
+                    - generic [ref=e587]: ГРУППА КОМПАНИЙ РУСАГРО
+                    - generic [ref=e588]:
+                      - img [ref=e589]: verified
+                      - dialog
+              - generic [ref=e593]:
+                - generic [ref=e594]:
+                  - img [ref=e598] [cursor=pointer]: star_border
+                  - link "326-971 • Выполнение СМР на объектах в г. Омск, г. Томск (NZAK-2994, 2999) Прием предложений до 13.05.2026 • 13:00 ( Остаётся 7 дней ) Торги заданного объема • Опубликован 05.05.2026" [ref=e599] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df8a3-fd26-7db8-afc2-c2a45f2cd5f0
+                    - generic [ref=e601]: 326-971 • Выполнение СМР на объектах в г. Омск, г. Томск (NZAK-2994, 2999)
+                    - generic [ref=e602]:
+                      - generic [ref=e604]:
+                        - generic [ref=e605]: Прием предложений
+                        - generic [ref=e606]: до
+                        - generic [ref=e607]: 13.05.2026 • 13:00
+                        - generic [ref=e608]:
+                          - text: (
+                          - generic [ref=e609]:
+                            - generic [ref=e610]: Остаётся
+                            - generic [ref=e611]: 7 дней
+                          - text: )
+                      - generic [ref=e612]:
+                        - generic [ref=e613]: Торги заданного объема
+                        - generic [ref=e614]: • Опубликован 05.05.2026
+                - link "О2О ХОЛДИНГ" [ref=e617] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/o2o-kholding-009-1754
+                  - img [ref=e619]
+                  - generic [ref=e620]:
+                    - generic [ref=e621]: О2О ХОЛДИНГ
+                    - generic [ref=e622]:
+                      - img [ref=e623]: verified
+                      - dialog
+              - generic [ref=e627]:
+                - generic [ref=e628]:
+                  - img [ref=e632] [cursor=pointer]: star_border
+                  - link "326-706 • Корзина для вилочного погрузчика Прием предложений до 12.05.2026 • 15:00 ( Остаётся 6 дней ) Торги заданного объема • Опубликован 05.05.2026" [ref=e633] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df7a0-629c-723f-bdf8-e01ba172cbc3
+                    - generic [ref=e635]: 326-706 • Корзина для вилочного погрузчика
+                    - generic [ref=e636]:
+                      - generic [ref=e638]:
+                        - generic [ref=e639]: Прием предложений
+                        - generic [ref=e640]: до
+                        - generic [ref=e641]: 12.05.2026 • 15:00
+                        - generic [ref=e642]:
+                          - text: (
+                          - generic [ref=e643]:
+                            - generic [ref=e644]: Остаётся
+                            - generic [ref=e645]: 6 дней
+                          - text: )
+                      - generic [ref=e646]:
+                        - generic [ref=e647]: Торги заданного объема
+                        - generic [ref=e648]: • Опубликован 05.05.2026
+                - link "ВАЙЛДБЕРРИЗ" [ref=e651] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/vayldberriz-000-8115
+                  - img [ref=e653]
+                  - generic [ref=e654]:
+                    - generic [ref=e655]: ВАЙЛДБЕРРИЗ
+                    - generic [ref=e656]:
+                      - img [ref=e657]: verified
+                      - dialog
+              - generic [ref=e661]:
+                - generic [ref=e662]:
+                  - img [ref=e666] [cursor=pointer]: star_border
+                  - link "326-969 • Выбор поставщика брендированной сувенирной продукции Прием предложений до 08.05.2026 • 14:00 ( Остаётся 2 дня ) Торги заданного объема • Опубликован 05.05.2026" [ref=e667] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df89e-6c4c-7519-93d5-02f106171a63
+                    - generic [ref=e669]: 326-969 • Выбор поставщика брендированной сувенирной продукции
+                    - generic [ref=e670]:
+                      - generic [ref=e672]:
+                        - generic [ref=e673]: Прием предложений
+                        - generic [ref=e674]: до
+                        - generic [ref=e675]: 08.05.2026 • 14:00
+                        - generic [ref=e676]:
+                          - text: (
+                          - generic [ref=e677]:
+                            - generic [ref=e678]: Остаётся
+                            - generic [ref=e679]: 2 дня
+                          - text: )
+                      - generic [ref=e680]:
+                        - generic [ref=e681]: Торги заданного объема
+                        - generic [ref=e682]: • Опубликован 05.05.2026
+                - link "INVITRO" [ref=e685] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/invitro-001-4317
+                  - img [ref=e687]
+                  - generic [ref=e688]:
+                    - generic [ref=e689]: INVITRO
+                    - generic [ref=e690]:
+                      - img [ref=e691]: verified
+                      - dialog
+              - generic [ref=e695]:
+                - generic [ref=e696]:
+                  - img [ref=e700] [cursor=pointer]: star_border
+                  - link "326-970 • Заявка на потребность Рапсового масла на июнь 2026 года. СЖК Прием предложений до 07.05.2026 • 12:00 ( Остаётся 36 часов ) Торги заданного объема • Опубликован 05.05.2026" [ref=e701] [cursor=pointer]:
+                    - /url: https://bidzaar.com/process/light/019df8a2-0cf7-7657-966c-f7af27cf89ea
+                    - generic [ref=e703]: 326-970 • Заявка на потребность Рапсового масла на июнь 2026 года. СЖК
+                    - generic [ref=e704]:
+                      - generic [ref=e706]:
+                        - generic [ref=e707]: Прием предложений
+                        - generic [ref=e708]: до
+                        - generic [ref=e709]: 07.05.2026 • 12:00
+                        - generic [ref=e710]:
+                          - text: (
+                          - generic [ref=e711]:
+                            - generic [ref=e712]: Остаётся
+                            - generic [ref=e713]: 36 часов
+                          - text: )
+                      - generic [ref=e714]:
+                        - generic [ref=e715]: Торги заданного объема
+                        - generic [ref=e716]: • Опубликован 05.05.2026
+                - link "ГРУППА КОМПАНИЙ РУСАГРО" [ref=e719] [cursor=pointer]:
+                  - /url: https://bidzaar.com/companies/tendery/gruppa-kompaniy-rusagro-003-8387
+                  - img [ref=e721]
+                  - generic [ref=e722]:
+                    - generic [ref=e723]: ГРУППА КОМПАНИЙ РУСАГРО
+                    - generic [ref=e724]:
+                      - img [ref=e725]: verified
+                      - dialog

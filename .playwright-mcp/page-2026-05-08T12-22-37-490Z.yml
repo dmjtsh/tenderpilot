@@ -1,0 +1,107 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]: menu
+      - link "ООО \"ТАТНЕФТЬ - АКТИВ\"" [ref=e44] [cursor=pointer]:
+        - /url: https://bidzaar.com/home
+        - img [ref=e46]
+        - generic [ref=e49]: ООО "ТАТНЕФТЬ - АКТИВ"
+    - generic [ref=e21]:
+      - link "Мерч" [ref=e50] [cursor=pointer]:
+        - /url: https://hello.bidzaar.com/merch/?from=app
+        - generic [ref=e51]: Мерч
+      - button "Техподдержка" [ref=e53] [cursor=pointer]:
+        - img [ref=e54]: support_agent
+        - generic [ref=e55]: Техподдержка
+      - button [ref=e23] [cursor=pointer]:
+        - img [ref=e24]: language
+      - link [ref=e59] [cursor=pointer]:
+        - /url: https://bidzaar.yonote.ru/share/bb465fa2-d732-4446-85b0-a80f5f870f94
+        - img [ref=e60]: school
+      - button [ref=e64] [cursor=pointer]:
+        - img [ref=e65]: smart_display
+      - button [ref=e69] [cursor=pointer]:
+        - img [ref=e70]: notifications
+      - generic [ref=e33] [cursor=pointer]:
+        - generic [ref=e75]: RV
+        - generic [ref=e76]: Ruzal V.
+        - img [ref=e77]: keyboard_arrow_down
+  - generic [ref=e35]:
+    - generic [ref=e36]:
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - link "Главная" [ref=e81] [cursor=pointer]:
+            - /url: https://bidzaar.com/home
+            - img [ref=e82]: home
+            - generic: Главная
+          - separator [ref=e83]
+        - generic [ref=e84]:
+          - link "Избранное" [ref=e85] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/favorites
+            - img [ref=e86]: star
+            - generic: Избранное
+          - link "Мои предложения" [ref=e87] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/participations
+            - img [ref=e88]: work
+            - generic: Мои предложения
+          - link "Участие в реестраx" [ref=e89] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/applications
+            - img [ref=e90]: verified_user
+            - generic: Участие в реестраx
+          - separator [ref=e91]
+        - generic [ref=e92]:
+          - link "Все закупки России" [ref=e93] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/external
+            - img [ref=e94]:
+              - img [ref=e95]
+            - generic: Все закупки России
+          - link "Все закупки" [ref=e101] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/buy
+            - img [ref=e102]: enable
+            - generic: Все закупки
+          - link "Все продажи" [ref=e103] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/sell
+            - img [ref=e104]: enable
+            - generic: Все продажи
+          - link "Все реестры" [ref=e105] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/registries
+            - img [ref=e106]: policy
+            - generic: Все реестры
+          - separator [ref=e107]
+        - generic [ref=e108]:
+          - link "Профиль компании" [ref=e109] [cursor=pointer]:
+            - /url: https://bidzaar.com/companies/current
+            - img [ref=e110]: domain
+            - generic: Профиль компании
+          - separator [ref=e111]
+      - generic [ref=e114]:
+        - link [ref=e115] [cursor=pointer]:
+          - /url: ""
+          - img [ref=e116]
+        - link "Последний конверт" [ref=e117] [cursor=pointer]:
+          - /url: https://t.me/v_kodanev
+          - img [ref=e118]:
+            - img [ref=e119]
+          - generic: Последний конверт
+        - link "Больше о bidzaar" [ref=e121] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/
+          - img [ref=e122]:
+            - img [ref=e123]
+          - generic: Больше о bidzaar
+    - generic [ref=e37]:
+      - generic [ref=e130]:
+        - text: Ваш email неподтверждённый. Доставка писем с Bidzaar не гарантирована.
+        - link "Подтвердить email" [ref=e131] [cursor=pointer]:
+          - /url: https://bidzaar.com/users/current
+      - generic [ref=e38]:
+        - generic [ref=e132]:
+          - img [ref=e133]
+          - generic [ref=e134]: Упс!
+          - generic [ref=e135]: Страница не найдена
+          - link "Вернуться на главную" [ref=e136] [cursor=pointer]:
+            - /url: https://bidzaar.com/
+            - generic [ref=e137]: Вернуться на главную
+        - button "ЧАТЫ" [ref=e140] [cursor=pointer]:
+          - img [ref=e141]: message
+          - generic [ref=e142]: ЧАТЫ

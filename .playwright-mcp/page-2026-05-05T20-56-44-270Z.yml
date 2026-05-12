@@ -1,0 +1,38 @@
+- generic [ref=e2]:
+  - generic [ref=e5]:
+    - generic [ref=e10]: Войти
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - text: Нет аккаунта?
+        - link "Зарегистрируйтесь" [ref=e14] [cursor=pointer]:
+          - /url: /auth/register
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - text: Email
+          - generic [ref=e19]: "*"
+        - textbox "Email" [active] [ref=e21]
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - text: Пароль
+          - generic [ref=e27]: "*"
+        - textbox "Пароль" [ref=e29]
+        - button [ref=e31] [cursor=pointer]:
+          - img [ref=e32]: visibility
+      - link "Забыли пароль?" [ref=e35] [cursor=pointer]:
+        - /url: /auth/forgot-password
+      - button "Войти" [ref=e36] [cursor=pointer]:
+        - generic [ref=e37]: Войти
+      - link "войти по SSO" [ref=e41] [cursor=pointer]:
+        - /url: /auth/sso
+      - generic [ref=e42]:
+        - text: Нажимая кнопку "Войти", вы принимаете условия актуальных версий
+        - link "Пользовательского соглашения" [ref=e43] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/user-agreement/
+        - text: и
+        - link "Политики конфиденциальности" [ref=e44] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/privacy-policy/
+  - generic [ref=e6]:
+    - link "logo" [ref=e7] [cursor=pointer]:
+      - /url: https://hello.bidzaar.com/
+      - img "logo" [ref=e8]
+    - img [ref=e9]

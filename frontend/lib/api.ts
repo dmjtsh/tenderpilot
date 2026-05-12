@@ -141,7 +141,7 @@ export interface Tender {
   contract_security_amount: number | null
   contract_security_percent: number | null
   source_url: string
-  source?: "eis" | "bidzaar" | "other"
+  source?: "eis" | "other"
   ai_summary?: string
   score?: number
   matched_direction?: string | null

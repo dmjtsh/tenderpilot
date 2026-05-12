@@ -1,0 +1,207 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]: menu
+      - link "ООО \"ТАТНЕФТЬ - АКТИВ\"" [ref=e15] [cursor=pointer]:
+        - /url: https://bidzaar.com/home
+        - img [ref=e17]
+        - generic [ref=e20]: ООО "ТАТНЕФТЬ - АКТИВ"
+    - generic [ref=e23]:
+      - button "Техподдержка" [ref=e25] [cursor=pointer]:
+        - img [ref=e26]: support_agent
+        - generic [ref=e27]: Техподдержка
+      - button [ref=e31] [cursor=pointer]:
+        - img [ref=e32]: language
+      - link [ref=e36] [cursor=pointer]:
+        - /url: https://bidzaar.yonote.ru/share/bb465fa2-d732-4446-85b0-a80f5f870f94
+        - img [ref=e37]: school
+      - button [ref=e41] [cursor=pointer]:
+        - img [ref=e42]: smart_display
+      - button [ref=e46] [cursor=pointer]:
+        - img [ref=e47]: notifications
+        - generic: "2"
+      - generic [ref=e50] [cursor=pointer]:
+        - generic [ref=e53]: RV
+        - generic [ref=e54]: Ruzal V.
+        - img [ref=e55]: keyboard_arrow_down
+  - generic [ref=e56]:
+    - generic [ref=e57]:
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - link "Главная" [ref=e61] [cursor=pointer]:
+            - /url: https://bidzaar.com/home
+            - img [ref=e62]: home
+            - generic: Главная
+          - separator [ref=e63]
+        - generic [ref=e64]:
+          - link "Избранное" [ref=e65] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/favorites
+            - img [ref=e66]: star
+            - generic: Избранное
+          - link "Мои предложения" [ref=e67] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/participations
+            - img [ref=e68]: work
+            - generic: Мои предложения
+          - link "Участие в реестраx" [ref=e69] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/applications
+            - img [ref=e70]: verified_user
+            - generic: Участие в реестраx
+          - separator [ref=e71]
+        - generic [ref=e72]:
+          - link "Все закупки России" [ref=e73] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/external
+            - img [ref=e74]:
+              - img [ref=e75]
+            - generic: Все закупки России
+          - link "Все закупки" [ref=e81] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/buy
+            - img [ref=e82]: enable
+            - generic: Все закупки
+          - link "Все продажи" [ref=e83] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/sell
+            - img [ref=e84]: enable
+            - generic: Все продажи
+          - link "Все реестры" [ref=e85] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/registries
+            - img [ref=e86]: policy
+            - generic: Все реестры
+          - separator [ref=e87]
+        - generic [ref=e88]:
+          - link "Профиль компании" [ref=e89] [cursor=pointer]:
+            - /url: https://bidzaar.com/companies/current
+            - img [ref=e90]: domain
+            - generic: Профиль компании
+          - separator [ref=e91]
+      - generic [ref=e94]:
+        - link "Последний конверт" [ref=e95] [cursor=pointer]:
+          - /url: https://t.me/v_kodanev
+          - img [ref=e96]:
+            - img [ref=e97]
+          - generic: Последний конверт
+        - link "Больше о bidzaar" [ref=e99] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/
+          - img [ref=e100]:
+            - img [ref=e101]
+          - generic: Больше о bidzaar
+    - generic [ref=e104]:
+      - generic [ref=e109]:
+        - text: Ваш email неподтверждённый. Доставка писем с Bidzaar не гарантирована.
+        - link "Подтвердить email" [ref=e110] [cursor=pointer]:
+          - /url: https://bidzaar.com/users/current
+      - generic [ref=e111]:
+        - generic [ref=e117]:
+          - generic [ref=e119]:
+            - generic [ref=e120]:
+              - generic [ref=e122]: Все закупки Bidzaar
+              - generic [ref=e123]:
+                - generic [ref=e127]:
+                  - button [ref=e129] [cursor=pointer]:
+                    - img [ref=e130]: info_outline
+                  - textbox "Найти..." [ref=e133]
+                  - button [ref=e135] [cursor=pointer]:
+                    - img [ref=e136]: search
+                - dialog
+            - generic [ref=e138]:
+              - generic [ref=e139]: "Записи: 0"
+              - button "Подписаться" [ref=e143] [cursor=pointer]:
+                - img [ref=e144]:
+                  - img [ref=e145]
+                - generic [ref=e147]: Подписаться
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - generic [ref=e154]:
+                - switch "Рекомендации Bidzaar AI" [ref=e155] [cursor=pointer]:
+                  - generic [ref=e161]:
+                    - img [ref=e162]
+                    - img [ref=e164]
+                - generic [ref=e166] [cursor=pointer]:
+                  - img [ref=e167]:
+                    - img [ref=e168]
+                  - generic [ref=e171]: Рекомендации Bidzaar AI
+              - generic [ref=e175]: Фильтры
+              - generic [ref=e176]:
+                - generic [ref=e177]:
+                  - generic [ref=e178]:
+                    - generic [ref=e179]: ★ Только избранное
+                    - switch [ref=e183] [cursor=pointer]:
+                      - generic [ref=e189]:
+                        - img [ref=e190]
+                        - img [ref=e192]
+                  - dialog
+                - generic [ref=e194]:
+                  - generic [ref=e195]:
+                    - generic [ref=e196]: Тип торгов
+                    - button [ref=e199] [cursor=pointer]:
+                      - img [ref=e200]: filter_alt
+                  - dialog
+                - generic [ref=e202]:
+                  - generic [ref=e203]:
+                    - generic [ref=e204]: Организатор
+                    - button [ref=e207] [cursor=pointer]:
+                      - img [ref=e208]: filter_alt
+                  - dialog
+                - generic [ref=e210]:
+                  - generic [ref=e211]:
+                    - generic [ref=e212]: Место поставки
+                    - button [ref=e215] [cursor=pointer]:
+                      - img [ref=e216]: filter_alt
+                  - dialog
+                - generic [ref=e218]:
+                  - generic [ref=e219]:
+                    - generic [ref=e220]: Теги
+                    - button [ref=e223] [cursor=pointer]:
+                      - img [ref=e224]: filter_alt
+                  - dialog
+                - generic [ref=e226]:
+                  - generic [ref=e227]:
+                    - generic [ref=e228]: Статус запроса
+                    - generic [ref=e229]:
+                      - button [ref=e230] [cursor=pointer]:
+                        - img [ref=e231]: close
+                      - button [ref=e234] [cursor=pointer]:
+                        - img [ref=e235]: filter_alt
+                  - generic [ref=e241]:
+                    - text: •
+                    - generic [ref=e242]: Прием предложений
+                  - dialog
+                - generic [ref=e243]:
+                  - generic [ref=e244]:
+                    - generic [ref=e245]: Дата публикации
+                    - button [ref=e248] [cursor=pointer]:
+                      - img [ref=e249]: filter_alt
+                  - dialog
+                - generic [ref=e251]:
+                  - generic [ref=e252]:
+                    - generic [ref=e253]: Окончание приема предложений
+                    - button [ref=e256] [cursor=pointer]:
+                      - img [ref=e257]: filter_alt
+                  - dialog
+                - generic [ref=e259]:
+                  - generic [ref=e260]:
+                    - generic [ref=e261]: Дата завершения
+                    - button [ref=e264] [cursor=pointer]:
+                      - img [ref=e265]: filter_alt
+                  - dialog
+              - generic [ref=e267]:
+                - button "Очистить" [ref=e269] [cursor=pointer]:
+                  - generic [ref=e270]: Очистить
+                - button "Сохранить" [ref=e274] [cursor=pointer]:
+                  - generic [ref=e275]: Сохранить
+            - generic [ref=e278]:
+              - generic [ref=e280]:
+                - generic [ref=e281]: "Сортировать:"
+                - button "Дата публикации" [ref=e282] [cursor=pointer]:
+                  - img [ref=e283]: sort
+                  - generic [ref=e284]: Дата публикации
+                - button "Прием предложений" [ref=e286] [cursor=pointer]:
+                  - generic [ref=e287]: Прием предложений
+              - progressbar [ref=e290]:
+                - img [ref=e292]
+                - generic [ref=e295]:
+                  - img [ref=e297]
+                  - img [ref=e300]
+                  - img [ref=e303]
+        - button "ЧАТЫ" [ref=e307] [cursor=pointer]:
+          - img [ref=e308]: message
+          - generic [ref=e309]: ЧАТЫ

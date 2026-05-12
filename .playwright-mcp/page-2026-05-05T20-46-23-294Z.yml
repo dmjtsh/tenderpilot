@@ -1,0 +1,63 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]: menu
+      - link "bidzaar" [ref=e16] [cursor=pointer]:
+        - /url: https://bidzaar.com/home
+        - img [ref=e17]
+        - generic [ref=e18]: bidzaar
+    - generic [ref=e21]:
+      - button [ref=e23] [cursor=pointer]:
+        - img [ref=e24]: language
+      - button "ВХОД" [ref=e27] [cursor=pointer]:
+        - generic [ref=e28]: ВХОД
+      - button "РЕГИСТРАЦИЯ" [ref=e31] [cursor=pointer]:
+        - generic [ref=e32]: РЕГИСТРАЦИЯ
+      - img [ref=e36] [cursor=pointer]: account_circle
+  - generic [ref=e37]:
+    - generic [ref=e38]:
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - link "Главная" [ref=e42] [cursor=pointer]:
+            - /url: https://bidzaar.com/home
+            - img [ref=e43]: home
+            - generic: Главная
+          - separator [ref=e44]
+        - generic [ref=e45]:
+          - link "Все закупки России" [ref=e46] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/external
+            - img [ref=e47]:
+              - img [ref=e48]
+            - generic: Все закупки России
+          - link "Все закупки" [ref=e54] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/buy
+            - img [ref=e55]: enable
+            - generic: Все закупки
+          - link "Все продажи" [ref=e56] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/sell
+            - img [ref=e57]: enable
+            - generic: Все продажи
+          - link "Все реестры" [ref=e58] [cursor=pointer]:
+            - /url: https://bidzaar.com/requests/public/registries
+            - img [ref=e59]: policy
+            - generic: Все реестры
+          - separator [ref=e60]
+      - generic [ref=e63]:
+        - link "Последний конверт" [ref=e64] [cursor=pointer]:
+          - /url: https://t.me/v_kodanev
+          - img [ref=e65]:
+            - img [ref=e66]
+          - generic: Последний конверт
+        - link "Больше о bidzaar" [ref=e68] [cursor=pointer]:
+          - /url: https://hello.bidzaar.com/
+          - img [ref=e69]:
+            - img [ref=e70]
+          - generic: Больше о bidzaar
+    - generic [ref=e77]:
+      - img [ref=e78]
+      - generic [ref=e79]: Упс!
+      - generic [ref=e80]: Страница не найдена
+      - link "Вернуться на главную" [ref=e81] [cursor=pointer]:
+        - /url: https://bidzaar.com/
+        - generic [ref=e82]: Вернуться на главную

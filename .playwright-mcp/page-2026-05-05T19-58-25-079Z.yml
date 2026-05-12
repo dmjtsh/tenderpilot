@@ -1,0 +1,150 @@
+- generic [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - link "ТендерПилот ТендерПилот" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "ТендерПилот" [ref=e7]
+        - generic [ref=e8]: ТендерПилот
+      - navigation [ref=e9]:
+        - link "Тендеры" [ref=e10] [cursor=pointer]:
+          - /url: /tenders
+          - img [ref=e11]
+          - text: Тендеры
+        - link "Мои тендеры" [ref=e14] [cursor=pointer]:
+          - /url: /pipeline
+          - img [ref=e15]
+          - text: Мои тендеры
+        - link "Профиль" [ref=e17] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e18]
+          - text: Профиль
+      - button "Выйти" [ref=e22] [cursor=pointer]:
+        - img [ref=e23]
+        - text: Выйти
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - button "Назад" [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+          - text: Назад
+        - generic [ref=e34]: Поставка тепловизора для нужд ИГЭУ
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - generic [ref=e39]: active
+            - generic [ref=e41]: "0333100006726000071"
+          - heading "Поставка тепловизора для нужд ИГЭУ" [level=1] [ref=e42]
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]: Тип закупки
+            - generic [ref=e46]: 44-ФЗ
+          - generic [ref=e47]:
+            - generic [ref=e48]: Процедура
+            - generic [ref=e49]: Запрос котировок
+          - generic [ref=e50]:
+            - generic [ref=e51]: НМЦК
+            - generic [ref=e52]: 663 452 ₽
+          - generic [ref=e53]:
+            - generic [ref=e54]: Регион
+            - generic [ref=e55]: Ивановская обл
+          - generic [ref=e56]:
+            - generic [ref=e57]: Площадка
+            - link "ЭТП ТЭК-Торг" [ref=e58] [cursor=pointer]:
+              - /url: http://www.tektorg.ru/
+          - generic [ref=e59]:
+            - generic [ref=e60]: Подача заявок до
+            - generic [ref=e61]: 13 мая 2026 г.
+          - generic [ref=e62]:
+            - generic [ref=e63]: Дата торгов
+            - generic [ref=e64]: —
+          - generic [ref=e65]:
+            - generic [ref=e66]: Обеспечение заявки
+            - generic [ref=e67]: —
+          - generic [ref=e68]:
+            - generic [ref=e69]: Обеспечение контракта
+            - generic [ref=e70]: —
+          - generic [ref=e71]:
+            - generic [ref=e72]: Опубликован
+            - generic [ref=e73]: 5 мая 2026 г.
+          - generic [ref=e75]: Заказчик
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Участие в тендере
+            - generic [ref=e79]: ООО "ТАТНЕФТЬ - АКТИВ"
+          - generic [ref=e80]:
+            - button "Изучаю" [ref=e81] [cursor=pointer]:
+              - img [ref=e82]
+              - text: Изучаю
+            - button "Готовлю" [ref=e85] [cursor=pointer]:
+              - img [ref=e86]
+              - text: Готовлю
+            - button "Подал" [ref=e90] [cursor=pointer]:
+              - img [ref=e91]
+              - text: Подал
+            - button "Выиграл" [ref=e94] [cursor=pointer]:
+              - img [ref=e95]
+              - text: Выиграл
+            - button "Проиграл" [ref=e101] [cursor=pointer]:
+              - img [ref=e102]
+              - text: Проиграл
+          - textbox "Заметки по этому тендеру..." [ref=e106]
+        - generic [ref=e107]:
+          - paragraph [ref=e108]: ОКПД коды
+          - generic [ref=e110]: 26.51.66.124
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - img [ref=e113]
+            - paragraph [ref=e116]: Документы
+            - generic [ref=e117]: "3"
+            - button "обновить" [ref=e118] [cursor=pointer]
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - img [ref=e122]
+              - img [ref=e124]
+              - generic [ref=e128]: Приложение №1 Описание объекта закупки (Спецификация)
+              - generic [ref=e129]: 24 KB
+              - button "Скачать" [ref=e130] [cursor=pointer]:
+                - img [ref=e131]
+            - generic [ref=e134]:
+              - img [ref=e135]
+              - img [ref=e137]
+              - generic [ref=e141]: Приложение №3 - Проект Контракта
+              - generic [ref=e142]: 57 KB
+              - button "Скачать" [ref=e143] [cursor=pointer]:
+                - img [ref=e144]
+            - generic [ref=e147]:
+              - img [ref=e148]
+              - img [ref=e150]
+              - generic [ref=e154]: Приложение №4 Требования к содержанию, составу заявки на участие в закупке и Инструкция по заполнению
+              - generic [ref=e155]: 34 KB
+              - button "Скачать" [ref=e156] [cursor=pointer]:
+                - img [ref=e157]
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - img [ref=e162]
+            - paragraph [ref=e165]: AI-резюме
+            - button "обновить" [ref=e166] [cursor=pointer]
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - generic [ref=e170]: Участвовать
+              - generic [ref=e171]:
+                - img [ref=e172]
+                - text: На основе документов
+              - generic [ref=e175]: поставка
+              - generic [ref=e176]: Тендер имеет четкие условия и нет значительных рисков.
+            - paragraph [ref=e177]: Поставить тепловизор для нужд ИГЭУ.
+            - generic [ref=e178]:
+              - generic [ref=e179]: Не срочно
+              - generic [ref=e180]: 8 дней до дедлайна
+        - generic [ref=e181]:
+          - generic [ref=e182]:
+            - img [ref=e183]
+            - paragraph [ref=e186]: Вопросы по тендеру
+          - generic [ref=e188]:
+            - textbox "Спросите о требованиях, сроках, условиях..." [active] [ref=e189]
+            - button [disabled] [ref=e190]:
+              - img [ref=e191]
+        - link "Открыть на ЕИС" [ref=e194] [cursor=pointer]:
+          - /url: https://zakupki.gov.ru/epz/order/notice/zk20/view/common-info.html?regNumber=0333100006726000071
+          - img [ref=e195]
+          - text: Открыть на ЕИС
