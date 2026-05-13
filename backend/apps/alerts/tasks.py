@@ -51,11 +51,11 @@ def send_morning_digest() -> None:
 
     total = Tender.objects.count()
     active = Tender.objects.filter(status="active").count()
-    not_enriched = (
-        Tender.objects.filter(enriched_at__isnull=True)
-        .exclude(source=Tender.Source.BIDZAAR)
-        .count()
-    )
+    active_qs = Tender.objects.filter(status="active").exclude(source=Tender.Source.BIDZAAR)
+    not_enriched = active_qs.filter(enriched_at__isnull=True).count()
+    not_indexed = active_qs.filter(enriched_at__isnull=False, embedding_id__isnull=True).count()
+    no_region = active_qs.filter(enriched_at__isnull=False, region="").count()
+    no_deadline = active_qs.filter(deadline_at__isnull=True).count()
 
     yesterday = (timezone.now() - timedelta(days=1)).date()
     fz44_count = Tender.objects.filter(
@@ -93,7 +93,10 @@ def send_morning_digest() -> None:
         f"Ошибок парсинга: {total_errors}\n\n"
         f"<b>Обогащение:</b> {enrich_ok} ok, {enrich_fail} fail\n\n"
         f"<b>БД:</b> {total} всего, {active} активных\n"
-        f"Не обогащено: {not_enriched}\n\n"
+        f"Не обогащено: {not_enriched}\n"
+        f"Не проиндексировано: {not_indexed}\n"
+        f"Без региона: {no_region}\n"
+        f"Активных без дедлайна: {no_deadline}\n\n"
         f"\U0001f310 <b>Покрытие ЕИС (вчера, {yesterday}):</b>\n"
         f"44-ФЗ: {fz44_count} тендеров в БД\n"
         f"223-ФЗ: {fz223_count} тендеров в БД\n"
