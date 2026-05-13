@@ -30,6 +30,29 @@ def check_pipeline_health() -> None:
         )
 
 
+def _status_emoji(
+    value: int | float,
+    warning: int | float,
+    critical: int | float,
+    inverse: bool = False,
+) -> str:
+    if inverse:
+        if value <= critical:
+            return "\U0001f534"
+        if value <= warning:
+            return "\u26a0\ufe0f"
+        return "\u2705"
+    if value >= critical:
+        return "\U0001f534"
+    if value >= warning:
+        return "\u26a0\ufe0f"
+    return "\u2705"
+
+
+def _fmt(n: int) -> str:
+    return f"{n:,}".replace(",", "\u00a0")
+
+
 @shared_task
 def send_morning_digest() -> None:
     from .models import PipelineRun
@@ -42,10 +65,14 @@ def send_morning_digest() -> None:
     total_errors = sum(r.stats.get("errors", 0) for r in sync_runs)
     sync_ok = sync_runs.filter(status="ok").count()
     sync_fail = sync_runs.exclude(status="ok").count()
+    sync_total = sync_ok + sync_fail
 
     enrich_runs = runs.filter(task_name="enrich_tender")
     enrich_ok = enrich_runs.filter(status="ok").count()
     enrich_fail = enrich_runs.filter(status="failed").count()
+
+    embed_runs = runs.filter(task_name="embed_tender")
+    embed_ok = embed_runs.filter(status="ok").count()
 
     from apps.tenders.models import Tender
 
@@ -68,7 +95,46 @@ def send_morning_digest() -> None:
     truncated_total = 0
     for run in sync_runs:
         truncated_total += len(run.stats.get("truncated_passes", []))
-    trunc_mark = "\u2705" if truncated_total == 0 else f"\u26a0\ufe0f {truncated_total}"
+
+    issues: list[str] = []
+    has_critical = False
+
+    def _check(value, warning, critical, issue_text, inverse=False):
+        nonlocal has_critical
+        em = _status_emoji(value, warning, critical, inverse)
+        if em == "\U0001f534":
+            has_critical = True
+            issues.append(issue_text)
+        elif em == "\u26a0\ufe0f":
+            issues.append(issue_text)
+        return em
+
+    e_sync = _check(sync_ok, 22, 20,
+                     f"Sync: {sync_fail} проходов не завершились ({sync_ok}/{sync_total})",
+                     inverse=True)
+    e_errors = _check(total_errors, 20, 50,
+                      f"Парсинг: {total_errors} ошибок (порог 20)")
+    e_enrich = _check(enrich_fail, 20, 50,
+                      f"Обогащение: {enrich_fail} ошибок (порог 20)")
+    e_not_enriched = _check(not_enriched, 100, 500,
+                            f"Не обогащено: {_fmt(not_enriched)} (порог 100)")
+    e_not_indexed = _check(not_indexed, 100, 500,
+                           f"Не проиндексировано: {_fmt(not_indexed)} (порог 100)")
+    e_no_region = _check(no_region, 50, 200,
+                         f"Без региона: {_fmt(no_region)} (порог 50)")
+    e_no_deadline = _check(no_deadline, 200, 500,
+                           f"Без дедлайна: {_fmt(no_deadline)} активных (порог 200)")
+    e_truncated = _check(truncated_total, 1, 3,
+                         f"Усечённых проходов: {truncated_total} (данные неполные)")
+
+    if not issues:
+        verdict = "\u2705 Всё в норме"
+    elif has_critical:
+        verdict = f"\U0001f534 Критические проблемы ({len(issues)})"
+    else:
+        verdict = f"\u26a0\ufe0f Есть замечания ({len(issues)})"
+
+    sep = "\u2501" * 18
 
     recover_run = (
         runs.filter(task_name="recover_failed_tenders")
@@ -78,7 +144,7 @@ def send_morning_digest() -> None:
     if recover_run:
         rs = recover_run.stats
         recover_text = (
-            f"\n\n\U0001f501 <b>Восстановление (ночью):</b>\n"
+            f"\n\n\U0001f501 <b>Восстановление (ночью)</b>\n"
             f"Обогащено: {rs.get('enrich_ok', 0)}, "
             f"не удалось: {rs.get('enrich_failed', 0)}\n"
             f"Embed: {rs.get('embed_queued', 0)} в очередь"
@@ -86,21 +152,31 @@ def send_morning_digest() -> None:
     else:
         recover_text = ""
 
+    attention_text = ""
+    if issues:
+        lines = "\n".join(f"\u2022 {i}" for i in issues)
+        attention_text = f"\n\n\u26a0\ufe0f <b>Требует внимания:</b>\n{lines}"
+
     text = (
-        f"\U0001f4ca <b>Дайджест за 24ч</b>\n\n"
-        f"<b>Sync:</b> {sync_ok} ok, {sync_fail} fail\n"
-        f"Новых тендеров: {total_new}\n"
-        f"Ошибок парсинга: {total_errors}\n\n"
-        f"<b>Обогащение:</b> {enrich_ok} ok, {enrich_fail} fail\n\n"
-        f"<b>БД:</b> {total} всего, {active} активных\n"
-        f"Не обогащено: {not_enriched}\n"
-        f"Не проиндексировано: {not_indexed}\n"
-        f"Без региона: {no_region}\n"
-        f"Активных без дедлайна: {no_deadline}\n\n"
-        f"\U0001f310 <b>Покрытие ЕИС (вчера, {yesterday}):</b>\n"
-        f"44-ФЗ: {fz44_count} тендеров в БД\n"
-        f"223-ФЗ: {fz223_count} тендеров в БД\n"
-        f"Усечённых проходов: {trunc_mark}"
+        f"<b>{verdict}</b>\n\n"
+        f"{sep}\n\n"
+        f"\U0001f4e1 <b>Синхронизация</b>\n"
+        f"Проходов: {e_sync} {sync_ok}/{sync_total} ok\n"
+        f"Новых тендеров: {_fmt(total_new)}\n"
+        f"Ошибок парсинга: {e_errors} {total_errors}\n\n"
+        f"\U0001f4ca <b>Обогащение</b>\n"
+        f"Обогащено: {e_enrich} {_fmt(enrich_ok)} ok, {enrich_fail} fail\n"
+        f"Проиндексировано: {_fmt(embed_ok)} ok\n\n"
+        f"\U0001f5c4 <b>База данных</b>\n"
+        f"Всего: {_fmt(total)} | Активных: {_fmt(active)}\n"
+        f"Не обогащено: {e_not_enriched} {_fmt(not_enriched)}\n"
+        f"Не проиндексировано: {e_not_indexed} {_fmt(not_indexed)}\n"
+        f"Без региона: {e_no_region} {_fmt(no_region)}\n"
+        f"Без дедлайна: {e_no_deadline} {_fmt(no_deadline)}\n\n"
+        f"\U0001f310 <b>Покрытие ЕИС (вчера, {yesterday})</b>\n"
+        f"44-ФЗ: {_fmt(fz44_count)} | 223-ФЗ: {_fmt(fz223_count)}\n"
+        f"Усечённых проходов: {e_truncated} {truncated_total}"
         + recover_text
+        + attention_text
     )
     send_telegram(text)
