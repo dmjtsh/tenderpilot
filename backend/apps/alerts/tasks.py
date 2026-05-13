@@ -70,6 +70,22 @@ def send_morning_digest() -> None:
         truncated_total += len(run.stats.get("truncated_passes", []))
     trunc_mark = "\u2705" if truncated_total == 0 else f"\u26a0\ufe0f {truncated_total}"
 
+    recover_run = (
+        runs.filter(task_name="recover_failed_tenders")
+        .order_by("-finished_at")
+        .first()
+    )
+    if recover_run:
+        rs = recover_run.stats
+        recover_text = (
+            f"\n\n\U0001f501 <b>Восстановление (ночью):</b>\n"
+            f"Обогащено: {rs.get('enrich_ok', 0)}, "
+            f"не удалось: {rs.get('enrich_failed', 0)}\n"
+            f"Embed: {rs.get('embed_queued', 0)} в очередь"
+        )
+    else:
+        recover_text = ""
+
     text = (
         f"\U0001f4ca <b>Дайджест за 24ч</b>\n\n"
         f"<b>Sync:</b> {sync_ok} ok, {sync_fail} fail\n"
@@ -82,5 +98,6 @@ def send_morning_digest() -> None:
         f"44-ФЗ: {fz44_count} тендеров в БД\n"
         f"223-ФЗ: {fz223_count} тендеров в БД\n"
         f"Усечённых проходов: {trunc_mark}"
+        + recover_text
     )
     send_telegram(text)

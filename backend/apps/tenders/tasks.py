@@ -3,6 +3,7 @@ import time
 from datetime import date, timedelta
 
 from celery import shared_task
+from django.db.models import Q
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -293,6 +294,73 @@ def sync_active_tenders() -> dict:
         started_at=start_time,
         stats=stats,
         status=sync_status,
+    )
+
+    return stats
+
+
+@shared_task(name="apps.tenders.tasks.recover_failed_tenders", time_limit=3600)
+def recover_failed_tenders() -> dict:
+    """Ночная задача: подбирает активные тендеры без обогащения или embedding."""
+    from .models import Tender
+    from .eis_client import fetch_tender_detail
+    from .services import upsert_tender
+    from apps.alerts.services import log_pipeline_run
+
+    start_time = timezone.now()
+    stats = {"enrich_ok": 0, "enrich_failed": 0, "enrich_skipped": 0, "embed_queued": 0}
+
+    to_enrich = list(
+        Tender.objects.filter(
+            Q(enriched_at__isnull=True) | Q(enriched_at__isnull=False, region=""),
+            status=Tender.Status.ACTIVE,
+        ).exclude(source=Tender.Source.BIDZAAR).order_by("deadline_at")[:500]
+    )
+
+    for tender in to_enrich:
+        try:
+            detail = fetch_tender_detail(tender.number, tender.source_url)
+            if detail:
+                detail["raw_json"] = detail.copy()
+                upsert_tender(detail)
+                Tender.objects.filter(pk=tender.pk).update(enriched_at=timezone.now())
+                stats["enrich_ok"] += 1
+            else:
+                stats["enrich_skipped"] += 1
+        except Exception as exc:
+            stats["enrich_failed"] += 1
+            logger.warning("recover enrich %s: %s", tender.number, exc)
+        time.sleep(0.5)
+
+    to_embed = list(
+        Tender.objects.filter(
+            enriched_at__isnull=False,
+            embedding_id__isnull=True,
+            status=Tender.Status.ACTIVE,
+        ).exclude(source=Tender.Source.BIDZAAR)[:1000]
+    )
+
+    from apps.search.tasks import embed_tender as embed_task
+
+    for tender in to_embed:
+        try:
+            embed_task.delay(tender.pk)
+            stats["embed_queued"] += 1
+        except Exception as exc:
+            logger.warning("recover embed queue %s: %s", tender.number, exc)
+
+    logger.info(
+        "recover_failed_tenders: enrich ok=%d failed=%d skipped=%d embed_queued=%d",
+        stats["enrich_ok"], stats["enrich_failed"],
+        stats["enrich_skipped"], stats["embed_queued"],
+    )
+
+    status = "failed" if stats["enrich_failed"] > stats["enrich_ok"] else "ok"
+    log_pipeline_run(
+        task_name="recover_failed_tenders",
+        started_at=start_time,
+        stats=stats,
+        status=status,
     )
 
     return stats
