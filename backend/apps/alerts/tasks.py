@@ -109,9 +109,8 @@ def send_morning_digest() -> None:
             issues.append(issue_text)
         return em
 
-    e_sync = _check(sync_ok, 22, 20,
-                     f"Sync: {sync_fail} проходов не завершились ({sync_ok}/{sync_total})",
-                     inverse=True)
+    e_sync = _check(sync_fail, 2, 5,
+                     f"Sync: {sync_fail} из {sync_total} не завершились")
     e_errors = _check(total_errors, 20, 50,
                       f"Парсинг: {total_errors} ошибок (порог 20)")
     e_enrich = _check(enrich_fail, 20, 50,
@@ -161,7 +160,7 @@ def send_morning_digest() -> None:
         f"<b>{verdict}</b>\n\n"
         f"{sep}\n\n"
         f"\U0001f4e1 <b>Синхронизация</b>\n"
-        f"Проходов: {e_sync} {sync_ok}/{sync_total} ok\n"
+        f"Проходов: {e_sync} {sync_ok} ok, {sync_fail} fail (из {sync_total})\n"
         f"Новых тендеров: {_fmt(total_new)}\n"
         f"Ошибок парсинга: {e_errors} {total_errors}\n\n"
         f"\U0001f4ca <b>Обогащение</b>\n"
