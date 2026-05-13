@@ -21,13 +21,26 @@ def enrich_tender(self, tender_id: int) -> None:
         logger.warning("Tender %d not found", tender_id)
         return
 
+    if tender.source == Tender.Source.BIDZAAR:
+        logger.debug("Skip bidzaar tender %s", tender.number)
+        return
+
     detail = fetch_tender_detail(tender.number, tender.source_url)
     if not detail:
-        logger.warning("No detail fetched for tender %s", tender.number)
-        return
+        logger.warning(
+            "No detail for tender %s (attempt %d/%d)",
+            tender.number, self.request.retries + 1, self.max_retries + 1,
+        )
+        try:
+            raise self.retry(exc=Exception(f"Empty detail for {tender.number}"))
+        except self.MaxRetriesExceededError:
+            Tender.objects.filter(pk=tender_id).update(enriched_at=timezone.now())
+            logger.error("Enrichment failed after retries: %s", tender.number)
+            return
 
     detail["raw_json"] = detail.copy()
     upsert_tender(detail)
+    Tender.objects.filter(pk=tender_id).update(enriched_at=timezone.now())
     logger.info("Enriched tender %s", tender.number)
 
     from apps.search.tasks import embed_tender

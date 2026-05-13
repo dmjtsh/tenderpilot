@@ -924,6 +924,17 @@ def _write_experiment_summary(f, experiment, stats: dict, errors: int) -> None:
     f.write(f"\nОбщая стоимость: ${total_cost:.4f}\n")
 
 
+def _nonempty(value: Any) -> bool:
+    """True если значение непустое (не None, не '', не [])."""
+    if value is None:
+        return False
+    if isinstance(value, str) and not value.strip():
+        return False
+    if isinstance(value, list) and not value:
+        return False
+    return True
+
+
 def upsert_tender(data: dict[str, Any]) -> Tender:
     """Создать или обновить тендер из сырых данных парсера."""
     customer = None
@@ -939,7 +950,6 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
             },
         )
     elif name:
-        # Без ИНН — ищем по имени, создаём с пустым ИНН (временно, до обогащения)
         customer, _ = Customer.objects.get_or_create(
             inn="",
             name=name,
@@ -950,30 +960,46 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
     procedure_type = data.get("procedure_type") or detect_procedure_type(source_url)
     source = data.get("source", Tender.Source.EIS)
 
+    always_update = {
+        "source": source,
+        "title": data.get("title", ""),
+        "customer": customer,
+        "status": data.get("status", Tender.Status.ACTIVE),
+        "law_type": data.get("law_type", ""),
+        "procedure_type": procedure_type,
+        "source_url": source_url,
+        "raw_json": data,
+    }
+
+    enrichment_fields = {
+        "nmck": data.get("nmck"),
+        "region": data.get("region", ""),
+        "okpd_codes": data.get("okpd_codes", []),
+        "published_at": data.get("published_at"),
+        "deadline_at": data.get("deadline_at"),
+        "auction_date": data.get("auction_date"),
+        "trading_platform": data.get("trading_platform", ""),
+        "trading_platform_url": data.get("trading_platform_url", ""),
+        "bid_security_amount": data.get("bid_security_amount"),
+        "bid_security_required": data.get("bid_security_required"),
+        "contract_security_amount": data.get("contract_security_amount"),
+        "contract_security_percent": data.get("contract_security_percent"),
+    }
+
+    existing = Tender.objects.filter(number=data["number"], source=source).first()
+
+    if existing:
+        safe_enrichment = {
+            k: v for k, v in enrichment_fields.items()
+            if _nonempty(v) or not _nonempty(getattr(existing, k))
+        }
+        defaults = {**always_update, **safe_enrichment}
+    else:
+        defaults = {**always_update, **enrichment_fields}
+
     tender, created = Tender.objects.update_or_create(
         number=data["number"],
         source=source,
-        defaults={
-            "source": source,
-            "title": data.get("title", ""),
-            "nmck": data.get("nmck"),
-            "customer": customer,
-            "region": data.get("region", ""),
-            "okpd_codes": data.get("okpd_codes", []),
-            "published_at": data.get("published_at"),
-            "deadline_at": data.get("deadline_at"),
-            "auction_date": data.get("auction_date"),
-            "status": data.get("status", Tender.Status.ACTIVE),
-            "law_type": data.get("law_type", ""),
-            "procedure_type": procedure_type,
-            "trading_platform": data.get("trading_platform", ""),
-            "trading_platform_url": data.get("trading_platform_url", ""),
-            "bid_security_amount": data.get("bid_security_amount"),
-            "bid_security_required": data.get("bid_security_required"),
-            "contract_security_amount": data.get("contract_security_amount"),
-            "contract_security_percent": data.get("contract_security_percent"),
-            "source_url": source_url,
-            "raw_json": data,
-        },
+        defaults=defaults,
     )
     return tender

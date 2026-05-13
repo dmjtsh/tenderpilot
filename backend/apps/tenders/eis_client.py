@@ -269,9 +269,9 @@ def _is_223_url(url: str) -> bool:
 
 def _fetch_tender_detail_223(purchase_number: str, source_url: str) -> dict[str, Any]:
     """Парсит страницу common-info тендера 223-ФЗ."""
-    info_url = (
-        f"{BASE_URL}/223/purchase/public/purchase/info/common-info.html"
-        f"?regNumber={purchase_number}"
+    info_url = source_url or (
+        f"{BASE_URL}/epz/order/notice/notice223/common-info.html"
+        f"?noticeInfoId={purchase_number}"
     )
     try:
         resp = requests.get(info_url, headers=HEADERS, timeout=20, allow_redirects=True)
@@ -360,11 +360,58 @@ def _fetch_tender_detail_223(purchase_number: str, source_url: str) -> dict[str,
 
     # Торговая площадка
     platform = (
-        f("Наименование электронной торговой площадки")
+        f("Наименование электронной площадки в информационно-телекоммуникационной сети \u00abИнтернет\u00bb")
+        or f("Наименование электронной торговой площадки")
         or f("Наименование электронной площадки")
         or f("Место проведения")
     )
-    platform_url = f("Адрес электронной торговой площадки") or f("Адрес электронной площадки") or ""
+    platform_url = (
+        f("Адрес электронной площадки в информационно-телекоммуникационной сети \u00abИнтернет\u00bb")
+        or f("Адрес электронной торговой площадки")
+        or f("Адрес электронной площадки")
+        or ""
+    )
+
+    # Способ закупки → procedure_type
+    placing_way = (
+        f("Способ осуществления закупки")
+        or f("Способ размещения закупки")
+        or f("Способ закупки")
+        or f("Способ определения поставщика")
+        or ""
+    ).lower()
+    _223_PROCEDURE_MAP = [
+        ("единственн", "single_source"),
+        ("единтсвенн", "single_source"),
+        ("у еп ", "single_source"),
+        ("у еп(", "single_source"),
+        ("аукцион", "auction"),
+        ("конкурс", "contest"),
+        ("конкурентный отбор", "contest"),
+        ("запрос котировок", "request_quotations"),
+        ("запрс котировок", "request_quotations"),
+        ("запрос ценовых котировок", "request_quotations"),
+        ("запрос цен", "request_quotations"),
+        ("ценовой запрос", "request_quotations"),
+        ("ценового запрос", "request_quotations"),
+        ("состязательный запрос", "request_quotations"),
+        ("сбор заявок", "request_quotations"),
+        ("запрос предложений", "request_proposals"),
+        ("запрос коммерческих предложений", "request_proposals"),
+        ("запрос оферт", "request_proposals"),
+        ("отбор оферт", "request_proposals"),
+        ("анализ предложений", "request_proposals"),
+        ("формирование конкурентного листа", "request_proposals"),
+        ("электронн", "request_quotations"),
+        ("неконкурентн", "request_quotations"),
+        ("маркетинговое исследование", "request_proposals"),
+        ("маркетинговые исследования", "request_proposals"),
+    ]
+    procedure_type = "other"
+    for key, val in _223_PROCEDURE_MAP:
+        if key in placing_way:
+            procedure_type = val
+            break
 
     return {
         "number": purchase_number,
@@ -379,6 +426,7 @@ def _fetch_tender_detail_223(purchase_number: str, source_url: str) -> dict[str,
         "deadline_at": _parse_date(deadline_raw),
         "auction_date": _parse_date(auction_date_raw) if auction_date_raw else None,
         "law_type": "223-ФЗ",
+        "procedure_type": procedure_type,
         "trading_platform": platform,
         "trading_platform_url": platform_url,
         "bid_security_amount": None,
