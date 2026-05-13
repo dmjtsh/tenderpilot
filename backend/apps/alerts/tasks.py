@@ -57,6 +57,19 @@ def send_morning_digest() -> None:
         .count()
     )
 
+    yesterday = (timezone.now() - timedelta(days=1)).date()
+    fz44_count = Tender.objects.filter(
+        published_at__date=yesterday, law_type="44-ФЗ",
+    ).count()
+    fz223_count = Tender.objects.filter(
+        published_at__date=yesterday, law_type="223-ФЗ",
+    ).count()
+
+    truncated_total = 0
+    for run in sync_runs:
+        truncated_total += len(run.stats.get("truncated_passes", []))
+    trunc_mark = "\u2705" if truncated_total == 0 else f"\u26a0\ufe0f {truncated_total}"
+
     text = (
         f"\U0001f4ca <b>Дайджест за 24ч</b>\n\n"
         f"<b>Sync:</b> {sync_ok} ok, {sync_fail} fail\n"
@@ -64,6 +77,10 @@ def send_morning_digest() -> None:
         f"Ошибок парсинга: {total_errors}\n\n"
         f"<b>Обогащение:</b> {enrich_ok} ok, {enrich_fail} fail\n\n"
         f"<b>БД:</b> {total} всего, {active} активных\n"
-        f"Не обогащено: {not_enriched}"
+        f"Не обогащено: {not_enriched}\n\n"
+        f"\U0001f310 <b>Покрытие ЕИС (вчера, {yesterday}):</b>\n"
+        f"44-ФЗ: {fz44_count} тендеров в БД\n"
+        f"223-ФЗ: {fz223_count} тендеров в БД\n"
+        f"Усечённых проходов: {trunc_mark}"
     )
     send_telegram(text)

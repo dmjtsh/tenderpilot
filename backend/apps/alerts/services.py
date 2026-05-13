@@ -72,6 +72,19 @@ def check_critical_alerts(run) -> None:
                         "\u26a0\ufe0f <b>0 новых тендеров</b> 3 sync подряд"
                     )
 
+        truncated = run.stats.get("truncated_passes", [])
+        if truncated and _should_alert("sync_truncated"):
+            lines = [
+                f"  {p.get('law', '?')} {p.get('range', '?')} ({p.get('day', '?')})"
+                for p in truncated[:5]
+            ]
+            send_telegram(
+                f"\u26a0\ufe0f <b>ЕИС truncation</b>\n"
+                f"{len(truncated)} проходов уперлись в лимит 5000:\n"
+                + "\n".join(lines)
+                + "\nНужно дробить ценовые диапазоны"
+            )
+
     elif run.task_name == "enrich_tender" and run.status == "failed":
         last_5 = list(
             PipelineRun.objects.filter(
