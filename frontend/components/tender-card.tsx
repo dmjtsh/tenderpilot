@@ -11,6 +11,7 @@ const PROCEDURE_BADGE: Record<string, { label: string; cls: string }> = {
   request_quotations: { label: "Запрос котировок", cls: "bg-blue-50 text-blue-700" },
   request_proposals: { label: "Запрос предложений", cls: "bg-sky-50 text-sky-700" },
   single_source: { label: "Ед. поставщик", cls: "bg-violet-50 text-violet-700" },
+  other: { label: "Иной способ", cls: "bg-orange-50 text-orange-700" },
 }
 
 
@@ -20,12 +21,11 @@ function scoreColor(score: number): string {
   return "text-violet-400"
 }
 
-function fmtNmck(n: number | null): string | null {
+function fmtNmck(n: number | string | null): string | null {
   if (n == null) return null
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} млрд`
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} М`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} К`
-  return `${n}`
+  const num = typeof n === "string" ? parseFloat(n) : n
+  if (isNaN(num)) return null
+  return num.toLocaleString("ru-RU", { maximumFractionDigits: 0 }) + "\u00A0₽"
 }
 
 function fmtShortDate(s: string | null): string | null {
@@ -209,32 +209,34 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
 
         {/* Row 4: Metrics + Stage */}
         <div className="flex items-end">
-          <div className="flex items-end gap-x-5 flex-wrap gap-y-2 flex-1 min-w-0">
+          <div className="flex items-baseline flex-1 min-w-0">
             {nmck && (
-              <LabeledValue label="НМЦ">
-                <span className="text-sm text-gray-900 font-medium">{nmck} ₽</span>
+              <LabeledValue label="НМЦК">
+                <span className="text-xl text-gray-900 font-semibold">{nmck}</span>
               </LabeledValue>
             )}
 
-            {deadlineInfo && (
-              <LabeledValue label="Подача заявок">
-                <span className={`text-sm font-medium ${deadlineInfo.urgent ? "text-red-600" : "text-gray-900"}`}>
-                  {deadlineInfo.text}
-                </span>
-              </LabeledValue>
-            )}
+            <div className="flex items-baseline gap-x-5 flex-wrap gap-y-2 ml-16">
+              {deadlineInfo && (
+                <LabeledValue label="Подача заявок">
+                  <span className={`text-sm font-medium ${deadlineInfo.urgent ? "text-red-600" : "text-gray-900"}`}>
+                    {deadlineInfo.text}
+                  </span>
+                </LabeledValue>
+              )}
 
-            {auctionDate && (
-              <LabeledValue label="Торги">
-                <span className="text-sm text-gray-900 font-medium">{auctionDate}</span>
-              </LabeledValue>
-            )}
+              {auctionDate && (
+                <LabeledValue label="Торги">
+                  <span className="text-sm text-gray-900 font-medium">{auctionDate}</span>
+                </LabeledValue>
+              )}
 
-            {tender.trading_platform && (
-              <LabeledValue label="Площадка">
-                <span className="text-sm text-gray-900 font-medium">{tender.trading_platform}</span>
-              </LabeledValue>
-            )}
+              {tender.trading_platform && (
+                <LabeledValue label="Площадка">
+                  <span className="text-sm text-gray-900 font-medium">{tender.trading_platform}</span>
+                </LabeledValue>
+              )}
+            </div>
           </div>
 
           {onSetPipelineStatus && (

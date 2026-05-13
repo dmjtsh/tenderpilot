@@ -39,6 +39,7 @@ const PROCEDURE_LABEL: Record<string, string> = {
   request_quotations: "Запрос котировок",
   request_proposals: "Запрос предложений",
   single_source: "Единственный поставщик",
+  other: "Иной способ",
 }
 
 const URGENCY_BADGE: Record<string, string> = {
@@ -67,11 +68,9 @@ const VERDICT_LABEL: Record<string, string> = {
   pass: "Пропустить",
 }
 
-function fmtVolume(n: number): string {
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} млрд ₽`
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} млн ₽`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} тыс ₽`
-  return `${n} ₽`
+function fmtVolume(n: number | string): string {
+  const num = typeof n === "string" ? parseFloat(n) : n
+  return num.toLocaleString("ru-RU", { maximumFractionDigits: 0 }) + "\u00A0₽"
 }
 
 function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
@@ -1075,7 +1074,7 @@ function TenderDetailPageInner() {
             {tender.law_type && (
               <MetaRow label="Тип закупки" value={tender.law_type} />
             )}
-            {tender.procedure_type && tender.procedure_type !== "other" && (
+            {tender.procedure_type && (
               <MetaRow label="Процедура" value={PROCEDURE_LABEL[tender.procedure_type] ?? tender.procedure_type} />
             )}
             <MetaRow label="НМЦК" value={fmt(tender.nmck)} />
@@ -1118,7 +1117,7 @@ function TenderDetailPageInner() {
             {(tender.customer_name || tender.customer) && (
               <MetaRow
                 label="Заказчик"
-                value={tender.customer?.full_name ?? tender.customer_name ?? "—"}
+                value={tender.customer?.full_name || tender.customer?.name || tender.customer_name || "—"}
               />
             )}
             {tender.customer?.inn && (

@@ -16,6 +16,7 @@ const PROCEDURE_OPTIONS = [
   { value: "request_quotations", label: "Запрос котировок" },
   { value: "request_proposals", label: "Запрос предложений" },
   { value: "single_source", label: "Единственный поставщик" },
+  { value: "other", label: "Иной способ" },
 ]
 
 const LAW_OPTIONS = [

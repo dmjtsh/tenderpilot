@@ -426,7 +426,7 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
           <p className="text-[15px] text-gray-500">Загрузка...</p>
         ) : directions.length === 0 ? (
           <p className="text-[15px] text-gray-500">
-            Добавьте направления чтобы настроить точный поиск с фильтрами по НМЦ и типу закона.
+            Добавьте направления чтобы настроить точный поиск с фильтрами по НМЦК и типу закона.
             HyDE-вектор строится автоматически через ~30 секунд после сохранения.
           </p>
         ) : (

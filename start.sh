@@ -284,6 +284,13 @@ server {
         expires 30d;
     }
 
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        expires 30d;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host \$host;
@@ -318,6 +325,13 @@ server {
 
     location /static/ {
         alias $BACKEND_DIR/staticfiles/;
+        expires 30d;
+    }
+
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
         expires 30d;
     }
 

@@ -17,13 +17,11 @@ const COLUMNS: { status: PipelineStatus; label: string; color: string }[] = [
   { status: "lost", label: "Проиграно", color: "border-t-gray-400" },
 ]
 
-function fmt(n: number | null | undefined) {
+function fmt(n: number | string | null | undefined) {
   if (n == null) return "—"
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "RUB",
-    maximumFractionDigits: 0,
-  }).format(n)
+  const num = typeof n === "string" ? parseFloat(n) : n
+  if (isNaN(num)) return "—"
+  return num.toLocaleString("ru-RU", { maximumFractionDigits: 0 }) + "\u00A0₽"
 }
 
 function fmtDate(s: string | null) {
