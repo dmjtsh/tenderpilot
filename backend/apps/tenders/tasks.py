@@ -25,6 +25,9 @@ def enrich_tender(self, tender_id: int) -> None:
         logger.debug("Skip bidzaar tender %s", tender.number)
         return
 
+    from apps.alerts.services import log_pipeline_run
+
+    started_at = timezone.now()
     detail = fetch_tender_detail(tender.number, tender.source_url)
     if not detail:
         logger.warning(
@@ -36,12 +39,25 @@ def enrich_tender(self, tender_id: int) -> None:
         except self.MaxRetriesExceededError:
             Tender.objects.filter(pk=tender_id).update(enriched_at=timezone.now())
             logger.error("Enrichment failed after retries: %s", tender.number)
+            log_pipeline_run(
+                task_name="enrich_tender",
+                started_at=started_at,
+                stats={"tender_id": tender_id, "number": tender.number},
+                status="failed",
+                error_message=f"Empty detail after {self.max_retries + 1} attempts",
+            )
             return
 
     detail["raw_json"] = detail.copy()
     upsert_tender(detail)
     Tender.objects.filter(pk=tender_id).update(enriched_at=timezone.now())
     logger.info("Enriched tender %s", tender.number)
+    log_pipeline_run(
+        task_name="enrich_tender",
+        started_at=started_at,
+        stats={"tender_id": tender_id, "number": tender.number},
+        status="ok",
+    )
 
     from apps.search.tasks import embed_tender
     embed_tender.delay(tender_id)
@@ -67,6 +83,7 @@ def sync_active_tenders() -> dict:
     MAX_PAGES = 20               # лимит страниц за один запуск
     DAYS_LOOKBACK = 5            # смотрим за последние N дней (запас на простои ЕИС)
 
+    start_time = timezone.now()
     stats = {"fetched": 0, "new": 0, "updated": 0, "expired": 0, "errors": 0}
 
     # --- 1. Забираем новые тендеры ---
@@ -173,6 +190,22 @@ def sync_active_tenders() -> dict:
         "sync_active_tenders done: fetched=%d new=%d updated=%d expired=%d errors=%d",
         stats["fetched"], stats["new"], stats["updated"], stats["expired"], stats["errors"],
     )
+
+    from apps.alerts.services import log_pipeline_run
+
+    if stats["fetched"] == 0 and stats["errors"] > 0:
+        sync_status = "failed"
+    elif stats["errors"] > 0:
+        sync_status = "partial"
+    else:
+        sync_status = "ok"
+    log_pipeline_run(
+        task_name="sync_active_tenders",
+        started_at=start_time,
+        stats=stats,
+        status=sync_status,
+    )
+
     return stats
 
 

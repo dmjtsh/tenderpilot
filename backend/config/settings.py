@@ -169,6 +169,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.documents.tasks.cleanup_doc_chunks",
         "schedule": crontab(minute=0),
     },
+    "check-pipeline-health": {
+        "task": "apps.alerts.tasks.check_pipeline_health",
+        "schedule": crontab(minute="*/15"),
+    },
+    "morning-digest": {
+        "task": "apps.alerts.tasks.send_morning_digest",
+        "schedule": crontab(hour=6, minute=0),  # 06:00 UTC = 09:00 MSK
+    },
 }
 
 # Qdrant
@@ -193,6 +201,7 @@ DEEPSEEK_BASE_URL = config("DEEPSEEK_BASE_URL", default="https://api.deepseek.co
 
 # Telegram
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_ADMIN_CHAT_ID = config("TELEGRAM_ADMIN_CHAT_ID", default="")
 
 # DaData
 DADATA_TOKEN = config("DADATA_TOKEN", default="")
