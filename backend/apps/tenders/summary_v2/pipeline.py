@@ -93,6 +93,7 @@ def generate_step_with_metrics(
 def generate_tender_summary_v2(
     tender_id: int,
     model: str = "deepseek-chat",
+    user=None,
 ) -> TenderSummaryV2:
     start_ns = time.monotonic_ns()
     tender = Tender.objects.select_related("customer").get(pk=tender_id)
@@ -172,6 +173,7 @@ def generate_tender_summary_v2(
 
     obj, _ = TenderSummaryV2.objects.update_or_create(
         tender=tender,
+        user=user,
         defaults={
             "summary": summary,
             "step_metrics": step_metrics,

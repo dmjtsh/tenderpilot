@@ -1,9 +1,12 @@
 import json
 import logging
 import re
+import threading
 import time
 from decimal import Decimal
 from typing import Any
+
+import httpx
 
 from django.conf import settings
 from django.db.models import Count, Sum
@@ -12,6 +15,48 @@ from django.utils import timezone
 from .models import Customer, Tender
 
 logger = logging.getLogger(__name__)
+
+
+class _CircuitBreaker:
+    def __init__(self, failure_threshold: int = 3, window_sec: float = 60, cooldown_sec: float = 300):
+        self._threshold = failure_threshold
+        self._window = window_sec
+        self._cooldown = cooldown_sec
+        self._failures: list[float] = []
+        self._open_until: float = 0
+        self._lock = threading.Lock()
+
+    def record_failure(self) -> None:
+        now = time.monotonic()
+        with self._lock:
+            self._failures = [t for t in self._failures if now - t < self._window]
+            self._failures.append(now)
+            if len(self._failures) >= self._threshold:
+                self._open_until = now + self._cooldown
+                self._failures.clear()
+                logger.warning("Circuit breaker OPEN for %ss", self._cooldown)
+                self._send_alert()
+
+    def is_open(self) -> bool:
+        return time.monotonic() < self._open_until
+
+    @property
+    def fallback_model(self) -> str:
+        return "gpt-4o-mini"
+
+    def _send_alert(self) -> None:
+        try:
+            from apps.alerts.telegram import send_telegram
+            send_telegram(
+                "🔴 <b>Circuit Breaker OPEN</b>\n"
+                f"DeepSeek: {self._threshold} failures in {self._window}s\n"
+                f"Fallback to {self.fallback_model} for {self._cooldown}s"
+            )
+        except Exception:
+            logger.exception("Failed to send circuit breaker alert")
+
+
+deepseek_circuit = _CircuitBreaker()
 
 
 _PROCEDURE_URL_MAP = [
@@ -284,6 +329,18 @@ def get_or_create_summary(tender: Tender) -> dict:
     return summary
 
 
+def get_or_create_summary_v2(tender: Tender, user=None) -> dict:
+    from apps.tenders.models import TenderSummaryV2
+    try:
+        sv2 = TenderSummaryV2.objects.get(tender=tender, user=user)
+        return sv2.summary
+    except TenderSummaryV2.DoesNotExist:
+        pass
+    from apps.tenders.summary_v2.pipeline import generate_tender_summary_v2
+    sv2 = generate_tender_summary_v2(tender.id, user=user)
+    return sv2.summary
+
+
 MODEL_PRICING: dict[str, dict[str, float]] = {
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4o": {"input": 2.50, "output": 10.00},
@@ -292,16 +349,31 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
 }
 
 
-def get_llm_client(model: str):
+def get_llm_client(model: str, _circuit_model: list | None = None):
     from openai import OpenAI
+    if model.startswith("deepseek") and deepseek_circuit.is_open():
+        actual = deepseek_circuit.fallback_model
+        logger.warning("Circuit breaker open, routing %s → %s", model, actual)
+        if _circuit_model is not None:
+            _circuit_model.append(actual)
+        return OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            base_url=settings.OPENAI_BASE_URL or None,
+            timeout=httpx.Timeout(connect=30.0, read=600, write=600, pool=600),
+            max_retries=3,
+        )
     if model.startswith("deepseek"):
         return OpenAI(
             api_key=settings.DEEPSEEK_API_KEY,
             base_url=settings.DEEPSEEK_BASE_URL,
+            timeout=httpx.Timeout(connect=30.0, read=600, write=600, pool=600),
+            max_retries=3,
         )
     return OpenAI(
         api_key=settings.OPENAI_API_KEY,
         base_url=settings.OPENAI_BASE_URL or None,
+        timeout=httpx.Timeout(connect=30.0, read=600, write=600, pool=600),
+        max_retries=3,
     )
 
 

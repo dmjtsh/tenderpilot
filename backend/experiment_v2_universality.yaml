@@ -1,0 +1,14 @@
+name: "v2 universality test — 8 diverse tenders"
+description: "Проверка универсальности v2 после удаления hardcoded значений. 44-ФЗ: 8 регионов, НМЦ 32K-37.5M, ремонт/проектирование/поставка/благоустройство."
+
+variants:
+  - label: A
+    name: "v1 full deepseek"
+    strategy: full
+    model: deepseek-chat
+    prompt_template: summary_v1
+
+  - label: B
+    name: "v2 full pipeline deepseek"
+    strategy: v2_full
+    model: deepseek-chat

@@ -1,0 +1,8 @@
+name: "v2 universality v2 — after calibration + INN fix"
+description: "После фиксов калибровки cash_flow/severity + ИНН подтянуты через fix_customer_inns"
+
+variants:
+  - label: A
+    name: "v2 full pipeline deepseek"
+    strategy: v2_full
+    model: deepseek-chat

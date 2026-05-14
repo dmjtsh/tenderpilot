@@ -210,7 +210,8 @@ class SummaryExperiment(models.Model):
 
 
 class TenderSummaryV2(models.Model):
-    tender = models.OneToOneField(Tender, on_delete=models.CASCADE, related_name="summary_v2")
+    tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name="summaries_v2")
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="summaries_v2", null=True)
     summary = models.JSONField(default=dict)
     step_metrics = models.JSONField(default=dict)
     total_input_tokens = models.PositiveIntegerField(default=0)
@@ -223,6 +224,7 @@ class TenderSummaryV2(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
+        unique_together = [("tender", "user")]
 
     def __str__(self) -> str:
-        return f"SummaryV2 #{self.tender_id} ({self.generation_time_ms}ms, ${self.total_cost_usd})"
+        return f"SummaryV2 #{self.tender_id} u={self.user_id} ({self.generation_time_ms}ms, ${self.total_cost_usd})"

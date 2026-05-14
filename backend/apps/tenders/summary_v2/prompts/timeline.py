@@ -106,6 +106,8 @@ def analyze_timeline(
         )
     except Exception as e:
         logger.warning("Primary model %s failed: %s, falling back to %s", model, e, FALLBACK_MODEL)
+        from apps.tenders.services import deepseek_circuit
+        deepseek_circuit.record_failure()
         client = get_llm_client(FALLBACK_MODEL)
         response = client.chat.completions.create(
             model=FALLBACK_MODEL,

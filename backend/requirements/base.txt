@@ -19,6 +19,7 @@ anthropic>=0.28
 
 requests>=2.31
 lxml>=5.0
+cssselect>=1.2
 fastembed>=0.3
 gunicorn
 openai>=1.30

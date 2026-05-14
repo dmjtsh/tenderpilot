@@ -177,13 +177,34 @@ def send_morning_digest() -> None:
         f"44-ФЗ: {_fmt(fz44_count)} | 223-ФЗ: {_fmt(fz223_count)}\n"
         f"Усечённых проходов: {e_truncated} {truncated_total}"
         + recover_text
+        + _rusprofile_digest(since)
         + attention_text
     )
     send_telegram(text)
 
 
+def _rusprofile_digest(since) -> str:
+    try:
+        from apps.customers.models import CustomerProfile
+
+        total = CustomerProfile.objects.count()
+        enriched_24h = CustomerProfile.objects.filter(
+            rusprofile_updated_at__gte=since,
+        ).count()
+        failed = CustomerProfile.objects.filter(rusprofile_failed=True).count()
+        if total == 0 and enriched_24h == 0:
+            return ""
+        return (
+            f"\n\n\U0001f575 <b>RusProfile</b>\n"
+            f"Профилей: {_fmt(total)}\n"
+            f"Обогащено за 24ч: {_fmt(enriched_24h)}\n"
+            f"С ошибками: {_fmt(failed)}"
+        )
+    except Exception:
+        return ""
+
+
 COVERAGE_DAYS = 5
-# Тревога если у нас < 80% от того что показывает ЕИС
 COVERAGE_WARN_THRESHOLD = 0.80
 COVERAGE_CRIT_THRESHOLD = 0.60
 
@@ -197,7 +218,6 @@ def check_coverage(notify_always: bool = False) -> str:
     from apps.tenders.models import Tender
     from apps.tenders.eis_client import fetch_day_count
 
-    # ЕИС использует московское время, поэтому "день по МСК" = UTC [day-1 21:00, day 21:00)
     MSK_OFFSET = timedelta(hours=3)
     today = (timezone.now() + MSK_OFFSET).date()
     rows: list[str] = []
@@ -205,7 +225,6 @@ def check_coverage(notify_always: bool = False) -> str:
 
     for delta in range(1, COVERAGE_DAYS + 1):
         day = today - timedelta(days=delta)
-        # Диапазон published_at в UTC соответствующий московскому дню
         day_start = datetime(day.year, day.month, day.day, tzinfo=dt_tz.utc) - MSK_OFFSET
         day_end = day_start + timedelta(days=1)
 
