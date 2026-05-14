@@ -1034,37 +1034,41 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
     customer = None
     inn = data.get("customer_inn", "").strip()
     name = data.get("customer_name", "").strip()
-    if inn:
-        customer, _ = Customer.objects.get_or_create(
-            inn=inn,
-            defaults={
-                "name": name,
-                "full_name": data.get("customer_full_name", ""),
-                "region": data.get("customer_region", data.get("region", "")),
-            },
-        )
-    elif name:
-        customer = Customer.objects.filter(inn="", name=name).first()
-        if not customer:
-            customer = Customer.objects.create(
-                inn="", name=name, region=data.get("customer_region", "")
-            )
-
-    # If enrichment brought INN for an existing tender, update the old Customer
     number = data.get("number", "")
+    source = data.get("source", Tender.Source.EIS)
+
+    # Если обогащение принесло ИНН — сначала ищем существующего заказчика без ИНН,
+    # чтобы обновить его на месте и не создавать дубликат через get_or_create.
     if inn and number:
-        existing_tender = Tender.objects.filter(number=number).select_related("customer").first()
+        existing_tender = Tender.objects.filter(number=number, source=source).select_related("customer").first()
         if existing_tender and existing_tender.customer and not existing_tender.customer.inn:
             old_customer = existing_tender.customer
             old_customer.inn = inn
+            old_customer.name = name or old_customer.name
             old_customer.full_name = data.get("customer_full_name", "") or old_customer.full_name
             old_customer.region = data.get("customer_region", data.get("region", "")) or old_customer.region
-            old_customer.save(update_fields=["inn", "full_name", "region"])
+            old_customer.save(update_fields=["inn", "name", "full_name", "region"])
             customer = old_customer
+
+    if customer is None:
+        if inn:
+            customer, _ = Customer.objects.get_or_create(
+                inn=inn,
+                defaults={
+                    "name": name,
+                    "full_name": data.get("customer_full_name", ""),
+                    "region": data.get("customer_region", data.get("region", "")),
+                },
+            )
+        elif name:
+            customer = Customer.objects.filter(inn="", name=name).first()
+            if not customer:
+                customer = Customer.objects.create(
+                    inn="", name=name, region=data.get("customer_region", "")
+                )
 
     source_url = data.get("source_url", "")
     procedure_type = data.get("procedure_type") or detect_procedure_type(source_url)
-    source = data.get("source", Tender.Source.EIS)
 
     always_update = {
         "source": source,
