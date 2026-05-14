@@ -522,7 +522,9 @@ def fetch_tender_detail(purchase_number: str, fallback_url: str = "") -> dict[st
     customer_inn = ""
     inn_el = tree.xpath('//*[contains(text(),"ИНН")]/following-sibling::*[1]')
     if inn_el:
-        customer_inn = inn_el[0].text_content().strip()
+        candidate = inn_el[0].text_content().strip()
+        if re.match(r"^\d{10,12}$", candidate):
+            customer_inn = candidate
 
     # ОКПД2 из позиций
     okpd_codes: list[str] = []

@@ -5,7 +5,7 @@ from django.db.models import Q
 
 
 class Customer(models.Model):
-    inn = models.CharField(max_length=20, blank=True, db_index=True)
+    inn = models.CharField(max_length=12, blank=True, db_index=True)
     name = models.CharField(max_length=500)
     full_name = models.CharField(max_length=1000, blank=True)
     region = models.CharField(max_length=100, blank=True)
