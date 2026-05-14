@@ -173,7 +173,7 @@ def _extract_links(html_text: str) -> list[dict[str, str]]:
     return results
 
 
-def download_file_from_url(url: str, timeout: int = 60) -> bytes | None:
+def download_file_from_url(url: str, timeout: int = 30) -> bytes | None:
     try:
         resp = requests.get(url, headers=HEADERS, timeout=timeout, stream=True)
         resp.raise_for_status()
