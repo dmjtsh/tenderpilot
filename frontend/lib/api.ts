@@ -262,7 +262,7 @@ export const tendersApi = {
     client.get("/tenders/regions/").then((r) => r.data.data as string[]),
 
   getSummary: (id: number, refresh = false) =>
-    client.get(`/tenders/${id}/summary/`, { params: refresh ? { refresh: "true" } : {} }).then((r) => r.data.data as TenderSummary),
+    client.get(`/tenders/${id}/summary/`, { params: refresh ? { refresh: "true" } : {} }).then((r) => r.data.data as AnySummary),
 
   getDocs: (id: number) =>
     client.get(`/tenders/${id}/docs/`).then((r) => r.data.data as TenderDoc[]),
@@ -271,7 +271,7 @@ export const tendersApi = {
     client.post(`/tenders/${id}/download-docs/`).then((r) => r.data.data),
 
   askQuestion: (id: number, question: string) =>
-    client.post(`/tenders/${id}/ask/`, { question }).then((r) => r.data.data as TenderQAResponse),
+    client.post(`/tenders/${id}/chat/v1/`, { question }).then((r) => r.data.data as TenderQAResponse),
 
   reindexDocs: (id: number) =>
     client.post(`/tenders/${id}/reindex-docs/`).then((r) => r.data.data),

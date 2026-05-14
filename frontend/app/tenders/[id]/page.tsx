@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderSummaryV2, type AnySummary, isV2Summary, type TenderDoc, type TenderQASource, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
-import { AlertTriangle, Building2, Check, ChevronDown, ChevronLeft, ClipboardList, Download, ExternalLink, FileText, Loader2, Minus, Send, Sparkles, XCircle } from "lucide-react"
+import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderSummaryV2, type AnySummary, isV2Summary, type TenderDoc, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
+import { AlertTriangle, Building2, Calendar, Check, ChevronDown, ChevronLeft, ClipboardList, Clock, DollarSign, Download, ExternalLink, FileText, Loader2, Minus, RefreshCw, Send, Shield, Sparkles, XCircle, Wrench } from "lucide-react"
 import Link from "next/link"
 import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
 
@@ -82,13 +82,40 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
   )
 }
 
-function BulletList({ items, className = "text-gray-700" }: { items: string[]; className?: string }) {
+function SubHeading({ children }: { children: React.ReactNode }) {
+  return <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-700 mb-2 mt-6 first:mt-0">{children}</h4>
+}
+
+function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
+  if (!value) return null
+  return (
+    <div className="flex items-baseline gap-2 text-sm">
+      <span className="text-xs font-medium uppercase text-gray-500 shrink-0">{label}:</span>
+      <span className="text-gray-900">{value}</span>
+    </div>
+  )
+}
+
+function WarningBlock({ children, variant = "amber" }: { children: React.ReactNode; variant?: "amber" | "green" | "red" }) {
+  const styles = {
+    amber: "border-amber-500 bg-amber-50",
+    green: "border-emerald-500 bg-emerald-50",
+    red: "border-red-500 bg-red-50",
+  }
+  return (
+    <div className={`border-l-4 p-3 mt-4 ${styles[variant]}`}>
+      <p className="text-sm text-gray-900 leading-relaxed">{children}</p>
+    </div>
+  )
+}
+
+function BulletList({ items, className = "text-gray-800" }: { items: string[]; className?: string }) {
   if (!items.length) return null
   return (
     <ul className="space-y-1.5">
       {items.map((item, i) => (
-        <li key={i} className={`flex items-start gap-2.5 text-[15px] ${className}`}>
-          <span className="text-gray-400 mt-0.5 shrink-0">·</span>
+        <li key={i} className={`flex items-start gap-2.5 text-sm leading-relaxed ${className}`}>
+          <span className="text-gray-400 mt-1 shrink-0 text-[8px]">●</span>
           {item}
         </li>
       ))}
@@ -250,253 +277,552 @@ const SEVERITY_COLOR: Record<string, string> = {
   low: "text-gray-500",
 }
 
-function RiskItem({ risk, severity }: { risk: string; severity: string }) {
-  return (
-    <li className={`flex items-start gap-2.5 text-[15px] ${SEVERITY_COLOR[severity] ?? "text-gray-700"}`}>
-      <span className="text-gray-400 mt-0.5 shrink-0">·</span>
-      {risk}
-      {severity && <span className="text-xs text-gray-400 shrink-0">({severity})</span>}
-    </li>
-  )
+const SEVERITY_BADGE: Record<string, string> = {
+  high: "bg-red-50 text-red-700 border-red-200",
+  medium: "bg-amber-50 text-amber-700 border-amber-200",
+  low: "bg-gray-50 text-gray-600 border-gray-200",
 }
 
-function SummaryBlockV2({ s }: { s: TenderSummaryV2 }) {
-  const fin = s.financial
-  const tl = s.timeline
-  const req = s.requirements
-  const work = s.work_description
-  const risks = s.risks
-  const cust = s.customer_analysis
+const RISK_BADGE: Record<string, string> = {
+  high: "bg-red-50 text-red-700 border-red-200",
+  medium: "bg-amber-50 text-amber-700 border-amber-200",
+  low: "bg-gray-100 text-gray-600 border-gray-200",
+}
 
+const RELIABILITY_BADGE: Record<string, string> = {
+  high: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  medium: "bg-amber-50 text-amber-700 border-amber-200",
+  low: "bg-red-50 text-red-700 border-red-200",
+}
+
+const RELIABILITY_LABEL: Record<string, string> = {
+  high: "Высокая",
+  medium: "Средняя",
+  low: "Низкая",
+}
+
+const RISK_BORDER: Record<string, string> = {
+  high: "border-l-red-500",
+  medium: "border-l-amber-500",
+  low: "border-l-gray-300",
+}
+
+function RiskItem({ risk, severity }: { risk: string; severity: string }) {
   return (
-    <div className="space-y-0">
-      {/* Customer */}
-      {cust && (
-        <div className="py-5">
-          <SectionHeader icon={Building2} title="Заказчик" />
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 flex-wrap text-[15px]">
-              <span className="text-[#111827] font-medium">{cust.name || "Не указан"}</span>
-              {cust.inn && <span className="text-gray-400 font-mono text-sm">ИНН {cust.inn}</span>}
-              {cust.region && <span className="text-gray-500">{cust.region}</span>}
-            </div>
-            {cust.org_type && <p className="text-sm text-gray-500">{cust.org_type}{cust.industry ? ` · ${cust.industry}` : ""}</p>}
-            {cust.financials?.revenue_rub != null && (
-              <p className="text-sm text-gray-500">
-                Выручка: {fmtVolume(cust.financials.revenue_rub)}
-                {cust.financials.employees_count != null && <>, {cust.financials.employees_count} сотр.</>}
-              </p>
-            )}
-            {cust.procurement_history?.total_purchases != null && cust.procurement_history.total_purchases > 0 && (
-              <p className="text-sm text-gray-500">
-                Закупки: {cust.procurement_history.total_purchases} шт.
-                {cust.procurement_history.total_amount_rub != null && <>, {fmtVolume(cust.procurement_history.total_amount_rub)}</>}
-              </p>
-            )}
-            {cust.reliability && <p className="text-sm text-gray-500">Надёжность: {cust.reliability}</p>}
-            {(cust.risk_indicators?.red_flags?.length ?? 0) > 0 && (
-              <BulletList items={cust.risk_indicators.red_flags} className="text-amber-600" />
-            )}
-            <BulletList items={cust.notes ?? []} className="text-gray-500" />
-          </div>
-        </div>
-      )}
-
-      {/* Work description */}
-      {work && (
-        <div className="border-t border-gray-100 py-5">
-          <SectionHeader icon={FileText} title="Описание работ" />
-          <div className="space-y-3">
-            <p className="text-[15px] leading-relaxed text-[#111827]">{work.subject}</p>
-            {work.tender_type && <p className="text-sm text-gray-500">Тип: {work.tender_type}</p>}
-            {work.location?.address && <p className="text-sm text-gray-500">Место: {work.location.address}{work.location.region ? `, ${work.location.region}` : ""}</p>}
-            {(work.scope?.main_activities?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1.5">Основные работы</p>
-                <BulletList items={work.scope.main_activities} />
-              </div>
-            )}
-            {(work.scope?.deliverables?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1.5">Результаты</p>
-                <BulletList items={work.scope.deliverables} />
-              </div>
-            )}
-            {(work.scope?.volume_metrics?.length ?? 0) > 0 && (
-              <div className="text-sm space-y-1">
-                {work.scope.volume_metrics.map((m, i) => (
-                  <p key={i} className="text-gray-700"><span className="text-gray-400">{m.metric}:</span> {m.value}</p>
-                ))}
-              </div>
-            )}
-            {work.acceptance?.procedure && <p className="text-sm text-gray-700"><span className="text-gray-400">Приёмка:</span> {work.acceptance.procedure}</p>}
-            {work.acceptance?.warranty_months != null && <p className="text-sm text-gray-700"><span className="text-gray-400">Гарантия:</span> {work.acceptance.warranty_months} мес.</p>}
-            {work.subcontracting?.allowed != null && (
-              <p className="text-sm text-gray-700">
-                <span className="text-gray-400">Субподряд:</span> {work.subcontracting.allowed ? `да${work.subcontracting.max_pct ? ` (до ${work.subcontracting.max_pct}%)` : ""}` : "нет"}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Financial */}
-      {fin && (
-        <div className="border-t border-gray-100 py-5">
-          <SectionHeader icon={FileText} title="Финансы" />
-          <div className="space-y-2 text-sm">
-            {fin.advance?.has_advance && (
-              <p className="text-gray-700"><span className="text-gray-400">Аванс:</span> {fin.advance.amount_pct ? `${fin.advance.amount_pct}%` : fin.advance.amount_rub ? fmtVolume(fin.advance.amount_rub) : "да"}{fin.advance.description ? ` — ${fin.advance.description}` : ""}</p>
-            )}
-            {!fin.advance?.has_advance && <p className="text-gray-500">Аванс: не предусмотрен</p>}
-            {fin.payment?.structure && <p className="text-gray-700"><span className="text-gray-400">Оплата:</span> {fin.payment.schedule_description ?? fin.payment.structure}{fin.payment.term_days ? `, ${fin.payment.term_days} ${fin.payment.term_days_type ?? "дн."}` : ""}</p>}
-            {fin.funding_source && <p className="text-gray-700"><span className="text-gray-400">Источник:</span> {fin.funding_source}</p>}
-            {(fin.securities?.bid_pct != null || fin.securities?.bid_amount_rub != null) && (
-              <p className="text-gray-700"><span className="text-gray-400">Обеспечение заявки:</span> {fin.securities.bid_pct ? `${fin.securities.bid_pct}%` : ""}{fin.securities.bid_amount_rub ? ` (${fmtVolume(fin.securities.bid_amount_rub)})` : ""}</p>
-            )}
-            {(fin.securities?.contract_pct != null || fin.securities?.contract_amount_rub != null) && (
-              <p className="text-gray-700"><span className="text-gray-400">Обеспечение контракта:</span> {fin.securities.contract_pct ? `${fin.securities.contract_pct}%` : ""}{fin.securities.contract_amount_rub ? ` (${fmtVolume(fin.securities.contract_amount_rub)})` : ""}</p>
-            )}
-            {fin.penalties?.delay_pen_formula && <p className="text-gray-700"><span className="text-gray-400">Пеня за просрочку:</span> {fin.penalties.delay_pen_formula}</p>}
-            {fin.penalties?.fixed_fine_rub != null && <p className="text-gray-700"><span className="text-gray-400">Штраф:</span> {fmtVolume(fin.penalties.fixed_fine_rub)}{fin.penalties.fixed_fine_basis ? ` (${fin.penalties.fixed_fine_basis})` : ""}</p>}
-            {fin.antidumping?.applicable && (
-              <p className="text-amber-600"><span className="text-gray-400">Антидемпинг:</span> порог {fin.antidumping.threshold_pct}%, множитель {fin.antidumping.multiplier}x</p>
-            )}
-            {fin.cash_flow_note && <p className="text-gray-500 italic">{fin.cash_flow_note}</p>}
-          </div>
-        </div>
-      )}
-
-      {/* Timeline */}
-      {tl && (
-        <div className="border-t border-gray-100 py-5">
-          <SectionHeader icon={FileText} title="Сроки" />
-          <div className="space-y-2 text-sm">
-            {tl.total_duration?.description && <p className="text-gray-700"><span className="text-gray-400">Срок:</span> {tl.total_duration.description}</p>}
-            {tl.key_dates?.submission_deadline && <p className="text-gray-700"><span className="text-gray-400">Подача заявки:</span> {tl.key_dates.submission_deadline}</p>}
-            {tl.key_dates?.auction_date && <p className="text-gray-700"><span className="text-gray-400">Аукцион:</span> {tl.key_dates.auction_date}</p>}
-            {tl.key_dates?.warranty_months != null && <p className="text-gray-700"><span className="text-gray-400">Гарантия:</span> {tl.key_dates.warranty_months} мес.</p>}
-            {(tl.stages?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-gray-400 mb-1.5">Этапы</p>
-                <ul className="space-y-1.5">
-                  {tl.stages.map((st, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-[15px] text-gray-700">
-                      <span className="text-gray-400 mt-0.5 shrink-0">·</span>
-                      <span>{st.name}{st.duration_days ? ` — ${st.duration_days} дн.` : ""}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {tl.urgency_note && <p className="text-amber-600 italic">{tl.urgency_note}</p>}
-          </div>
-        </div>
-      )}
-
-      {/* Requirements */}
-      {req && (
-        <div className="border-t border-gray-100 py-5">
-          <SectionHeader icon={ClipboardList} title="Требования" />
-          <div className="space-y-3 text-sm">
-            {(req.eligibility?.licenses?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-gray-400 mb-1.5">Лицензии</p>
-                <BulletList items={req.eligibility.licenses.map(l => `${l.name}${l.issuer ? ` (${l.issuer})` : ""}${l.mandatory ? "" : " — желательно"}`)} />
-              </div>
-            )}
-            {req.eligibility?.sro?.required && (
-              <p className="text-gray-700"><span className="text-gray-400">СРО:</span> {req.eligibility.sro.type ?? "требуется"}</p>
-            )}
-            {req.eligibility?.experience?.description && (
-              <p className="text-gray-700"><span className="text-gray-400">Опыт:</span> {req.eligibility.experience.description}</p>
-            )}
-            {(req.eligibility?.staff?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-gray-400 mb-1.5">Персонал</p>
-                <BulletList items={req.eligibility.staff.map(s => `${s.role}${s.count ? ` × ${s.count}` : ""}${s.qualifications ? ` — ${s.qualifications}` : ""}`)} />
-              </div>
-            )}
-            {(req.eligibility?.other?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-gray-400 mb-1.5">Прочие требования</p>
-                <BulletList items={req.eligibility.other} />
-              </div>
-            )}
-            {(req.evaluation_criteria?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-gray-400 mb-1.5">Критерии оценки</p>
-                <BulletList items={req.evaluation_criteria.map(c => `${c.name}${c.weight_pct ? ` — ${c.weight_pct}%` : ""}${c.description ? `: ${c.description}` : ""}`)} />
-              </div>
-            )}
-            {(req.submission?.documents?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-gray-400 mb-1.5">Документы для подачи</p>
-                <BulletList items={req.submission.documents.map(d => `${d.name}${d.mandatory ? "" : " (опционально)"}`)} />
-              </div>
-            )}
-            {req.restrictions?.smp_only && <p className="text-amber-600">Только для СМП/СОНКО</p>}
-            {req.restrictions?.national_regime && <p className="text-gray-700">Национальный режим</p>}
-          </div>
-        </div>
-      )}
-
-      {/* Risks */}
-      {risks && (
-        <div className="border-t border-gray-100 py-5">
-          <SectionHeader icon={AlertTriangle} title="Риски" />
-          <div className="space-y-3">
-            {risks.overall_risk && (
-              <p className={`text-sm font-medium ${SEVERITY_COLOR[risks.overall_risk] ?? "text-gray-700"}`}>
-                Общий риск: {risks.overall_risk}
-              </p>
-            )}
-            {risks.risk_summary && <p className="text-sm text-gray-600">{risks.risk_summary}</p>}
-            {(risks.certification_risks?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1.5">Лицензии и сертификаты</p>
-                <ul className="space-y-1.5">{risks.certification_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
-              </div>
-            )}
-            {(risks.financial_risks?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1.5">Финансовые</p>
-                <ul className="space-y-1.5">{risks.financial_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
-              </div>
-            )}
-            {(risks.technical_risks?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1.5">Технические</p>
-                <ul className="space-y-1.5">{risks.technical_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
-              </div>
-            )}
-            {(risks.legal_risks?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1.5">Юридические</p>
-                <ul className="space-y-1.5">{risks.legal_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
-              </div>
-            )}
-            {(risks.timeline_risks?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1.5">Сроки</p>
-                <ul className="space-y-1.5">{risks.timeline_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
-              </div>
-            )}
-            {(risks.unusual_conditions?.length ?? 0) > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-1.5">Необычные условия</p>
-                <BulletList items={risks.unusual_conditions} className="text-amber-600" />
-              </div>
-            )}
-          </div>
-        </div>
+    <div className={`border-l-4 pl-3 py-1.5 flex items-start justify-between gap-3 ${RISK_BORDER[severity] ?? "border-l-gray-300"}`}>
+      <span className="text-sm font-medium text-gray-900 leading-relaxed">{risk}</span>
+      {severity && (
+        <span className={`text-[11px] px-1.5 py-0.5 border shrink-0 ${SEVERITY_BADGE[severity] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+          {severity}
+        </span>
       )}
     </div>
   )
 }
 
-function SummaryBlockAny({ s }: { s: AnySummary }) {
-  if (isV2Summary(s)) return <SummaryBlockV2 s={s} />
+function Disclosure({ title, icon: Icon, defaultOpen = false, count, children }: {
+  title: string
+  icon: React.ElementType
+  defaultOpen?: boolean
+  count?: number | null
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="border-t border-gray-200">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between py-4">
+        <div className="flex items-center gap-2.5">
+          <Icon className="w-[18px] h-[18px] text-gray-700" />
+          <span className="text-lg font-semibold text-gray-900">{title}</span>
+          {count != null && count > 0 && <span className="text-sm text-gray-500">({count})</span>}
+        </div>
+        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      <div className={`grid transition-all duration-200 ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+        <div className="overflow-hidden">
+          <div className="pb-6">{children}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function daysUntil(dateStr: string | null): number | null {
+  if (!dateStr) return null
+  const diff = new Date(dateStr).getTime() - Date.now()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+function DeadlineCountdown({ deadline }: { deadline: string | null }) {
+  const days = daysUntil(deadline)
+  if (days == null) return <span className="text-gray-400">—</span>
+  if (days < 0) return <span className="text-red-600 font-medium">Истёк</span>
+  if (days === 0) return <span className="text-red-600 font-medium">Сегодня</span>
+  if (days <= 3) return <span className="text-red-600 font-medium">{days} дн.</span>
+  if (days <= 7) return <span className="text-amber-600 font-medium">{days} дн.</span>
+  return <span className="text-gray-700 font-medium">{days} дн.</span>
+}
+
+const GENERATION_STEPS = [
+  { id: 1, name: "Анализ заказчика", duration: 5 },
+  { id: 2, name: "Описание работ", duration: 7 },
+  { id: 3, name: "Условия оплаты", duration: 5 },
+  { id: 4, name: "Сроки и этапы", duration: 5 },
+  { id: 5, name: "Требования к участнику", duration: 7 },
+  { id: 6, name: "Анализ рисков", duration: 8 },
+]
+
+const TOTAL_DURATION = GENERATION_STEPS.reduce((s, st) => s + st.duration, 0)
+
+function GenerationProgress() {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(prev => prev + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  let cumulative = 0
+  let currentIdx = 0
+  for (let i = 0; i < GENERATION_STEPS.length; i++) {
+    cumulative += GENERATION_STEPS[i].duration
+    if (elapsed < cumulative) { currentIdx = i; break }
+    if (i === GENERATION_STEPS.length - 1) currentIdx = i
+  }
+
+  const step = GENERATION_STEPS[currentIdx]
+  const isStuck = elapsed >= TOTAL_DURATION
+  const label = isStuck ? "Финализация" : step.name
+  const pct = isStuck ? 95 : Math.min(Math.round((elapsed / TOTAL_DURATION) * 95), 95)
+  const remaining = isStuck ? 3 : Math.max(3, (GENERATION_STEPS.length - step.id) * 5)
+
+  return (
+    <div>
+      <p className="text-base font-medium text-gray-900 mb-3">{label}...</p>
+
+      <div className="flex items-center gap-3 mb-2">
+        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gray-900 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-sm text-gray-500 tabular-nums min-w-[3ch]">{pct}%</span>
+      </div>
+
+      <p className="text-sm text-gray-500">
+        Шаг {step.id} из {GENERATION_STEPS.length} · ~{remaining} секунд осталось
+      </p>
+    </div>
+  )
+}
+
+function RiskGroup({ title, risks }: { title: string; risks: { risk: string; severity: string }[] }) {
+  if (!risks?.length) return null
+  return (
+    <div>
+      <SubHeading>{title} ({risks.length})</SubHeading>
+      <div className="space-y-2">{risks.map((r, i) => <RiskItem key={i} {...r} />)}</div>
+    </div>
+  )
+}
+
+function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }) {
+  const risks = s.risks
+  const cust = s.customer_analysis
+  const work = s.work_description
+  const fin = s.financial
+  const tl = s.timeline
+  const req = s.requirements
+
+  const totalRisks = (risks?.certification_risks?.length ?? 0) + (risks?.financial_risks?.length ?? 0) +
+    (risks?.technical_risks?.length ?? 0) + (risks?.legal_risks?.length ?? 0) +
+    (risks?.timeline_risks?.length ?? 0) + (risks?.unusual_conditions?.length ?? 0)
+
+  return (
+    <div>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          {tender.law_type && (
+            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border border-gray-200">{tender.law_type}</span>
+          )}
+          <span className="text-sm font-medium text-gray-900 truncate">{tender.title}</span>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap text-sm">
+          <span className="font-semibold text-gray-900">{fmt(tender.nmck)}</span>
+          <span className="flex items-center gap-1 text-gray-500">
+            <Clock className="w-3.5 h-3.5" />
+            <DeadlineCountdown deadline={tender.deadline_at} />
+          </span>
+          {risks?.overall_risk && (
+            <span className={`text-xs px-2 py-0.5 border ${RISK_BADGE[risks.overall_risk] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
+              Риск: {risks.overall_risk}
+            </span>
+          )}
+          {cust?.reliability && (
+            <span className={`text-xs px-2 py-0.5 border ${RELIABILITY_BADGE[cust.reliability] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
+              {RELIABILITY_LABEL[cust.reliability] ?? cust.reliability}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="px-6">
+        {/* 1. Customer (КТО) */}
+        {cust && (
+          <Disclosure title="Заказчик" icon={Building2} defaultOpen={true} count={null}>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 flex-wrap text-[15px]">
+                <span className="text-gray-900 font-medium">{cust.name || "Не указан"}</span>
+                {cust.inn && <span className="text-gray-400 font-mono text-sm">ИНН {cust.inn}</span>}
+              </div>
+              <div className="space-y-1">
+                <FieldRow label="Регион" value={cust.region} />
+                <FieldRow label="Тип" value={cust.org_type} />
+                <FieldRow label="Отрасль" value={cust.industry} />
+                <FieldRow label="Основана" value={cust.founded_date} />
+              </div>
+              {cust.financials?.revenue_rub != null && (
+                <>
+                  <SubHeading>Финансы</SubHeading>
+                  <div className="space-y-1">
+                    <FieldRow label="Выручка" value={fmtVolume(cust.financials.revenue_rub)} />
+                    <FieldRow label="Прибыль" value={cust.financials.profit_rub != null ? fmtVolume(cust.financials.profit_rub) : null} />
+                    <FieldRow label="Сотрудники" value={cust.financials.employees_count} />
+                  </div>
+                </>
+              )}
+              {cust.procurement_history?.total_purchases != null && cust.procurement_history.total_purchases > 0 && (
+                <>
+                  <SubHeading>Закупочная история</SubHeading>
+                  <div className="space-y-1">
+                    <FieldRow label="Закупки" value={`${cust.procurement_history.total_purchases} шт.`} />
+                    <FieldRow label="Сумма" value={cust.procurement_history.total_amount_rub != null ? fmtVolume(cust.procurement_history.total_amount_rub) : null} />
+                  </div>
+                </>
+              )}
+              {(cust.risk_indicators?.arbitration_count || cust.risk_indicators?.fssp_count || cust.risk_indicators?.licenses_count) && (
+                <>
+                  <SubHeading>Индикаторы</SubHeading>
+                  <div className="space-y-1">
+                    <FieldRow label="Арбитражи" value={cust.risk_indicators.arbitration_count || null} />
+                    <FieldRow label="ФССП" value={cust.risk_indicators.fssp_count || null} />
+                    <FieldRow label="Лицензий" value={cust.risk_indicators.licenses_count || null} />
+                  </div>
+                </>
+              )}
+              {(cust.risk_indicators?.red_flags?.length ?? 0) > 0 && (
+                <BulletList items={cust.risk_indicators.red_flags.filter((f: string) => !/^[a-z_][a-z_0-9]*\s*[:=]\s*(true|false|null|\d+)$/i.test(f))} className="text-amber-600" />
+              )}
+              {cust.reliability && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs font-medium uppercase text-gray-500">Надёжность:</span>
+                  <span className={`text-xs px-2 py-0.5 border ${RELIABILITY_BADGE[cust.reliability] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
+                    {RELIABILITY_LABEL[cust.reliability] ?? cust.reliability}
+                  </span>
+                </div>
+              )}
+              {(cust.notes?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Заметки</SubHeading>
+                  <BulletList items={cust.notes} />
+                </>
+              )}
+            </div>
+          </Disclosure>
+        )}
+
+        {/* 2. Work (ЧТО) */}
+        {work && (
+          <Disclosure title="Описание работ" icon={Wrench} defaultOpen={true} count={work.scope?.main_activities?.length}>
+            <div className="space-y-3">
+              {work.tender_type && (
+                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border border-gray-200">{work.tender_type}</span>
+              )}
+              <p className="text-sm leading-relaxed text-gray-900">{work.subject}</p>
+
+              {(work.scope?.main_activities?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Основные работы</SubHeading>
+                  <BulletList items={work.scope.main_activities} />
+                </>
+              )}
+              {(work.scope?.volume_metrics?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Объёмы</SubHeading>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                    {work.scope.volume_metrics.map((m, i) => (
+                      <FieldRow key={i} label={m.metric} value={m.value} />
+                    ))}
+                  </div>
+                </>
+              )}
+              {(work.scope?.deliverables?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Результаты</SubHeading>
+                  <BulletList items={work.scope.deliverables} />
+                </>
+              )}
+              {work.location?.address && (
+                <FieldRow label="Место" value={`${work.location.address}${work.location.region ? `, ${work.location.region}` : ""}`} />
+              )}
+              {work.subcontracting?.allowed != null && (
+                <FieldRow label="Субподряд" value={work.subcontracting.allowed ? `да${work.subcontracting.max_pct ? ` (до ${work.subcontracting.max_pct}%)` : ""}` : "нет"} />
+              )}
+              {((work.technical_specs?.standards?.length ?? 0) > 0 || (work.technical_specs?.materials?.length ?? 0) > 0 || (work.technical_specs?.equipment?.length ?? 0) > 0) && (
+                <>
+                  <SubHeading>Технические требования</SubHeading>
+                  {(work.technical_specs?.standards?.length ?? 0) > 0 && <BulletList items={work.technical_specs.standards} />}
+                  {(work.technical_specs?.materials?.length ?? 0) > 0 && (
+                    <>
+                      <p className="text-xs font-medium text-gray-500 mt-3 mb-1">Материалы</p>
+                      <BulletList items={work.technical_specs.materials} />
+                    </>
+                  )}
+                  {(work.technical_specs?.equipment?.length ?? 0) > 0 && (
+                    <>
+                      <p className="text-xs font-medium text-gray-500 mt-3 mb-1">Оборудование</p>
+                      <BulletList items={work.technical_specs.equipment} />
+                    </>
+                  )}
+                </>
+              )}
+              {(work.acceptance?.procedure || work.acceptance?.warranty_months != null) && (
+                <>
+                  <SubHeading>Приёмка</SubHeading>
+                  <div className="space-y-1">
+                    <FieldRow label="Процедура" value={work.acceptance.procedure} />
+                    <FieldRow label="Гарантия" value={work.acceptance.warranty_months != null ? `${work.acceptance.warranty_months} мес.` : null} />
+                  </div>
+                </>
+              )}
+            </div>
+          </Disclosure>
+        )}
+
+        {/* 3. Financial (ЗА СКОЛЬКО) */}
+        {fin && (
+          <Disclosure title="Финансы" icon={DollarSign} defaultOpen={true}>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-1">
+                <SubHeading>Оплата</SubHeading>
+                {fin.advance?.has_advance ? (
+                  <FieldRow label="Аванс" value={`${fin.advance.amount_pct ? `${fin.advance.amount_pct}%` : fin.advance.amount_rub ? fmtVolume(fin.advance.amount_rub) : "да"}${fin.advance.description ? ` — ${fin.advance.description}` : ""}`} />
+                ) : (
+                  <FieldRow label="Аванс" value="не предусмотрен" />
+                )}
+                {fin.payment?.structure && (
+                  <FieldRow label="Оплата" value={`${fin.payment.schedule_description ?? fin.payment.structure}${fin.payment.term_days ? `, ${fin.payment.term_days} ${fin.payment.term_days_type ?? "дн."}` : ""}`} />
+                )}
+                {fin.funding_source && <FieldRow label="Источник" value={fin.funding_source} />}
+              </div>
+              <div className="space-y-1">
+                <SubHeading>Обеспечение и штрафы</SubHeading>
+                {(fin.securities?.bid_pct != null || fin.securities?.bid_amount_rub != null) && (
+                  <FieldRow label="Заявка" value={`${fin.securities.bid_pct ? `${fin.securities.bid_pct}%` : ""}${fin.securities.bid_amount_rub ? ` (${fmtVolume(fin.securities.bid_amount_rub)})` : ""}`} />
+                )}
+                {(fin.securities?.contract_pct != null || fin.securities?.contract_amount_rub != null) && (
+                  <FieldRow label="Контракт" value={`${fin.securities.contract_pct ? `${fin.securities.contract_pct}%` : ""}${fin.securities.contract_amount_rub ? ` (${fmtVolume(fin.securities.contract_amount_rub)})` : ""}`} />
+                )}
+                {fin.securities?.contract_form && <FieldRow label="Форма" value={fin.securities.contract_form} />}
+                {fin.penalties?.delay_pen_formula && <FieldRow label="Пеня" value={fin.penalties.delay_pen_formula} />}
+                {fin.penalties?.fixed_fine_rub != null && (
+                  <FieldRow label="Штраф" value={`${fmtVolume(fin.penalties.fixed_fine_rub)}${fin.penalties.fixed_fine_basis ? ` (${fin.penalties.fixed_fine_basis})` : ""}`} />
+                )}
+              </div>
+            </div>
+            {fin.antidumping?.applicable && (
+              <WarningBlock variant="amber">Антидемпинг: порог {fin.antidumping.threshold_pct}%, множитель {fin.antidumping.multiplier}x</WarningBlock>
+            )}
+            {fin.cash_flow_note && (
+              <WarningBlock variant={
+                fin.cash_flow_note.includes("Низк") ? "green" :
+                fin.cash_flow_note.includes("Высок") ? "red" : "amber"
+              }>{fin.cash_flow_note}</WarningBlock>
+            )}
+          </Disclosure>
+        )}
+
+        {/* 4. Timeline (КОГДА) */}
+        {tl && (
+          <Disclosure title="Сроки" icon={Calendar} defaultOpen={true}>
+            <div className="space-y-3">
+              {tl.total_duration?.description && (
+                <>
+                  <SubHeading>Длительность</SubHeading>
+                  <p className="text-sm font-medium text-gray-900">{tl.total_duration.description}</p>
+                </>
+              )}
+              {(tl.stages?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Этапы</SubHeading>
+                  <ol className="space-y-1.5">
+                    {tl.stages.map((st, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-gray-700">
+                        <span className="text-gray-400 shrink-0 w-5 text-right">{st.number || i + 1}.</span>
+                        <div>
+                          <span className="text-gray-900">{st.name}</span>
+                          {st.duration_days && <span className="text-gray-400"> — {st.duration_days} дн.</span>}
+                          {(st.deliverables?.length ?? 0) > 0 && (
+                            <ul className="mt-1 space-y-0.5">
+                              {st.deliverables.map((d, j) => (
+                                <li key={j} className="text-sm text-gray-500 flex items-start gap-2">
+                                  <span className="text-gray-300 mt-0.5 shrink-0">·</span>{d}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              )}
+              {(tl.key_dates?.submission_deadline || tl.key_dates?.auction_date || tl.key_dates?.warranty_months != null) && (
+                <>
+                  <SubHeading>Ключевые даты</SubHeading>
+                  <div className="space-y-1">
+                    <FieldRow label="Подача" value={tl.key_dates.submission_deadline} />
+                    <FieldRow label="Аукцион" value={tl.key_dates.auction_date} />
+                    <FieldRow label="Гарантия" value={tl.key_dates.warranty_months != null ? `${tl.key_dates.warranty_months} мес.` : null} />
+                  </div>
+                </>
+              )}
+              {tl.urgency_note && (
+                <WarningBlock variant={
+                  tl.urgency_note.includes("крит") || tl.urgency_note.includes("Крит") ? "red" :
+                  tl.urgency_note.includes("сроч") || tl.urgency_note.includes("Сроч") ? "amber" : "amber"
+                }>{tl.urgency_note}</WarningBlock>
+              )}
+            </div>
+          </Disclosure>
+        )}
+
+        {/* 5. Requirements (КТО МОЖЕТ) */}
+        {req && (
+          <Disclosure title="Требования" icon={ClipboardList} defaultOpen={true} count={
+            (req.eligibility?.licenses?.length ?? 0) + (req.submission?.documents?.length ?? 0)
+          }>
+            <div className="space-y-3">
+              {(req.eligibility?.licenses?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Лицензии</SubHeading>
+                  <BulletList items={req.eligibility.licenses.map(l => `${l.name}${l.issuer ? ` (${l.issuer})` : ""}${l.mandatory ? "" : " — желательно"}`)} />
+                </>
+              )}
+              {req.eligibility?.sro?.required && (
+                <FieldRow label="СРО" value={req.eligibility.sro.type ?? "требуется"} />
+              )}
+              {req.eligibility?.experience?.description && (
+                <FieldRow label="Опыт" value={req.eligibility.experience.description} />
+              )}
+              {(req.eligibility?.staff?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Персонал</SubHeading>
+                  <BulletList items={req.eligibility.staff.map(st => `${st.role}${st.count ? ` × ${st.count}` : ""}${st.qualifications ? ` — ${st.qualifications}` : ""}`)} />
+                </>
+              )}
+              {(req.eligibility?.other?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Прочие требования</SubHeading>
+                  <BulletList items={req.eligibility.other} />
+                </>
+              )}
+              {(req.evaluation_criteria?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Критерии оценки</SubHeading>
+                  <div className="space-y-3">
+                    {req.evaluation_criteria.map((c, i) => (
+                      <div key={i}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-gray-900">{c.name}</span>
+                          {c.weight_pct != null && (
+                            <span className="text-sm font-medium text-gray-700 tabular-nums">{c.weight_pct}%</span>
+                          )}
+                        </div>
+                        {c.weight_pct != null && (
+                          <div className="w-full h-1 bg-gray-100 mt-1.5 rounded-full">
+                            <div className="h-full bg-gray-900 rounded-full" style={{ width: `${c.weight_pct}%` }} />
+                          </div>
+                        )}
+                        {c.description && <p className="text-xs text-gray-500 mt-1">{c.description}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {(req.submission?.documents?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Документы для подачи</SubHeading>
+                  <BulletList items={req.submission.documents.map(d => `${d.name}${d.mandatory ? "" : " (опционально)"}`)} />
+                </>
+              )}
+              {(req.restrictions?.smp_only || req.restrictions?.national_regime) && (
+                <>
+                  <SubHeading>Ограничения</SubHeading>
+                  {req.restrictions.smp_only && <WarningBlock variant="amber">Только для СМП/СОНКО</WarningBlock>}
+                  {req.restrictions.national_regime && <FieldRow label="Режим" value="Национальный режим" />}
+                </>
+              )}
+            </div>
+          </Disclosure>
+        )}
+
+        {/* 6. Risks (ИТОГ) */}
+        {risks && (
+          <Disclosure title="Риски" icon={Shield} defaultOpen={true} count={totalRisks || null}>
+            <div className="space-y-3">
+              {risks.overall_risk && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase text-gray-500">Общий уровень:</span>
+                  <span className={`text-xs px-2 py-0.5 border font-medium ${RISK_BADGE[risks.overall_risk] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
+                    {risks.overall_risk}
+                  </span>
+                </div>
+              )}
+              {risks.risk_summary && (
+                <p className="text-sm text-gray-700 leading-relaxed">{risks.risk_summary}</p>
+              )}
+              <RiskGroup title="Сертификационные" risks={risks.certification_risks} />
+              <RiskGroup title="Финансовые" risks={risks.financial_risks} />
+              <RiskGroup title="Технические" risks={risks.technical_risks} />
+              <RiskGroup title="Юридические" risks={risks.legal_risks} />
+              <RiskGroup title="Временные" risks={risks.timeline_risks} />
+              {(risks.unusual_conditions?.length ?? 0) > 0 && (
+                <>
+                  <SubHeading>Необычные условия ({risks.unusual_conditions.length})</SubHeading>
+                  <BulletList items={risks.unusual_conditions} className="text-amber-600" />
+                </>
+              )}
+            </div>
+          </Disclosure>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SummaryBlockV2({ s, tender }: { s: TenderSummaryV2; tender?: Tender }) {
+  if (tender) return <SummaryV2Sections s={s} tender={tender} />
+  return <SummaryV2Fallback s={s} />
+}
+
+function SummaryV2Fallback({ s }: { s: TenderSummaryV2 }) {
+  const risks = s.risks
+  const cust = s.customer_analysis
+  return (
+    <div className="space-y-3">
+      {risks?.risk_summary && <p className="text-sm text-gray-600">{risks.risk_summary}</p>}
+      {cust?.name && <p className="text-sm text-gray-500">Заказчик: {cust.name}</p>}
+    </div>
+  )
+}
+
+function SummaryBlockAny({ s, tender }: { s: AnySummary; tender?: Tender }) {
+  if (isV2Summary(s)) return <SummaryBlockV2 s={s} tender={tender} />
   return <SummaryBlock s={s as TenderSummary} />
 }
 
@@ -783,13 +1109,14 @@ function LegacyComparisonView({ ragExp, fullExp }: { ragExp: SummaryExperimentRe
   return <ExperimentComparisonView runs={runs} experimentName="RAG vs Full" />
 }
 
-function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initialSummary: TenderSummary | null }) {
+function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender }) {
   const queryClient = useQueryClient()
-  const [summary, setSummary] = useState<TenderSummary | null>(initialSummary)
+  const [summary, setSummary] = useState<AnySummary | null>(null)
   const [phase, setPhase] = useState<SummaryPhase>("idle")
   const [error, setError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
   const downloadStartRef = useRef<number | null>(null)
+  const [autoStarted, setAutoStarted] = useState(false)
 
   const { data: docs = [] } = useDocsQuery(tenderId, downloading)
 
@@ -830,15 +1157,23 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
   const latestFull = legacyExperiments.find((e) => e.strategy === "full")
   const canCompareLegacy = !!latestRag && !!latestFull && namedExperiments.length === 0
 
-  useEffect(() => {
-    if (initialSummary) setSummary(initialSummary)
-  }, [initialSummary])
+  const [loadingCache, setLoadingCache] = useState(true)
 
-  async function generateSummary() {
+  useEffect(() => {
+    let cancelled = false
+    tendersApi.getSummary(tenderId).then((data) => {
+      if (!cancelled) { setSummary(data); setLoadingCache(false) }
+    }).catch(() => {
+      if (!cancelled) setLoadingCache(false)
+    })
+    return () => { cancelled = true }
+  }, [tenderId])
+
+  async function generateSummary(refresh = false) {
     setPhase("analyzing")
     setError(null)
     try {
-      const data = await tendersApi.getSummary(tenderId, true)
+      const data = await tendersApi.getSummary(tenderId, refresh)
       setSummary(data)
       setPhase("idle")
     } catch (e: unknown) {
@@ -857,7 +1192,7 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
     const elapsed = downloadStartRef.current ? Date.now() - downloadStartRef.current : 0
     if (docsAreReady(docs) || (elapsed > 30_000 && docs.length === 0)) {
       setDownloading(false)
-      generateSummary()
+      generateSummary(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, docs])
@@ -872,7 +1207,8 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
     const currentDocs = queryClient.getQueryData<TenderDoc[]>(["tender-docs", tenderId])
     const noDocs = !currentDocs || currentDocs.length === 0
 
-    if (noDocs) {
+    if (noDocs && !autoStarted) {
+      setAutoStarted(true)
       setPhase("downloading")
       setDownloading(true)
       downloadStartRef.current = Date.now()
@@ -893,7 +1229,64 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
       return
     }
 
-    await generateSummary()
+    await generateSummary(refresh)
+  }
+
+  const isV2 = summary && isV2Summary(summary)
+
+  if (isV2) {
+    return (
+      <div className="mb-8 border border-gray-200 bg-white">
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-200">
+          <Sparkles className="w-4 h-4 text-gray-400" />
+          <p className="text-sm font-semibold text-[#111827]">AI-резюме</p>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => handleGenerate(true)}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#111827] transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Перегенерировать
+            </button>
+          </div>
+        </div>
+        <SummaryV2Sections s={summary as TenderSummaryV2} tender={tender} />
+
+        {isStaff && (
+          <div className="px-6 pb-5">
+            {expError && <p className="text-sm text-red-500">{expError}</p>}
+            {namedExperiments.length > 0 && (
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                {namedExperiments.length > 1 && (
+                  <div className="flex items-center gap-2 mb-3 overflow-x-auto">
+                    {namedExperiments.map((exp) => (
+                      <button
+                        key={exp.id}
+                        onClick={() => setSelectedExpId(exp.id)}
+                        className={`shrink-0 text-xs px-3 py-1 rounded-md transition-colors ${
+                          activeExpId === exp.id
+                            ? "bg-violet-100 text-violet-700 font-medium"
+                            : "text-gray-400 hover:text-gray-600"
+                        }`}
+                      >
+                        {exp.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {expRuns.length > 0 && (
+                  <ExperimentComparisonView
+                    runs={expRuns}
+                    experimentName={namedExperiments.find((e) => e.id === activeExpId)?.name}
+                  />
+                )}
+              </div>
+            )}
+            {canCompareLegacy && <LegacyComparisonView ragExp={latestRag!} fullExp={latestFull!} />}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -915,13 +1308,15 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
 
       <div className="px-6 py-5">
         {summary && phase === "idle" ? (
-          <SummaryBlock s={summary} />
+          <SummaryBlock s={summary as TenderSummary} />
         ) : phase === "downloading" ? (
           <DocsProgressInline docs={docs} downloading={downloading} tenderId={tenderId} />
         ) : phase === "analyzing" ? (
+          <GenerationProgress />
+        ) : loadingCache ? (
           <div className="flex items-center gap-3 text-[15px] text-gray-500">
             <Loader2 className="w-5 h-5 animate-spin" />
-            Анализируем тендер...
+            Загружаем резюме...
           </div>
         ) : error === "quota_exceeded" ? (
           <div className="space-y-2">
@@ -990,35 +1385,9 @@ function AiSummaryBlock({ tenderId, initialSummary }: { tenderId: number; initia
   )
 }
 
-function SourceCitation({ source }: { source: TenderQASource }) {
-  const [expanded, setExpanded] = useState(false)
-  const isLong = source.text.length > 200
-
-  return (
-    <div className="border-l-2 border-violet-300 bg-violet-50/30 px-4 py-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-violet-700">{source.filename}</span>
-        {isLong && (
-          <button
-            onClick={() => setExpanded((e) => !e)}
-            className="text-xs text-violet-500 hover:text-violet-700 flex items-center gap-0.5 shrink-0"
-          >
-            {expanded ? "Свернуть" : "Полностью"}
-            <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
-          </button>
-        )}
-      </div>
-      <p className={`mt-1.5 text-sm text-gray-600 italic leading-relaxed ${!expanded && isLong ? "line-clamp-3" : ""}`}>
-        &laquo;{source.text}&raquo;
-      </p>
-    </div>
-  )
-}
-
 interface ChatMessage {
   role: "user" | "assistant"
   text: string
-  sources?: TenderQASource[]
 }
 
 function renderMarkdown(text: string) {
@@ -1080,15 +1449,15 @@ function TenderChat({ tenderId }: { tenderId: number }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [streamingText, setStreamingText] = useState("")
   const [noDocs, setNoDocs] = useState(false)
-  const [needsReindex, setNeedsReindex] = useState(false)
-  const [reindexing, setReindexing] = useState(false)
   const [quotaExceeded, setQuotaExceeded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [messages, streamingText])
 
   async function handleSend() {
     const q = input.trim()
@@ -1097,30 +1466,90 @@ function TenderChat({ tenderId }: { tenderId: number }) {
     setInput("")
     setMessages((prev) => [...prev, { role: "user", text: q }])
     setLoading(true)
+    setStreamingText("")
+
+    const history = messages.map((m) => ({ role: m.role, text: m.text }))
+
+    const controller = new AbortController()
+    abortRef.current = controller
 
     try {
-      const res = await tendersApi.askQuestion(tenderId, q)
-      if (!res.has_docs) {
-        setNoDocs(true)
-        setMessages((prev) => prev.slice(0, -1))
-      } else if (res.needs_reindex) {
-        setNeedsReindex(true)
-        setMessages((prev) => prev.slice(0, -1))
-      } else if (res.answer) {
-        setMessages((prev) => [...prev, { role: "assistant", text: res.answer!, sources: res.sources }])
-      } else {
-        setMessages((prev) => [...prev, { role: "assistant", text: "Не удалось найти ответ в документах." }])
-      }
-    } catch (e: unknown) {
-      const status = (e as { response?: { status?: number } })?.response?.status
-      if (status === 402) {
+      const token = (await import("@/lib/auth")).getToken()
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1"
+      const res = await fetch(`${apiBase}/tenders/${tenderId}/chat/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: q, history }),
+        signal: controller.signal,
+      })
+
+      if (res.status === 402) {
         setQuotaExceeded(true)
         setMessages((prev) => prev.slice(0, -1))
-      } else {
+        setLoading(false)
+        return
+      }
+
+      if (!res.ok || !res.body) {
+        setMessages((prev) => [...prev, { role: "assistant", text: "Ошибка при получении ответа." }])
+        setLoading(false)
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let fullText = ""
+      let buffer = ""
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.error === "no_docs") {
+              setNoDocs(true)
+              setMessages((prev) => prev.slice(0, -1))
+              setLoading(false)
+              return
+            }
+            if (data.chunk) {
+              fullText += data.chunk
+              setStreamingText(fullText)
+            }
+            if (data.done) {
+              setMessages((prev) => [...prev, { role: "assistant", text: fullText }])
+              setStreamingText("")
+            }
+          } catch { /* skip malformed lines */ }
+        }
+      }
+
+      if (fullText && !streamingText) {
+        setMessages((prev) => {
+          const last = prev[prev.length - 1]
+          if (last?.role === "assistant" && last.text === fullText) return prev
+          return [...prev, { role: "assistant", text: fullText }]
+        })
+        setStreamingText("")
+      }
+    } catch (e: unknown) {
+      if ((e as Error)?.name !== "AbortError") {
         setMessages((prev) => [...prev, { role: "assistant", text: "Ошибка при получении ответа." }])
       }
     } finally {
       setLoading(false)
+      setStreamingText("")
+      abortRef.current = null
     }
   }
 
@@ -1131,85 +1560,72 @@ function TenderChat({ tenderId }: { tenderId: number }) {
     }
   }
 
+  const questionCount = messages.filter((m) => m.role === "user").length
+
   return (
     <div className="mb-8 border border-gray-200 bg-white">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
-        <Send className="w-5 h-5 text-gray-400" />
-        <p className="text-base font-semibold text-[#111827]">Вопросы по тендеру</p>
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200">
+        <div className="flex items-center gap-2.5">
+          <Send className="w-4 h-4 text-gray-700" />
+          <span className="text-base font-semibold text-gray-900">Вопросы по тендеру</span>
+        </div>
+        {questionCount > 0 && (
+          <span className="text-sm text-gray-500">{questionCount} вопрос{questionCount === 1 ? "" : questionCount < 5 ? "а" : "ов"}</span>
+        )}
       </div>
 
-      <div className="px-6 py-5">
+      <div className="px-5 py-4">
         {quotaExceeded ? (
           <div className="space-y-2">
-            <p className="text-[15px] text-amber-600">Лимит вопросов исчерпан на этом тарифе.</p>
-            <a href="/#pricing" className="text-sm text-violet-600 hover:text-violet-700 font-medium">
+            <p className="text-sm text-gray-700">Лимит вопросов исчерпан на этом тарифе.</p>
+            <a href="/#pricing" className="text-sm text-gray-900 font-medium hover:underline">
               Улучшить тариф →
             </a>
           </div>
         ) : noDocs ? (
-          <p className="text-[15px] text-gray-500">
+          <p className="text-sm text-gray-500">
             Загрузите документы тендера, чтобы задавать вопросы.
           </p>
-        ) : needsReindex ? (
-          <div className="text-center py-2">
-            <p className="text-[15px] text-gray-500 mb-3">
-              Индекс документов устарел. Переиндексируйте для работы чата.
-            </p>
-            <button
-              onClick={async () => {
-                setReindexing(true)
-                try {
-                  await tendersApi.reindexDocs(tenderId)
-                  setNeedsReindex(false)
-                  setMessages([])
-                } catch { /* ignore */ }
-                setReindexing(false)
-              }}
-              disabled={reindexing}
-              className="h-9 px-4 bg-[#111827] text-white text-sm font-medium hover:bg-[#1f2937] transition-colors disabled:opacity-50"
-            >
-              {reindexing ? "Переиндексация..." : "Переиндексировать документы"}
-            </button>
-          </div>
         ) : (
           <>
-            {messages.length > 0 && (
-              <div className="border border-gray-200 mb-4 max-h-[400px] overflow-auto">
-                <div className="divide-y divide-gray-200">
-                  {messages.map((msg, i) => (
-                    <div key={i} className="px-5 py-4">
-                      {msg.role === "user" ? (
-                        <p className="text-[15px] text-[#111827] font-medium">{msg.text}</p>
-                      ) : (
-                        <div>
-                          <div className="text-[15px] text-gray-700 leading-relaxed">{renderMarkdown(msg.text)}</div>
-                          {msg.sources && msg.sources.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Источники</p>
-                              {msg.sources.map((s, j) => (
-                                <SourceCitation key={j} source={s} />
-                              ))}
-                            </div>
-                          )}
+            {(messages.length > 0 || streamingText) && (
+              <div className="mb-4 max-h-[500px] overflow-auto space-y-4">
+                {messages.map((msg, i) => (
+                  <div key={i}>
+                    {msg.role === "user" ? (
+                      <div className="flex justify-end">
+                        <div className="bg-gray-100 rounded-2xl px-4 py-2.5 max-w-[70%]">
+                          <p className="text-sm text-gray-900">{msg.text}</p>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                  {loading && (
-                    <div className="px-5 py-4 flex items-center gap-3 text-[15px] text-gray-500">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Ищем в документах...
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2.5 max-w-[85%]">
+                        <Sparkles className="w-4 h-4 text-gray-700 mt-0.5 shrink-0" />
+                        <div className="text-sm text-gray-900 leading-relaxed">{renderMarkdown(msg.text)}</div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {streamingText && (
+                  <div className="flex items-start gap-2.5 max-w-[85%]">
+                    <Sparkles className="w-4 h-4 text-gray-700 mt-0.5 shrink-0" />
+                    <div className="text-sm text-gray-900 leading-relaxed">{renderMarkdown(streamingText)}</div>
+                  </div>
+                )}
+                {loading && !streamingText && (
+                  <div className="flex items-start gap-2.5">
+                    <Sparkles className="w-4 h-4 text-gray-700 mt-0.5 shrink-0" />
+                    <span className="text-sm text-gray-500">Думаю...</span>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-2.5">
               <input
                 type="text"
-                className="flex-1 h-11 bg-gray-50 border border-gray-200 px-4 text-base text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300"
+                className="flex-1 h-10 border border-gray-200 rounded-lg px-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-300"
                 placeholder="Спросите о требованиях, сроках, условиях..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -1220,7 +1636,7 @@ function TenderChat({ tenderId }: { tenderId: number }) {
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || loading}
-                className="h-11 w-11 flex items-center justify-center bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-40"
+                className="h-10 w-10 flex items-center justify-center bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors disabled:opacity-40"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -1263,14 +1679,7 @@ function TenderDetailPageInner() {
     enabled: !!id,
   })
 
-  const initialSummary: TenderSummary | null = (() => {
-    if (!tender?.ai_summary) return null
-    try {
-      const parsed = JSON.parse(tender.ai_summary)
-      if (parsed.version !== 2) return null
-      return parsed
-    } catch { return null }
-  })()
+  // v2 summary is fetched separately by AiSummaryBlock via React Query
 
   if (isLoading) {
     return (
@@ -1402,7 +1811,7 @@ function TenderDetailPageInner() {
           <DocumentsBlock tenderId={tender.id} />
 
           {/* AI summary */}
-          <AiSummaryBlock tenderId={tender.id} initialSummary={initialSummary} />
+          <AiSummaryBlock tenderId={tender.id} tender={tender} />
 
           {/* Chat */}
           <TenderChat tenderId={tender.id} />

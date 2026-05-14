@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import django_filters
 from django.db.models import Q, Sum
+from django.http import StreamingHttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
@@ -11,7 +12,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Experiment, SummaryExperiment, Tender, TenderPipeline
 from .serializers import TenderListSerializer, TenderDetailSerializer, TenderPipelineSerializer
-from .services import get_or_create_summary
+from .services import get_or_create_summary, get_or_create_summary_v2
 from apps.documents.services import answer_question
 
 
@@ -140,19 +141,39 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
         tender = self.get_object()
         is_refresh = request.query_params.get("refresh") == "true"
-        needs_generation = is_refresh or not tender.ai_summary
+        use_v1 = request.query_params.get("v") == "1"
+
+        if use_v1:
+            needs_generation = is_refresh or not tender.ai_summary
+            if needs_generation:
+                try:
+                    check_and_increment(request.user, "ai_summary")
+                except QuotaExceeded as e:
+                    return Response({"data": None, "error": e.detail}, status=402)
+            try:
+                if is_refresh:
+                    tender.ai_summary = ""
+                    tender.save(update_fields=["ai_summary"])
+                data = get_or_create_summary(tender)
+                return Response({"data": data, "error": None})
+            except Exception as e:
+                return Response({"data": None, "error": str(e)}, status=500)
+
+        from apps.tenders.models import TenderSummaryV2
+        user = request.user
+        has_v2 = TenderSummaryV2.objects.filter(tender=tender, user=user).exists()
+        needs_generation = is_refresh or not has_v2
 
         if needs_generation:
             try:
-                check_and_increment(request.user, "ai_summary")
+                check_and_increment(user, "ai_summary")
             except QuotaExceeded as e:
                 return Response({"data": None, "error": e.detail}, status=402)
 
         try:
             if is_refresh:
-                tender.ai_summary = ""
-                tender.save(update_fields=["ai_summary"])
-            data = get_or_create_summary(tender)
+                TenderSummaryV2.objects.filter(tender=tender, user=user).delete()
+            data = get_or_create_summary_v2(tender, user=user)
             return Response({"data": data, "error": None})
         except Exception as e:
             return Response({"data": None, "error": str(e)}, status=500)
@@ -213,8 +234,8 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         response["Content-Disposition"] = f'attachment; filename="{doc.filename}"'
         return response
 
-    @action(detail=True, methods=["post"], url_path="ask")
-    def ask(self, request, pk=None):
+    @action(detail=True, methods=["post"], url_path="chat/v1")
+    def chat_v1(self, request, pk=None):
         from apps.billing.services import check_and_increment
         from apps.billing.exceptions import QuotaExceeded
 
@@ -233,6 +254,45 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"data": result, "error": None})
         except Exception as e:
             return Response({"data": None, "error": str(e)}, status=500)
+
+    @action(detail=True, methods=["post"], url_path="chat")
+    def chat(self, request, pk=None):
+        import json as _json
+        from apps.billing.services import check_and_increment
+        from apps.billing.exceptions import QuotaExceeded
+        from apps.tenders.chat_service import chat_with_tender_full_context
+
+        tender = self.get_object()
+        body = request.data
+        message = (body.get("message") or "").strip()
+        if not message:
+            return Response({"data": None, "error": "Сообщение не может быть пустым"}, status=400)
+        if len(message) > 500:
+            return Response({"data": None, "error": "Сообщение слишком длинное (макс. 500 символов)"}, status=400)
+        try:
+            check_and_increment(request.user, "rag_question")
+        except QuotaExceeded as e:
+            return Response({"data": None, "error": e.detail}, status=402)
+
+        history = body.get("history", [])
+
+        def event_stream():
+            try:
+                for chunk in chat_with_tender_full_context(
+                    tender.id, message, history
+                ):
+                    yield f"data: {_json.dumps({'chunk': chunk})}\n\n"
+                yield f"data: {_json.dumps({'done': True})}\n\n"
+            except Exception as exc:
+                yield f"data: {_json.dumps({'error': str(exc)})}\n\n"
+
+        response = StreamingHttpResponse(
+            event_stream(),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
 
     @action(detail=True, methods=["post"], url_path="download-docs")
     def download_docs(self, request, pk=None):
