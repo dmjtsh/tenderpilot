@@ -383,7 +383,7 @@ def cleanup_finished_tenders() -> dict:
     from .models import Tender
     from apps.alerts.services import log_pipeline_run
     from apps.documents.storage import delete_prefix
-    from apps.search.services import qdrant_service, COLLECTION_DOC_CHUNKS
+    from apps.search.services import qdrant, COLLECTION_DOC_CHUNKS
     from qdrant_client.models import Filter, FieldCondition, MatchAny
 
     start_time = timezone.now()
@@ -423,7 +423,7 @@ def cleanup_finished_tenders() -> dict:
 
         # 2. Qdrant doc_chunks (на случай если TTL-очистка ещё не прошла)
         try:
-            qdrant_service.client.delete(
+            qdrant.client.delete(
                 collection_name=COLLECTION_DOC_CHUNKS,
                 points_selector=Filter(
                     must=[FieldCondition(key="tender_id", match=MatchAny(any=batch_ids))]
