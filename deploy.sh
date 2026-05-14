@@ -26,7 +26,7 @@ $VENV/python manage.py migrate --no-input 2>&1 | tail -5
 ok "миграции"
 
 step "Django static"
-$VENV/python manage.py collectstatic --no-input -q 2>&1 || true
+$VENV/python manage.py collectstatic --no-input -v 0 2>&1 || true
 ok "collectstatic"
 
 step "Frontend build"

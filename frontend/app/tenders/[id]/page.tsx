@@ -271,12 +271,6 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
   )
 }
 
-const SEVERITY_COLOR: Record<string, string> = {
-  high: "text-red-600",
-  medium: "text-amber-600",
-  low: "text-gray-500",
-}
-
 const SEVERITY_BADGE: Record<string, string> = {
   high: "bg-red-50 text-red-700 border-red-200",
   medium: "bg-amber-50 text-amber-700 border-amber-200",
