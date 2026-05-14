@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone as dt_tz
 
 from celery import shared_task
 from django.utils import timezone
@@ -206,7 +206,7 @@ def check_coverage(notify_always: bool = False) -> str:
     for delta in range(1, COVERAGE_DAYS + 1):
         day = today - timedelta(days=delta)
         # Диапазон published_at в UTC соответствующий московскому дню
-        day_start = timezone.datetime(day.year, day.month, day.day, tzinfo=timezone.utc) - MSK_OFFSET
+        day_start = datetime(day.year, day.month, day.day, tzinfo=dt_tz.utc) - MSK_OFFSET
         day_end = day_start + timedelta(days=1)
 
         eis_count = fetch_day_count(day, fz44=True, fz223=True)

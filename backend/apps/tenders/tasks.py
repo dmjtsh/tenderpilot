@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone as dt_tz
 
 from celery import shared_task
 from django.db.models import Q
@@ -182,7 +182,7 @@ def sync_active_tenders() -> dict:
 
     for day in days:
         # Диапазон published_at в UTC для московского дня: [day 00:00 MSK, day+1 00:00 MSK)
-        day_start = timezone.datetime(day.year, day.month, day.day, tzinfo=timezone.utc) - MSK_OFFSET
+        day_start = datetime(day.year, day.month, day.day, tzinfo=dt_tz.utc) - MSK_OFFSET
         day_end = day_start + timedelta(days=1)
         existing_numbers = set(
             Tender.objects.filter(
