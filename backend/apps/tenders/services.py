@@ -950,11 +950,11 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
             },
         )
     elif name:
-        customer, _ = Customer.objects.get_or_create(
-            inn="",
-            name=name,
-            defaults={"region": data.get("customer_region", "")},
-        )
+        customer = Customer.objects.filter(inn="", name=name).first()
+        if not customer:
+            customer = Customer.objects.create(
+                inn="", name=name, region=data.get("customer_region", "")
+            )
 
     source_url = data.get("source_url", "")
     procedure_type = data.get("procedure_type") or detect_procedure_type(source_url)
