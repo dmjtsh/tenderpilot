@@ -86,6 +86,30 @@ SYSTEM_PROMPT = """\
 
 FALLBACK_MODEL = "gpt-4o-mini"
 
+_RISK_LABELS = {
+    "has_arbitration": "арбитражные дела",
+    "has_fssp": "исполнительные производства ФССП",
+    "is_bankrupt": "процедура банкротства",
+    "is_liquidating": "ликвидация",
+    "is_liquidated": "ликвидирована",
+    "is_mass_address": "массовый адрес регистрации",
+    "is_disqualified": "дисквалификация руководителя",
+    "has_tax_debt": "налоговая задолженность",
+}
+
+
+def _format_risk_indicators(indicators: dict) -> str | None:
+    if not indicators:
+        return None
+    active = []
+    for key, value in indicators.items():
+        if not (value is True or (isinstance(value, (int, float)) and value > 0)):
+            continue
+        label = _RISK_LABELS.get(key)
+        if label:
+            active.append(label)
+    return ", ".join(active) if active else None
+
 
 def _build_customer_section(tender) -> str:
     from apps.tenders.summary_v2.context import get_customer_profile
@@ -134,8 +158,9 @@ def _build_customer_section(tender) -> str:
             lines.append(f"Арбитражных дел: {profile.arbitration_count}")
         if profile.fssp_count:
             lines.append(f"Исполнительных производств ФССП: {profile.fssp_count}")
-        if profile.risk_indicators:
-            lines.append(f"Индикаторы риска: {json.dumps(profile.risk_indicators, ensure_ascii=False)}")
+        risk_summary = _format_risk_indicators(profile.risk_indicators)
+        if risk_summary:
+            lines.append(f"Красные флаги: {risk_summary}")
     else:
         lines.append("")
         lines.append("ПРОФИЛЬ ОБОГАЩЕНИЯ: не удалось получить")
@@ -177,6 +202,8 @@ def analyze_customer(
         )
     except Exception as e:
         logger.warning("Primary model %s failed: %s, falling back to %s", model, e, FALLBACK_MODEL)
+        from apps.tenders.services import deepseek_circuit
+        deepseek_circuit.record_failure()
         client = get_llm_client(FALLBACK_MODEL)
         response = client.chat.completions.create(
             model=FALLBACK_MODEL,
