@@ -308,12 +308,48 @@ def _is_223_url(url: str) -> bool:
     return "/223/" in url or "notice223" in url
 
 
+def _extract_inn_from_org_link(tree: etree._Element) -> str:
+    """Extract customer INN from organization page link (44-ФЗ).
+
+    44-ФЗ tender pages don't show INN directly — it's on a separate
+    organization page linked via organizationCode parameter.
+    """
+    links = tree.xpath('//a[contains(@href,"organizationCode=")]/@href')
+    if not links:
+        return ""
+    m = re.search(r"organizationCode=(\d+)", links[0])
+    if not m:
+        return ""
+    org_code = m.group(1)
+    org_url = f"{BASE_URL}/epz/organization/view/info.html?organizationCode={org_code}"
+    try:
+        resp = requests.get(org_url, headers=HEADERS, timeout=15, allow_redirects=True)
+        resp.raise_for_status()
+        org_tree = _tree_from_html(resp.text)
+    except Exception as exc:
+        logger.warning("Failed to fetch org page for code %s: %s", org_code, exc)
+        return ""
+    for title_el in org_tree.xpath('//*[contains(@class,"section__title")]'):
+        if "ИНН" in title_el.text_content():
+            info_el = title_el.getnext()
+            if info_el is not None:
+                candidate = info_el.text_content().strip()
+                if re.match(r"^\d{10,12}$", candidate):
+                    return candidate
+    return ""
+
+
 def _fetch_tender_detail_223(purchase_number: str, source_url: str) -> dict[str, Any]:
     """Парсит страницу common-info тендера 223-ФЗ."""
-    info_url = source_url or (
-        f"{BASE_URL}/epz/order/notice/notice223/common-info.html"
-        f"?noticeInfoId={purchase_number}"
-    )
+    info_url = source_url or ""
+    if info_url:
+        info_url = re.sub(r"/(?:documents|print-form|supplier-results)\.html",
+                          "/common-info.html", info_url)
+    else:
+        info_url = (
+            f"{BASE_URL}/epz/order/notice/notice223/common-info.html"
+            f"?noticeInfoId={purchase_number}"
+        )
     try:
         resp = requests.get(info_url, headers=HEADERS, timeout=20, allow_redirects=True)
         resp.raise_for_status()
@@ -519,12 +555,7 @@ def fetch_tender_detail(purchase_number: str, fallback_url: str = "") -> dict[st
     # Заказчик
     customer_name = f("Организация, осуществляющая размещение")
     customer_region = f("Регион")
-    customer_inn = ""
-    inn_el = tree.xpath('//*[contains(text(),"ИНН")]/following-sibling::*[1]')
-    if inn_el:
-        candidate = inn_el[0].text_content().strip()
-        if re.match(r"^\d{10,12}$", candidate):
-            customer_inn = candidate
+    customer_inn = _extract_inn_from_org_link(tree)
 
     # ОКПД2 из позиций
     okpd_codes: list[str] = []

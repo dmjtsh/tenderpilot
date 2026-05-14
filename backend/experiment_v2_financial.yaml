@@ -1,0 +1,14 @@
+name: "v1 vs v2 финансовый анализ"
+description: "Монолитный v1 (full context) vs декомпозированный v2 промпт A (финансы)"
+
+variants:
+  - label: A
+    name: "v1 full deepseek"
+    strategy: full
+    model: deepseek-chat
+    prompt_template: summary_v1
+
+  - label: B
+    name: "v2 financial deepseek"
+    strategy: v2_financial
+    model: deepseek-chat

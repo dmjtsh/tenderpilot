@@ -186,7 +186,7 @@ class SummaryExperiment(models.Model):
     experiment = models.ForeignKey(Experiment, on_delete=models.CASCADE, null=True, blank=True, related_name="runs")
     variant_label = models.CharField(max_length=5, blank=True)
     variant_name = models.CharField(max_length=100, blank=True)
-    strategy = models.CharField(max_length=10)
+    strategy = models.CharField(max_length=30)
     model = models.CharField(max_length=50, default="gpt-4o-mini")
     actual_model = models.CharField(max_length=50, blank=True, default="")
     prompt_template = models.ForeignKey(PromptTemplate, on_delete=models.SET_NULL, null=True, blank=True)
@@ -207,3 +207,22 @@ class SummaryExperiment(models.Model):
     def __str__(self) -> str:
         label = f"[{self.variant_label}] " if self.variant_label else ""
         return f"{self.tender.number} {label}[{self.strategy}] {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class TenderSummaryV2(models.Model):
+    tender = models.OneToOneField(Tender, on_delete=models.CASCADE, related_name="summary_v2")
+    summary = models.JSONField(default=dict)
+    step_metrics = models.JSONField(default=dict)
+    total_input_tokens = models.PositiveIntegerField(default=0)
+    total_output_tokens = models.PositiveIntegerField(default=0)
+    total_cost_usd = models.DecimalField(max_digits=10, decimal_places=4, default=0)
+    generation_time_ms = models.PositiveIntegerField(default=0)
+    model = models.CharField(max_length=50, default="deepseek-chat")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self) -> str:
+        return f"SummaryV2 #{self.tender_id} ({self.generation_time_ms}ms, ${self.total_cost_usd})"

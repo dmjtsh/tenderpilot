@@ -80,8 +80,44 @@ def parse_pdf(data: bytes) -> tuple[str, bool]:
 
 def parse_docx(data: bytes) -> str:
     doc = DocxDocument(io.BytesIO(data))
-    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-    return "\n".join(paragraphs)
+    parts: list[str] = []
+    table_counter = 0
+
+    for block in _iter_block_items(doc):
+        if block["type"] == "paragraph":
+            text = block["text"]
+            if text.strip():
+                parts.append(text)
+        elif block["type"] == "table":
+            table_counter += 1
+            rows = block["rows"]
+            if not rows:
+                continue
+            parts.append(f"\n[ТАБЛИЦА {table_counter}]")
+            for row_cells in rows:
+                parts.append(" | ".join(row_cells))
+            parts.append(f"[/ТАБЛИЦА {table_counter}]\n")
+
+    return "\n".join(parts)
+
+
+def _iter_block_items(doc: DocxDocument) -> list[dict]:
+    from docx.oxml.ns import qn
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
+
+    blocks: list[dict] = []
+    for child in doc.element.body.iterchildren():
+        if child.tag == qn("w:p"):
+            blocks.append({"type": "paragraph", "text": Paragraph(child, doc).text})
+        elif child.tag == qn("w:tbl"):
+            table = Table(child, doc)
+            rows: list[list[str]] = []
+            for row in table.rows:
+                cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
+                rows.append(cells)
+            blocks.append({"type": "table", "rows": rows})
+    return blocks
 
 
 def parse_doc(data: bytes) -> str:

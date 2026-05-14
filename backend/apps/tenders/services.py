@@ -54,7 +54,6 @@ SUMMARY_PROMPT = """Ты эксперт по госзакупкам России
 Проанализируй и верни JSON без markdown:
 {{
   "customer_analysis": {{
-    "risk_assessment": "оценка рисков заказчика или пустая строка",
     "notes": ["заметки о заказчике если есть"]
   }},
   "work_description": {{
@@ -241,7 +240,6 @@ def generate_tender_summary(tender: Tender) -> dict:
             "okved_main": cust["okved_main"],
             "tender_count": cust["tender_count"],
             "total_volume": cust["total_volume"],
-            "risk_assessment": customer_analysis.get("risk_assessment", ""),
             "notes": customer_analysis.get("notes") or [],
         },
         "work_description": {
@@ -431,7 +429,6 @@ def _postprocess_gpt_response(raw: str, tender: Tender, truncation_info: dict) -
             "name": cust["name"], "inn": cust["inn"], "region": cust["region"],
             "okved_main": cust["okved_main"], "tender_count": cust["tender_count"],
             "total_volume": cust["total_volume"],
-            "risk_assessment": customer_analysis.get("risk_assessment", ""),
             "notes": customer_analysis.get("notes") or [],
         },
         "work_description": {
@@ -467,6 +464,32 @@ def generate_summary_with_variant(tender: Tender, variant: dict) -> dict:
     strategy = variant.get("strategy", "rag")
     model_name = variant.get("model", "gpt-4o-mini")
     prompt_slug = variant.get("prompt_template", "summary_v1")
+
+    if strategy == "v2_full":
+        from apps.tenders.summary_v2.pipeline import generate_tender_summary_v2
+        obj = generate_tender_summary_v2(tender.id, model=model_name)
+        return {
+            "summary": obj.summary,
+            "metrics": {
+                "strategy": "v2_full",
+                "model": model_name,
+                "actual_model": obj.step_metrics.get("work", {}).get("actual_model", ""),
+                "prompt_template": "v2_full_builtin",
+                "prompt_template_id": None,
+                "input_tokens": obj.total_input_tokens,
+                "output_tokens": obj.total_output_tokens,
+                "cost_usd": float(obj.total_cost_usd),
+                "duration_ms": obj.generation_time_ms,
+                "was_truncated": False,
+                "truncated_reason": "",
+                "original_total_tokens": 0,
+            },
+        }
+
+    if strategy.startswith("v2_"):
+        from apps.tenders.summary_v2.pipeline import generate_step_with_metrics
+        step = strategy.removeprefix("v2_")
+        return generate_step_with_metrics(tender, step, model_name)
 
     template = PromptTemplate.objects.filter(
         name=prompt_slug, is_active=True,
@@ -642,7 +665,6 @@ def generate_experiment_summary(tender: Tender, strategy: str = "rag") -> dict:
             "name": cust["name"], "inn": cust["inn"], "region": cust["region"],
             "okved_main": cust["okved_main"], "tender_count": cust["tender_count"],
             "total_volume": cust["total_volume"],
-            "risk_assessment": customer_analysis.get("risk_assessment", ""),
             "notes": customer_analysis.get("notes") or [],
         },
         "work_description": {
@@ -955,6 +977,18 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
             customer = Customer.objects.create(
                 inn="", name=name, region=data.get("customer_region", "")
             )
+
+    # If enrichment brought INN for an existing tender, update the old Customer
+    number = data.get("number", "")
+    if inn and number:
+        existing_tender = Tender.objects.filter(number=number).select_related("customer").first()
+        if existing_tender and existing_tender.customer and not existing_tender.customer.inn:
+            old_customer = existing_tender.customer
+            old_customer.inn = inn
+            old_customer.full_name = data.get("customer_full_name", "") or old_customer.full_name
+            old_customer.region = data.get("customer_region", data.get("region", "")) or old_customer.region
+            old_customer.save(update_fields=["inn", "full_name", "region"])
+            customer = old_customer
 
     source_url = data.get("source_url", "")
     procedure_type = data.get("procedure_type") or detect_procedure_type(source_url)

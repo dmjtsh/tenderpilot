@@ -1,0 +1,14 @@
+name: "summary v1 vs v2 full pipeline"
+description: "Монолитный v1 (full context) vs декомпозированный v2 (6 промптов параллельно)"
+
+variants:
+  - label: A
+    name: "v1 full deepseek"
+    strategy: full
+    model: deepseek-chat
+    prompt_template: summary_v1
+
+  - label: B
+    name: "v2 full pipeline deepseek"
+    strategy: v2_full
+    model: deepseek-chat

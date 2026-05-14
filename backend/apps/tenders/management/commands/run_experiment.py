@@ -36,7 +36,7 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("No variants defined in config"))
             return
 
-        valid_strategies = {"rag", "full"}
+        valid_strategies = {"rag", "full", "v2_full", "v2_financial", "v2_timeline", "v2_requirements", "v2_work", "v2_risks", "v2_customer"}
         for v in variants:
             if "label" not in v or "name" not in v:
                 self.stderr.write(self.style.ERROR(f"Variant missing 'label' or 'name': {v}"))
@@ -45,10 +45,11 @@ class Command(BaseCommand):
             if strategy not in valid_strategies:
                 self.stderr.write(self.style.ERROR(f"Invalid strategy '{strategy}' in variant [{v['label']}]"))
                 return
-            slug = v.get("prompt_template", "summary_v1")
-            if not PromptTemplate.objects.filter(name=slug, is_active=True).exists():
-                self.stderr.write(self.style.ERROR(f"PromptTemplate '{slug}' not found or inactive"))
-                return
+            if not strategy.startswith("v2_"):
+                slug = v.get("prompt_template", "summary_v1")
+                if not PromptTemplate.objects.filter(name=slug, is_active=True).exists():
+                    self.stderr.write(self.style.ERROR(f"PromptTemplate '{slug}' not found or inactive"))
+                    return
 
         if tender_ids_raw:
             ids = [int(x.strip()) for x in tender_ids_raw.split(",") if x.strip()]

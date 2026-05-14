@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderDoc, type TenderQASource, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
+import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderSummaryV2, type AnySummary, isV2Summary, type TenderDoc, type TenderQASource, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
 import { AlertTriangle, Building2, Check, ChevronDown, ChevronLeft, ClipboardList, Download, ExternalLink, FileText, Loader2, Minus, Send, Sparkles, XCircle } from "lucide-react"
 import Link from "next/link"
 import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
@@ -97,7 +97,7 @@ function BulletList({ items, className = "text-gray-700" }: { items: string[]; c
 }
 
 function SummaryBlock({ s }: { s: TenderSummary }) {
-  const ca = s.customer_analysis ?? { name: "", inn: "", region: "", okved_main: "", tender_count: 0, total_volume: 0, risk_assessment: "", notes: [] }
+  const ca = s.customer_analysis ?? { name: "", inn: "", region: "", okved_main: "", tender_count: 0, total_volume: 0, notes: [] }
   const wd = s.work_description ?? { essence: "", payment_terms: null, execution_period: null, experience_requirements: [], deadline_info: null }
   const kr = s.key_risks ?? { certifications: [], financial_risks: [], technical_risks: [], unusual_conditions: [] }
   const rd = s.required_documents ?? { mandatory: [], optional: [], special_forms: [] }
@@ -141,9 +141,6 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
               {ca.tender_count} тендер{ca.tender_count === 1 ? "" : ca.tender_count < 5 ? "а" : "ов"} в базе
               {ca.total_volume > 0 && <>, общий объём {fmtVolume(ca.total_volume)}</>}
             </p>
-          )}
-          {ca.risk_assessment && (
-            <p className="text-sm text-amber-600">{ca.risk_assessment}</p>
           )}
           <BulletList items={ca.notes ?? []} className="text-gray-500" />
         </div>
@@ -245,6 +242,262 @@ function SummaryBlock({ s }: { s: TenderSummary }) {
       </div>
     </div>
   )
+}
+
+const SEVERITY_COLOR: Record<string, string> = {
+  high: "text-red-600",
+  medium: "text-amber-600",
+  low: "text-gray-500",
+}
+
+function RiskItem({ risk, severity }: { risk: string; severity: string }) {
+  return (
+    <li className={`flex items-start gap-2.5 text-[15px] ${SEVERITY_COLOR[severity] ?? "text-gray-700"}`}>
+      <span className="text-gray-400 mt-0.5 shrink-0">·</span>
+      {risk}
+      {severity && <span className="text-xs text-gray-400 shrink-0">({severity})</span>}
+    </li>
+  )
+}
+
+function SummaryBlockV2({ s }: { s: TenderSummaryV2 }) {
+  const fin = s.financial
+  const tl = s.timeline
+  const req = s.requirements
+  const work = s.work_description
+  const risks = s.risks
+  const cust = s.customer_analysis
+
+  return (
+    <div className="space-y-0">
+      {/* Customer */}
+      {cust && (
+        <div className="py-5">
+          <SectionHeader icon={Building2} title="Заказчик" />
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 flex-wrap text-[15px]">
+              <span className="text-[#111827] font-medium">{cust.name || "Не указан"}</span>
+              {cust.inn && <span className="text-gray-400 font-mono text-sm">ИНН {cust.inn}</span>}
+              {cust.region && <span className="text-gray-500">{cust.region}</span>}
+            </div>
+            {cust.org_type && <p className="text-sm text-gray-500">{cust.org_type}{cust.industry ? ` · ${cust.industry}` : ""}</p>}
+            {cust.financials?.revenue_rub != null && (
+              <p className="text-sm text-gray-500">
+                Выручка: {fmtVolume(cust.financials.revenue_rub)}
+                {cust.financials.employees_count != null && <>, {cust.financials.employees_count} сотр.</>}
+              </p>
+            )}
+            {cust.procurement_history?.total_purchases != null && cust.procurement_history.total_purchases > 0 && (
+              <p className="text-sm text-gray-500">
+                Закупки: {cust.procurement_history.total_purchases} шт.
+                {cust.procurement_history.total_amount_rub != null && <>, {fmtVolume(cust.procurement_history.total_amount_rub)}</>}
+              </p>
+            )}
+            {cust.reliability && <p className="text-sm text-gray-500">Надёжность: {cust.reliability}</p>}
+            {(cust.risk_indicators?.red_flags?.length ?? 0) > 0 && (
+              <BulletList items={cust.risk_indicators.red_flags} className="text-amber-600" />
+            )}
+            <BulletList items={cust.notes ?? []} className="text-gray-500" />
+          </div>
+        </div>
+      )}
+
+      {/* Work description */}
+      {work && (
+        <div className="border-t border-gray-100 py-5">
+          <SectionHeader icon={FileText} title="Описание работ" />
+          <div className="space-y-3">
+            <p className="text-[15px] leading-relaxed text-[#111827]">{work.subject}</p>
+            {work.tender_type && <p className="text-sm text-gray-500">Тип: {work.tender_type}</p>}
+            {work.location?.address && <p className="text-sm text-gray-500">Место: {work.location.address}{work.location.region ? `, ${work.location.region}` : ""}</p>}
+            {(work.scope?.main_activities?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Основные работы</p>
+                <BulletList items={work.scope.main_activities} />
+              </div>
+            )}
+            {(work.scope?.deliverables?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Результаты</p>
+                <BulletList items={work.scope.deliverables} />
+              </div>
+            )}
+            {(work.scope?.volume_metrics?.length ?? 0) > 0 && (
+              <div className="text-sm space-y-1">
+                {work.scope.volume_metrics.map((m, i) => (
+                  <p key={i} className="text-gray-700"><span className="text-gray-400">{m.metric}:</span> {m.value}</p>
+                ))}
+              </div>
+            )}
+            {work.acceptance?.procedure && <p className="text-sm text-gray-700"><span className="text-gray-400">Приёмка:</span> {work.acceptance.procedure}</p>}
+            {work.acceptance?.warranty_months != null && <p className="text-sm text-gray-700"><span className="text-gray-400">Гарантия:</span> {work.acceptance.warranty_months} мес.</p>}
+            {work.subcontracting?.allowed != null && (
+              <p className="text-sm text-gray-700">
+                <span className="text-gray-400">Субподряд:</span> {work.subcontracting.allowed ? `да${work.subcontracting.max_pct ? ` (до ${work.subcontracting.max_pct}%)` : ""}` : "нет"}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Financial */}
+      {fin && (
+        <div className="border-t border-gray-100 py-5">
+          <SectionHeader icon={FileText} title="Финансы" />
+          <div className="space-y-2 text-sm">
+            {fin.advance?.has_advance && (
+              <p className="text-gray-700"><span className="text-gray-400">Аванс:</span> {fin.advance.amount_pct ? `${fin.advance.amount_pct}%` : fin.advance.amount_rub ? fmtVolume(fin.advance.amount_rub) : "да"}{fin.advance.description ? ` — ${fin.advance.description}` : ""}</p>
+            )}
+            {!fin.advance?.has_advance && <p className="text-gray-500">Аванс: не предусмотрен</p>}
+            {fin.payment?.structure && <p className="text-gray-700"><span className="text-gray-400">Оплата:</span> {fin.payment.schedule_description ?? fin.payment.structure}{fin.payment.term_days ? `, ${fin.payment.term_days} ${fin.payment.term_days_type ?? "дн."}` : ""}</p>}
+            {fin.funding_source && <p className="text-gray-700"><span className="text-gray-400">Источник:</span> {fin.funding_source}</p>}
+            {(fin.securities?.bid_pct != null || fin.securities?.bid_amount_rub != null) && (
+              <p className="text-gray-700"><span className="text-gray-400">Обеспечение заявки:</span> {fin.securities.bid_pct ? `${fin.securities.bid_pct}%` : ""}{fin.securities.bid_amount_rub ? ` (${fmtVolume(fin.securities.bid_amount_rub)})` : ""}</p>
+            )}
+            {(fin.securities?.contract_pct != null || fin.securities?.contract_amount_rub != null) && (
+              <p className="text-gray-700"><span className="text-gray-400">Обеспечение контракта:</span> {fin.securities.contract_pct ? `${fin.securities.contract_pct}%` : ""}{fin.securities.contract_amount_rub ? ` (${fmtVolume(fin.securities.contract_amount_rub)})` : ""}</p>
+            )}
+            {fin.penalties?.delay_pen_formula && <p className="text-gray-700"><span className="text-gray-400">Пеня за просрочку:</span> {fin.penalties.delay_pen_formula}</p>}
+            {fin.penalties?.fixed_fine_rub != null && <p className="text-gray-700"><span className="text-gray-400">Штраф:</span> {fmtVolume(fin.penalties.fixed_fine_rub)}{fin.penalties.fixed_fine_basis ? ` (${fin.penalties.fixed_fine_basis})` : ""}</p>}
+            {fin.antidumping?.applicable && (
+              <p className="text-amber-600"><span className="text-gray-400">Антидемпинг:</span> порог {fin.antidumping.threshold_pct}%, множитель {fin.antidumping.multiplier}x</p>
+            )}
+            {fin.cash_flow_note && <p className="text-gray-500 italic">{fin.cash_flow_note}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Timeline */}
+      {tl && (
+        <div className="border-t border-gray-100 py-5">
+          <SectionHeader icon={FileText} title="Сроки" />
+          <div className="space-y-2 text-sm">
+            {tl.total_duration?.description && <p className="text-gray-700"><span className="text-gray-400">Срок:</span> {tl.total_duration.description}</p>}
+            {tl.key_dates?.submission_deadline && <p className="text-gray-700"><span className="text-gray-400">Подача заявки:</span> {tl.key_dates.submission_deadline}</p>}
+            {tl.key_dates?.auction_date && <p className="text-gray-700"><span className="text-gray-400">Аукцион:</span> {tl.key_dates.auction_date}</p>}
+            {tl.key_dates?.warranty_months != null && <p className="text-gray-700"><span className="text-gray-400">Гарантия:</span> {tl.key_dates.warranty_months} мес.</p>}
+            {(tl.stages?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-gray-400 mb-1.5">Этапы</p>
+                <ul className="space-y-1.5">
+                  {tl.stages.map((st, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-[15px] text-gray-700">
+                      <span className="text-gray-400 mt-0.5 shrink-0">·</span>
+                      <span>{st.name}{st.duration_days ? ` — ${st.duration_days} дн.` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {tl.urgency_note && <p className="text-amber-600 italic">{tl.urgency_note}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Requirements */}
+      {req && (
+        <div className="border-t border-gray-100 py-5">
+          <SectionHeader icon={ClipboardList} title="Требования" />
+          <div className="space-y-3 text-sm">
+            {(req.eligibility?.licenses?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-gray-400 mb-1.5">Лицензии</p>
+                <BulletList items={req.eligibility.licenses.map(l => `${l.name}${l.issuer ? ` (${l.issuer})` : ""}${l.mandatory ? "" : " — желательно"}`)} />
+              </div>
+            )}
+            {req.eligibility?.sro?.required && (
+              <p className="text-gray-700"><span className="text-gray-400">СРО:</span> {req.eligibility.sro.type ?? "требуется"}</p>
+            )}
+            {req.eligibility?.experience?.description && (
+              <p className="text-gray-700"><span className="text-gray-400">Опыт:</span> {req.eligibility.experience.description}</p>
+            )}
+            {(req.eligibility?.staff?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-gray-400 mb-1.5">Персонал</p>
+                <BulletList items={req.eligibility.staff.map(s => `${s.role}${s.count ? ` × ${s.count}` : ""}${s.qualifications ? ` — ${s.qualifications}` : ""}`)} />
+              </div>
+            )}
+            {(req.eligibility?.other?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-gray-400 mb-1.5">Прочие требования</p>
+                <BulletList items={req.eligibility.other} />
+              </div>
+            )}
+            {(req.evaluation_criteria?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-gray-400 mb-1.5">Критерии оценки</p>
+                <BulletList items={req.evaluation_criteria.map(c => `${c.name}${c.weight_pct ? ` — ${c.weight_pct}%` : ""}${c.description ? `: ${c.description}` : ""}`)} />
+              </div>
+            )}
+            {(req.submission?.documents?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-gray-400 mb-1.5">Документы для подачи</p>
+                <BulletList items={req.submission.documents.map(d => `${d.name}${d.mandatory ? "" : " (опционально)"}`)} />
+              </div>
+            )}
+            {req.restrictions?.smp_only && <p className="text-amber-600">Только для СМП/СОНКО</p>}
+            {req.restrictions?.national_regime && <p className="text-gray-700">Национальный режим</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Risks */}
+      {risks && (
+        <div className="border-t border-gray-100 py-5">
+          <SectionHeader icon={AlertTriangle} title="Риски" />
+          <div className="space-y-3">
+            {risks.overall_risk && (
+              <p className={`text-sm font-medium ${SEVERITY_COLOR[risks.overall_risk] ?? "text-gray-700"}`}>
+                Общий риск: {risks.overall_risk}
+              </p>
+            )}
+            {risks.risk_summary && <p className="text-sm text-gray-600">{risks.risk_summary}</p>}
+            {(risks.certification_risks?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Лицензии и сертификаты</p>
+                <ul className="space-y-1.5">{risks.certification_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
+              </div>
+            )}
+            {(risks.financial_risks?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Финансовые</p>
+                <ul className="space-y-1.5">{risks.financial_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
+              </div>
+            )}
+            {(risks.technical_risks?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Технические</p>
+                <ul className="space-y-1.5">{risks.technical_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
+              </div>
+            )}
+            {(risks.legal_risks?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Юридические</p>
+                <ul className="space-y-1.5">{risks.legal_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
+              </div>
+            )}
+            {(risks.timeline_risks?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Сроки</p>
+                <ul className="space-y-1.5">{risks.timeline_risks.map((r, i) => <RiskItem key={i} {...r} />)}</ul>
+              </div>
+            )}
+            {(risks.unusual_conditions?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm text-gray-400 mb-1.5">Необычные условия</p>
+                <BulletList items={risks.unusual_conditions} className="text-amber-600" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SummaryBlockAny({ s }: { s: AnySummary }) {
+  if (isV2Summary(s)) return <SummaryBlockV2 s={s} />
+  return <SummaryBlock s={s as TenderSummary} />
 }
 
 function fmtSize(bytes: number): string {
@@ -457,7 +710,7 @@ function RunCard({ run, accent }: { run: ExperimentRun; accent?: boolean }) {
         </p>
       </div>
       <RunMetrics run={run} />
-      <SummaryBlock s={run.result} />
+      <SummaryBlockAny s={run.result} />
     </div>
   )
 }
@@ -511,7 +764,7 @@ function ExperimentComparisonView({ runs, experimentName }: { runs: ExperimentRu
             <p className="text-sm font-medium text-gray-500 mb-1">{runs[mobileIdx].variant_name}</p>
             <p className="text-xs text-gray-400 mb-2">{runs[mobileIdx].strategy} · {runs[mobileIdx].model}{runs[mobileIdx].actual_model && runs[mobileIdx].actual_model !== runs[mobileIdx].model ? ` (${runs[mobileIdx].actual_model})` : ""}</p>
             <RunMetrics run={runs[mobileIdx]} />
-            <SummaryBlock s={runs[mobileIdx].result} />
+            <SummaryBlockAny s={runs[mobileIdx].result} />
           </>
         )}
       </div>

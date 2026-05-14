@@ -41,7 +41,6 @@ export interface TenderSummary {
     okved_main: string
     tender_count: number
     total_volume: number
-    risk_assessment: string
     notes: string[]
   }
   work_description: {
@@ -70,9 +69,89 @@ export interface TenderSummary {
   urgency: "low" | "medium" | "high" | "critical"
 }
 
+export interface TenderSummaryV2 {
+  version: "v2"
+  generated_at?: string
+  general: {
+    title: string
+    customer_name: string | null
+    customer_inn: string | null
+    law_type: string | null
+    nmck: number | null
+    region: string | null
+  }
+  customer_analysis: {
+    name: string
+    inn: string | null
+    region: string | null
+    org_type: string | null
+    industry: string | null
+    founded_date: string | null
+    financials: { revenue_rub: number | null; profit_rub: number | null; employees_count: number | null; revenue_year: number | null }
+    procurement_history: { total_purchases: number | null; total_amount_rub: number | null; avg_contract_rub: number | null }
+    risk_indicators: { arbitration_count: number | null; fssp_count: number | null; licenses_count: number | null; red_flags: string[] }
+    notes: string[]
+    reliability: string | null
+  } | null
+  work_description: {
+    subject: string
+    tender_type: string | null
+    scope: { main_activities: string[]; deliverables: string[]; volume_metrics: { metric: string; value: string }[] }
+    location: { address: string | null; region: string | null }
+    technical_specs: { standards: string[]; materials: string[]; equipment: string[]; software: string[] }
+    acceptance: { procedure: string | null; review_days: number | null; warranty_months: number | null; support_after_delivery: string | null }
+    subcontracting: { allowed: boolean | null; max_pct: number | null; restrictions: string | null }
+  } | null
+  financial: {
+    advance: { has_advance: boolean; amount_rub: number | null; amount_pct: number | null; description: string | null }
+    payment: { structure: string | null; count: number | null; term_days: number | null; term_days_type: string | null; fixed_price: boolean | null; schedule_description: string | null }
+    funding_source: string | null
+    securities: { bid_amount_rub: number | null; bid_pct: number | null; contract_amount_rub: number | null; contract_pct: number | null; contract_form: string | null; return_term_days: number | null }
+    penalties: { delay_pen_formula: string | null; delay_pen_base: string | null; fixed_fine_rub: number | null; fixed_fine_basis: string | null }
+    antidumping: { applicable: boolean; threshold_pct: number | null; multiplier: number | null }
+    cash_flow_note: string | null
+  } | null
+  timeline: {
+    total_duration: { days: number | null; day_type: string | null; description: string | null }
+    stages: { number: number; name: string; duration_days: number | null; start_date: string | null; end_date: string | null; deliverables: string[] }[]
+    key_dates: { submission_deadline: string | null; auction_date: string | null; contract_sign_deadline_days: number | null; warranty_months: number | null }
+    urgency_note: string | null
+  } | null
+  requirements: {
+    eligibility: {
+      licenses: { name: string; issuer: string | null; mandatory: boolean }[]
+      sro: { required: boolean; type: string | null }
+      experience: { min_contracts: number | null; min_amount_rub: number | null; years: number | null; description: string | null }
+      staff: { role: string; count: number | null; qualifications: string | null }[]
+      financial: { min_revenue_rub: number | null; no_bankruptcy: boolean | null; no_tax_debt: boolean | null }
+      other: string[]
+    }
+    submission: { documents: { name: string; mandatory: boolean }[]; forms: string[]; electronic_signature: boolean | null }
+    evaluation_criteria: { name: string; weight_pct: number | null; description: string | null }[]
+    restrictions: { smp_only: boolean | null; national_regime: boolean | null; region_restriction: string | null; other: string[] }
+    notes: string | null
+  } | null
+  risks: {
+    certification_risks: { risk: string; severity: string }[]
+    financial_risks: { risk: string; severity: string }[]
+    technical_risks: { risk: string; severity: string }[]
+    legal_risks: { risk: string; severity: string }[]
+    timeline_risks: { risk: string; severity: string }[]
+    unusual_conditions: string[]
+    overall_risk: string | null
+    risk_summary: string | null
+  } | null
+}
+
+export type AnySummary = TenderSummary | TenderSummaryV2
+
+export function isV2Summary(s: AnySummary): s is TenderSummaryV2 {
+  return s?.version === "v2"
+}
+
 export interface SummaryExperimentResult {
   id: number
-  strategy: "rag" | "full"
+  strategy: string
   model: string
   input_tokens: number
   output_tokens: number
@@ -81,7 +160,7 @@ export interface SummaryExperimentResult {
   was_truncated: boolean
   truncated_reason: string
   original_total_tokens: number
-  result: TenderSummary
+  result: AnySummary
   created_at: string
 }
 
@@ -115,7 +194,7 @@ export interface ExperimentRun {
   duration_ms: number
   was_truncated: boolean
   truncated_reason: string
-  result: TenderSummary
+  result: AnySummary
   created_at: string
 }
 
