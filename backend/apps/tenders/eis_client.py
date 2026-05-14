@@ -183,6 +183,47 @@ def search_tenders(
     return results
 
 
+def fetch_day_count(day: date, fz44: bool = True, fz223: bool = True) -> int | None:
+    """
+    Возвращает кол-во тендеров за день по данным ЕИС (только «Подача заявок», как в sync).
+    Парсит текст вида «более 5 600 записей» или «1 234 записи» с первой страницы поиска.
+    Возвращает None если ЕИС недоступен или счётчик не найден.
+    """
+    params: dict[str, Any] = {
+        "morphology": "on",
+        "search-filter": "Дата размещения",
+        "pageNumber": 1,
+        "sortDirection": "false",
+        "recordsPerPage": "_10",
+        "showLotsInfoHidden": "false",
+        "sortBy": "UPDATE_DATE",
+        "publishDateFrom": day.strftime("%d.%m.%Y"),
+        "publishDateTo": day.strftime("%d.%m.%Y"),
+        "af": "on",
+    }
+    if fz44:
+        params["fz44"] = "on"
+    if fz223:
+        params["fz223"] = "on"
+
+    html = _fetch_html(SEARCH_URL, params=params)
+    if not html:
+        return None
+
+    # «более 5 600 записей» / «1 234 записи» / «0 записей»
+    # ЕИС использует неразрывный пробел ( ) как разделитель тысяч
+    m = re.search(r"(?:более\s*)?([\d][\d\s ]*)\s*запис", html)
+    if m:
+        raw = re.sub(r"[\s ]", "", m.group(1))
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+
+    logger.warning("fetch_day_count: count not found in EIS response for %s", day)
+    return None
+
+
 def _parse_search_entry(entry: lxml_html.HtmlElement) -> dict[str, Any] | None:
     # Ссылка на common-info (не printForm)
     link_el = entry.xpath('.//div[contains(@class,"registry-entry__header-mid__number")]//a')

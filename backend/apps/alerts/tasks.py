@@ -1,5 +1,6 @@
 import logging
-from datetime import timedelta
+import time
+from datetime import date, timedelta
 
 from celery import shared_task
 from django.utils import timezone
@@ -179,3 +180,58 @@ def send_morning_digest() -> None:
         + attention_text
     )
     send_telegram(text)
+
+
+COVERAGE_DAYS = 5
+# Тревога если у нас < 80% от того что показывает ЕИС
+COVERAGE_WARN_THRESHOLD = 0.80
+COVERAGE_CRIT_THRESHOLD = 0.60
+
+
+@shared_task(name="apps.alerts.tasks.check_coverage", time_limit=300)
+def check_coverage() -> None:
+    """
+    Ежедневная проверка покрытия ЕИС: за последние 5 дней сравнивает
+    сколько тендеров показывает ЕИС и сколько у нас в БД.
+    Шлёт Telegram-алерт если есть дни с покрытием < 80%.
+    """
+    from apps.tenders.models import Tender
+    from apps.tenders.eis_client import fetch_day_count
+
+    today = date.today()
+    rows: list[str] = []
+    has_problem = False
+
+    for delta in range(1, COVERAGE_DAYS + 1):
+        day = today - timedelta(days=delta)
+
+        eis_count = fetch_day_count(day, fz44=True, fz223=True)
+        db_count = Tender.objects.filter(published_at__date=day).count()
+
+        if eis_count is None:
+            rows.append(f"  ❓ {day}: ЕИС недоступен | БД: {_fmt(db_count)}")
+        elif eis_count == 0:
+            rows.append(f"  ✅ {day}: ЕИС 0 | БД: {_fmt(db_count)}")
+        else:
+            ratio = db_count / eis_count
+            if ratio < COVERAGE_WARN_THRESHOLD:
+                has_problem = True
+                emoji = "🔴" if ratio < COVERAGE_CRIT_THRESHOLD else "⚠️"
+            else:
+                emoji = "✅"
+            rows.append(
+                f"  {emoji} {day}: ЕИС ~{_fmt(eis_count)} | БД {_fmt(db_count)} ({ratio:.0%})"
+            )
+
+        time.sleep(2)
+
+    if not rows:
+        return
+
+    header = "🔴 Покрытие ЕИС неполное" if has_problem else "✅ Покрытие ЕИС в норме"
+    text = f"<b>{header}</b>\n\n" + "\n".join(rows)
+
+    if has_problem:
+        send_telegram(text)
+    else:
+        logger.info("check_coverage ok:\n%s", "\n".join(rows))

@@ -181,6 +181,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.tenders.tasks.recover_failed_tenders",
         "schedule": crontab(hour=1, minute=0),  # 01:00 UTC = 04:00 MSK
     },
+    "check-coverage": {
+        "task": "apps.alerts.tasks.check_coverage",
+        "schedule": crontab(hour=7, minute=30),  # 07:30 UTC = 10:30 MSK
+    },
+    "cleanup-finished-tenders": {
+        "task": "apps.tenders.tasks.cleanup_finished_tenders",
+        "schedule": crontab(hour=4, minute=0, day_of_week="sunday"),  # после cleanup-old-documents
+    },
 }
 
 # Qdrant

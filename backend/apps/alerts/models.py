@@ -8,6 +8,7 @@ class PipelineRun(models.Model):
         EMBED_TENDER = "embed_tender"
         CLEANUP_CHUNKS = "cleanup_doc_chunks"
         CLEANUP_DOCS = "cleanup_old_documents"
+        CLEANUP_TENDERS = "cleanup_finished_tenders"
         RECOVER = "recover_failed_tenders"
 
     class Status(models.TextChoices):

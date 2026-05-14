@@ -366,3 +366,88 @@ def recover_failed_tenders() -> dict:
     return stats
 
 
+# Тендеры хранятся 30 дней после истечения дедлайна, затем удаляются из БД и MinIO.
+# Тендеры с pipeline-записями пользователей не трогаем никогда.
+TENDER_RETENTION_DAYS = 7
+CLEANUP_BATCH = 200
+
+
+@shared_task(name="apps.tenders.tasks.cleanup_finished_tenders", time_limit=3600)
+def cleanup_finished_tenders() -> dict:
+    """
+    Еженедельная очистка: удаляет из БД тендеры со статусом FINISHED
+    у которых deadline_at старше TENDER_RETENTION_DAYS дней.
+    Тендеры с записями в pipeline пользователей пропускает.
+    Порядок: MinIO → Qdrant doc_chunks → DELETE из БД (CASCADE удаляет TenderDocument и SummaryExperiment).
+    """
+    from .models import Tender
+    from apps.alerts.services import log_pipeline_run
+    from apps.documents.storage import delete_prefix
+    from apps.search.services import qdrant_service, COLLECTION_DOC_CHUNKS
+    from qdrant_client.models import Filter, FieldCondition, MatchAny
+
+    start_time = timezone.now()
+    cutoff = timezone.now() - timedelta(days=TENDER_RETENTION_DAYS)
+    stats = {"deleted": 0, "skipped_pipeline": 0, "minio_files": 0, "errors": 0}
+
+    base_qs = Tender.objects.filter(
+        status=Tender.Status.FINISHED,
+        deadline_at__lt=cutoff,
+        deadline_at__isnull=False,
+    ).exclude(pipeline_entries__isnull=False)
+
+    stats["skipped_pipeline"] = Tender.objects.filter(
+        status=Tender.Status.FINISHED,
+        deadline_at__lt=cutoff,
+        deadline_at__isnull=False,
+        pipeline_entries__isnull=False,
+    ).count()
+
+    while True:
+        batch = list(
+            base_qs.only("pk", "number").values("pk", "number")[:CLEANUP_BATCH]
+        )
+        if not batch:
+            break
+
+        batch_ids = [t["pk"] for t in batch]
+
+        # 1. MinIO: удаляем original/ и extracted/ для каждого тендера
+        for t in batch:
+            try:
+                stats["minio_files"] += delete_prefix(f"original/{t['number']}/")
+                stats["minio_files"] += delete_prefix(f"extracted/{t['number']}/")
+            except Exception as exc:
+                logger.warning("MinIO delete error tender %s: %s", t["number"], exc)
+                stats["errors"] += 1
+
+        # 2. Qdrant doc_chunks (на случай если TTL-очистка ещё не прошла)
+        try:
+            qdrant_service.client.delete(
+                collection_name=COLLECTION_DOC_CHUNKS,
+                points_selector=Filter(
+                    must=[FieldCondition(key="tender_id", match=MatchAny(any=batch_ids))]
+                ),
+            )
+        except Exception as exc:
+            logger.warning("Qdrant doc_chunks delete error: %s", exc)
+            stats["errors"] += 1
+
+        # 3. Удаляем из БД — CASCADE убивает TenderDocument и SummaryExperiment
+        deleted, _ = Tender.objects.filter(pk__in=batch_ids).delete()
+        stats["deleted"] += deleted
+
+        logger.info("cleanup_finished_tenders: batch deleted %d", deleted)
+
+    logger.info(
+        "cleanup_finished_tenders done: deleted=%d skipped_pipeline=%d minio_files=%d errors=%d",
+        stats["deleted"], stats["skipped_pipeline"], stats["minio_files"], stats["errors"],
+    )
+
+    log_pipeline_run(
+        task_name="cleanup_finished_tenders",
+        started_at=start_time,
+        stats=stats,
+        status="ok" if stats["errors"] == 0 else "partial",
+    )
+    return stats
