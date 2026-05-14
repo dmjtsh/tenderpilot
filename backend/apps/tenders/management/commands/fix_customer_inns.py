@@ -15,21 +15,33 @@ class Command(BaseCommand):
         parser.add_argument("--delay", type=float, default=1.0, help="Delay between requests (seconds)")
         parser.add_argument("--dry-run", action="store_true", help="Only show counts, don't fetch")
         parser.add_argument("--law-type", type=str, default="", help="Filter by law_type (e.g. '44-ФЗ')")
+        parser.add_argument("--tender-ids", type=int, nargs="+", help="Process only specific tenders by ID")
 
     def handle(self, *args, **options) -> None:
         limit: int = options["limit"]
         delay: float = options["delay"]
         dry_run: bool = options["dry_run"]
         law_type: str = options["law_type"]
+        tender_ids: list[int] | None = options.get("tender_ids")
 
-        qs = (
-            Tender.objects
-            .select_related("customer")
-            .filter(
-                Q(customer__inn__isnull=True) | Q(customer__inn=""),
-                enriched_at__isnull=False,
+        if tender_ids:
+            qs = (
+                Tender.objects
+                .select_related("customer")
+                .filter(
+                    Q(customer__inn__isnull=True) | Q(customer__inn=""),
+                    id__in=tender_ids,
+                )
             )
-        )
+        else:
+            qs = (
+                Tender.objects
+                .select_related("customer")
+                .filter(
+                    Q(customer__inn__isnull=True) | Q(customer__inn=""),
+                    enriched_at__isnull=False,
+                )
+            )
         if law_type:
             qs = qs.filter(law_type=law_type)
 
