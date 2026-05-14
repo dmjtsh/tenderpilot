@@ -183,7 +183,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "check-coverage": {
         "task": "apps.alerts.tasks.check_coverage",
-        "schedule": crontab(hour=7, minute=30),  # 07:30 UTC = 10:30 MSK
+        "schedule": crontab(minute=0, hour="*/3"),  # каждые 3 часа
     },
     "cleanup-finished-tenders": {
         "task": "apps.tenders.tasks.cleanup_finished_tenders",

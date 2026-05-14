@@ -189,11 +189,10 @@ COVERAGE_CRIT_THRESHOLD = 0.60
 
 
 @shared_task(name="apps.alerts.tasks.check_coverage", time_limit=300)
-def check_coverage() -> None:
+def check_coverage(notify_always: bool = False) -> str:
     """
-    Ежедневная проверка покрытия ЕИС: за последние 5 дней сравнивает
-    сколько тендеров показывает ЕИС и сколько у нас в БД.
-    Шлёт Telegram-алерт если есть дни с покрытием < 80%.
+    Каждые 3 часа сравнивает кол-во АКТИВНЫХ тендеров в БД с тем что показывает ЕИС.
+    notify_always=True — слать в Telegram даже при норме (для ручного запроса из бота).
     """
     from apps.tenders.models import Tender
     from apps.tenders.eis_client import fetch_day_count
@@ -206,12 +205,15 @@ def check_coverage() -> None:
         day = today - timedelta(days=delta)
 
         eis_count = fetch_day_count(day, fz44=True, fz223=True)
-        db_count = Tender.objects.filter(published_at__date=day).count()
+        db_count = Tender.objects.filter(
+            published_at__date=day,
+            status="active",
+        ).count()
 
         if eis_count is None:
-            rows.append(f"  ❓ {day}: ЕИС недоступен | БД: {_fmt(db_count)}")
+            rows.append(f"  ❓ {day}: ЕИС недоступен | БД active: {_fmt(db_count)}")
         elif eis_count == 0:
-            rows.append(f"  ✅ {day}: ЕИС 0 | БД: {_fmt(db_count)}")
+            rows.append(f"  ✅ {day}: ЕИС 0 | БД active: {_fmt(db_count)}")
         else:
             ratio = db_count / eis_count
             if ratio < COVERAGE_WARN_THRESHOLD:
@@ -220,18 +222,20 @@ def check_coverage() -> None:
             else:
                 emoji = "✅"
             rows.append(
-                f"  {emoji} {day}: ЕИС ~{_fmt(eis_count)} | БД {_fmt(db_count)} ({ratio:.0%})"
+                f"  {emoji} {day}: ЕИС ~{_fmt(eis_count)} | active {_fmt(db_count)} ({ratio:.0%})"
             )
 
         time.sleep(2)
 
     if not rows:
-        return
+        return "no data"
 
     header = "🔴 Покрытие ЕИС неполное" if has_problem else "✅ Покрытие ЕИС в норме"
     text = f"<b>{header}</b>\n\n" + "\n".join(rows)
 
-    if has_problem:
+    if has_problem or notify_always:
         send_telegram(text)
     else:
         logger.info("check_coverage ok:\n%s", "\n".join(rows))
+
+    return text
