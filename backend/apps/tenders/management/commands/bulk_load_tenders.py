@@ -30,10 +30,11 @@ DEFAULT_MAX_PAGES = 110
 # Проверено на 30.04.2026: каждый диапазон < 5000 записей.
 #   ≤100к: ~2300, 100к-1млн: ~4450, 1-5млн: ~2650, 5млн+: ~1400
 FZ44_PRICE_RANGES: list[tuple[str, str | None, str | None]] = [
-    ("≤100к",    None,        "100000"),
-    ("100к-1млн","100001",    "1000000"),
-    ("1-5млн",   "1000001",   "5000000"),
-    ("5млн+",    "5000001",   None),
+    ("≤100к",     None,      "100000"),
+    ("100к-500к", "100001",  "500000"),
+    ("500к-1млн", "500001",  "1000000"),
+    ("1-5млн",    "1000001", "5000000"),
+    ("5млн+",     "5000001", None),
 ]
 
 
@@ -83,7 +84,7 @@ class Command(BaseCommand):
             d -= timedelta(days=1)
 
         total_days = len(day_chunks)
-        passes_per_day = len(FZ44_PRICE_RANGES) + 1  # 4 ценовых + 1 для 223-ФЗ
+        passes_per_day = len(FZ44_PRICE_RANGES) + 1  # 5 ценовых + 1 для 223-ФЗ
         self.stdout.write(
             self.style.NOTICE(
                 f"Загрузка тендеров: {start_date} → {today} "

@@ -174,14 +174,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.alerts.tasks.check_pipeline_health",
         "schedule": crontab(minute="*/15"),
     },
-    "morning-digest": {
-        "task": "apps.alerts.tasks.send_morning_digest",
-        "schedule": crontab(hour=6, minute=0),  # 06:00 UTC = 09:00 MSK
-    },
-    "recover-failed-tenders": {
-        "task": "apps.tenders.tasks.recover_failed_tenders",
-        "schedule": crontab(hour=1, minute=0),  # 01:00 UTC = 04:00 MSK
-    },
     "check-coverage": {
         "task": "apps.alerts.tasks.check_coverage",
         "schedule": crontab(minute=0, hour="*/3"),  # каждые 3 часа
