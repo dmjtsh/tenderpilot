@@ -173,15 +173,21 @@ def sync_active_tenders() -> dict:
         "passes": [], "truncated_passes": [],
     }
 
-    today = date.today()
+    # ЕИС использует московское время — берём текущий день по МСК
+    MSK_OFFSET = timedelta(hours=3)
+    today = (timezone.now() + MSK_OFFSET).date()
     days = [today - timedelta(days=d) for d in range(DAYS_LOOKBACK + 1)]
 
     logger.info("sync_active_tenders: %s → %s (%d days)", days[-1], today, len(days))
 
     for day in days:
+        # Диапазон published_at в UTC для московского дня: [day 00:00 MSK, day+1 00:00 MSK)
+        day_start = timezone.datetime(day.year, day.month, day.day, tzinfo=timezone.utc) - MSK_OFFSET
+        day_end = day_start + timedelta(days=1)
         existing_numbers = set(
             Tender.objects.filter(
-                published_at__date=day,
+                published_at__gte=day_start,
+                published_at__lt=day_end,
             ).values_list("number", flat=True)
         )
 

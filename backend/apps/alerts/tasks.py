@@ -197,16 +197,22 @@ def check_coverage(notify_always: bool = False) -> str:
     from apps.tenders.models import Tender
     from apps.tenders.eis_client import fetch_day_count
 
-    today = date.today()
+    # ЕИС использует московское время, поэтому "день по МСК" = UTC [day-1 21:00, day 21:00)
+    MSK_OFFSET = timedelta(hours=3)
+    today = (timezone.now() + MSK_OFFSET).date()
     rows: list[str] = []
     has_problem = False
 
     for delta in range(1, COVERAGE_DAYS + 1):
         day = today - timedelta(days=delta)
+        # Диапазон published_at в UTC соответствующий московскому дню
+        day_start = timezone.datetime(day.year, day.month, day.day, tzinfo=timezone.utc) - MSK_OFFSET
+        day_end = day_start + timedelta(days=1)
 
         eis_count = fetch_day_count(day, fz44=True, fz223=True)
         db_count = Tender.objects.filter(
-            published_at__date=day,
+            published_at__gte=day_start,
+            published_at__lt=day_end,
             status="active",
         ).count()
 
