@@ -1043,12 +1043,18 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
         existing_tender = Tender.objects.filter(number=number, source=source).select_related("customer").first()
         if existing_tender and existing_tender.customer and not existing_tender.customer.inn:
             old_customer = existing_tender.customer
-            old_customer.inn = inn
-            old_customer.name = name or old_customer.name
-            old_customer.full_name = data.get("customer_full_name", "") or old_customer.full_name
-            old_customer.region = data.get("customer_region", data.get("region", "")) or old_customer.region
-            old_customer.save(update_fields=["inn", "name", "full_name", "region"])
-            customer = old_customer
+            # Проверяем, не появился ли уже Customer с таким ИНН (параллельный enrich)
+            existing_inn_customer = Customer.objects.filter(inn=inn).first()
+            if existing_inn_customer:
+                # Используем уже существующего, старый безымянный остаётся как есть
+                customer = existing_inn_customer
+            else:
+                old_customer.inn = inn
+                old_customer.name = name or old_customer.name
+                old_customer.full_name = data.get("customer_full_name", "") or old_customer.full_name
+                old_customer.region = data.get("customer_region", data.get("region", "")) or old_customer.region
+                old_customer.save(update_fields=["inn", "name", "full_name", "region"])
+                customer = old_customer
 
     if customer is None:
         if inn:
