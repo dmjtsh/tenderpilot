@@ -1079,7 +1079,6 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
     always_update = {
         "source": source,
         "title": data.get("title", ""),
-        "customer": customer,
         "status": data.get("status", Tender.Status.ACTIVE),
         "law_type": data.get("law_type", ""),
         "procedure_type": procedure_type,
@@ -1102,7 +1101,15 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
         "contract_security_percent": data.get("contract_security_percent"),
     }
 
-    existing = Tender.objects.filter(number=data["number"], source=source).first()
+    existing = Tender.objects.filter(number=data["number"], source=source).select_related("customer").first()
+
+    # Защита customer от деградации: не заменяем заказчика с ИНН на заказчика без ИНН.
+    # ИНН — постоянный идентификатор, sync API его не возвращает, только enrich.
+    if existing and existing.customer and existing.customer.inn:
+        if not customer or not customer.inn:
+            customer = existing.customer
+
+    always_update["customer"] = customer
 
     if existing:
         safe_enrichment = {
