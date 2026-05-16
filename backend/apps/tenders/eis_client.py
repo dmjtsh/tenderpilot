@@ -388,26 +388,12 @@ def _fetch_tender_detail_223(purchase_number: str, source_url: str) -> dict[str,
 
     # Регион из адреса места нахождения
     # Формат адреса ЕИС: "693020, САХАЛИНСКАЯ ОБЛАСТЬ, г.о. ГОРОД ЮЖНО-САХАЛИНСК, ..."
-    # Первая часть — почтовый индекс (6 цифр), вторая — регион
+    # Используем почтовый индекс для точного определения субъекта РФ
     customer_region = ""
     location_raw = f("Место нахождения") or f("Место поставки, выполнения работ или оказания услуг")
     if location_raw:
-        parts = [p.strip() for p in location_raw.split(",")]
-        # Пропускаем почтовый индекс (6 цифр) в начале
-        if parts and re.match(r"^\d{6}$", parts[0]):
-            parts = parts[1:]
-        # Ищем часть с ключевым словом региона
-        REGION_KEYWORDS = ["ОБЛАСТЬ", "КРАЙ", "РЕСПУБЛИКА", "ОКРУГ", "МОСКВА", "САНКТ-ПЕТЕРБУРГ", "СЕВАСТОПОЛЬ", "БАЙКОНУР"]
-        for part in parts:
-            if any(word in part.upper() for word in REGION_KEYWORDS):
-                customer_region = part.strip().title()
-                break
-        # Fallback: первая непустая часть, если не цифры
-        if not customer_region:
-            for part in parts:
-                if part and not re.match(r"^\d+$", part):
-                    customer_region = part.strip().title()
-                    break
+        from apps.tenders.region_utils import extract_region_from_fias
+        customer_region = extract_region_from_fias(location_raw)
 
     # ОКПД2 — на common-info.html кодов нет, они на lot-list.html
     okpd_codes: list[str] = []
