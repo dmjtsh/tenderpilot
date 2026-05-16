@@ -46,19 +46,32 @@ def generate_hyde_texts(direction, n: int = 5) -> list[str]:
     desc = (direction.description or "").strip()
     description_block = f"Описание: {desc}\n" if len(desc) >= 30 else ""
 
-    client = get_llm_client("deepseek-chat")
-    response = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=[{"role": "user", "content": HYDE_PROMPT.format(
-            name=direction.name,
-            description_block=description_block,
-            okved_text=okved_text,
-            keywords=keywords,
-            n=n,
-        )}],
-        max_tokens=2000,
-        temperature=0.8,
+    prompt = HYDE_PROMPT.format(
+        name=direction.name,
+        description_block=description_block,
+        okved_text=okved_text,
+        keywords=keywords,
+        n=n,
     )
+    messages = [{"role": "user", "content": prompt}]
+
+    try:
+        client = get_llm_client("deepseek-chat")
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=messages,
+            max_tokens=2000,
+            temperature=0.8,
+        )
+    except Exception as e:
+        logger.warning("DeepSeek failed for HyDE direction %d, falling back to GPT-4o-mini: %s", direction.id, e)
+        client = get_llm_client("gpt-4o-mini")
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=2000,
+            temperature=0.8,
+        )
 
     raw = response.choices[0].message.content.strip()
     if raw.startswith("```"):
