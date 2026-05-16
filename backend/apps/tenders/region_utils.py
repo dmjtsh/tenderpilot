@@ -45,7 +45,7 @@ def _save(postal_code: str, region: str) -> None:
 
 
 def _lookup_dadata(postal_code: str) -> str:
-    """Определяет субъект РФ по индексу через DaData suggest postal_unit."""
+    """Определяет субъект РФ по индексу через DaData suggest address."""
     try:
         from django.conf import settings
         from dadata import Dadata
@@ -55,7 +55,7 @@ def _lookup_dadata(postal_code: str) -> str:
             return ""
 
         with Dadata(token) as client:
-            results = client.suggest("postal_unit", postal_code, count=1)
+            results = client.suggest("address", postal_code, count=1)
 
         if not results:
             return ""
@@ -100,18 +100,66 @@ def get_region_by_postal(postal_code: str) -> str:
     return region
 
 
+_REGION_KEYWORDS = ["ОБЛАСТЬ", "КРАЙ", "РЕСПУБЛИКА", "ОКРУГ", "МОСКВА", "САНКТ-ПЕТЕРБУРГ", "СЕВАСТОПОЛЬ"]
+
+# Аббревиатуры в адресных строках → наш канонический суффикс
+_TYPE_NORMALIZE = {
+    "ОБЛАСТЬ": "обл",
+    "КРАЙ": "край",
+    "РЕСПУБЛИКА": "Респ",
+    "ОКРУГ": "АО",
+}
+
+
+def _parse_region_from_address(address: str) -> str:
+    """
+    Fallback: извлекает регион из FIAS-адреса по ключевым словам.
+
+    "241004, БРЯНСКАЯ ОБЛАСТЬ, г.о. ГОРОД БРЯНСК, ..." → "Брянская обл"
+    "101000, Г.МОСКВА, ..." → "Москва"
+    """
+    parts = [p.strip() for p in address.split(",")]
+    # пропускаем индекс
+    if parts and re.match(r"^\d{6}$", parts[0]):
+        parts = parts[1:]
+
+    for part in parts:
+        upper = part.upper()
+        for kw in _REGION_KEYWORDS:
+            if kw in upper:
+                if kw == "МОСКВА":
+                    return "Москва"
+                if kw == "САНКТ-ПЕТЕРБУРГ":
+                    return "Санкт-Петербург"
+                if kw == "СЕВАСТОПОЛЬ":
+                    return "Севастополь"
+                # "БРЯНСКАЯ ОБЛАСТЬ" → "Брянская обл"
+                name = part.strip().title()
+                for full, short in _TYPE_NORMALIZE.items():
+                    name = re.sub(full.title(), short, name, flags=re.IGNORECASE)
+                return name.strip()
+    return ""
+
+
 def extract_region_from_fias(address: str) -> str:
     """
     Определяет субъект РФ из строки FIAS-адреса.
 
-    "625000, Г.. ТЮМЕНЬ, ул. Ленина, д. 5" → "Тюменская обл"
-    "127006, Г.МОСКВА, ..."                 → "Москва"
+    Шаг 1: почтовый индекс → кэш → DaData
+    Шаг 2: если промах — парсим ключевые слова в адресе напрямую
 
-    Возвращает '' если индекс не найден.
+    "241004, БРЯНСКАЯ ОБЛАСТЬ, г.о. ГОРОД БРЯНСК, ..." → "Брянская обл"
+    "625000, Г.. ТЮМЕНЬ, ул. Ленина, д. 5"            → "Тюменская обл"
+    "127006, Г.МОСКВА, ..."                            → "Москва"
     """
     if not address:
         return ""
+
     first = address.split(",")[0].strip()
     if re.match(r"^\d{6}$", first):
-        return get_region_by_postal(first)
-    return ""
+        region = get_region_by_postal(first)
+        if region:
+            return region
+
+    # Fallback: парсим адрес напрямую
+    return _parse_region_from_address(address)
