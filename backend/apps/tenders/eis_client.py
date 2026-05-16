@@ -419,15 +419,11 @@ def _fetch_tender_detail_223(purchase_number: str, source_url: str) -> dict[str,
                 lots_tree = _tree_from_html(lots_resp.text)
                 for td in lots_tree.xpath("//td"):
                     text = td.text_content().strip()
-                    if re.match(r"\d{2}\.\d{2}", text):
+                    # ОКПД2 минимум 3 сегмента (XX.XX.XX), ОКВЭД2 обычно 2 (XX.XX)
+                    if re.match(r"\d{2}\.\d{2}\.\d", text):
                         code = re.match(r"[\d.]+", text).group(0).rstrip(".")
                         if code not in okpd_codes:
                             okpd_codes.append(code)
-                # Убираем короткие коды-префиксы (90.02 при наличии 90.02.12.000)
-                okpd_codes = [
-                    c for c in okpd_codes
-                    if not any(other.startswith(c + ".") for other in okpd_codes)
-                ]
         except Exception as exc:
             logger.warning("Failed to fetch lot-list for %s: %s", purchase_number, exc)
 
