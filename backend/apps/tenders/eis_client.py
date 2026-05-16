@@ -525,10 +525,14 @@ def fetch_tender_detail(purchase_number: str, fallback_url: str = "") -> dict[st
     if _is_223_url(fallback_url):
         return _fetch_tender_detail_223(purchase_number, fallback_url)
 
-    info_url = (
-        f"{BASE_URL}/epz/order/notice/ea44/view/common-info.html"
-        f"?regNumber={purchase_number}"
-    )
+    if fallback_url:
+        info_url = re.sub(r"/(?:documents|print-form|supplier-results)\.html",
+                          "/common-info.html", fallback_url)
+    else:
+        info_url = (
+            f"{BASE_URL}/epz/order/notice/ea44/view/common-info.html"
+            f"?regNumber={purchase_number}"
+        )
     try:
         resp = requests.get(info_url, headers=HEADERS, timeout=20, allow_redirects=True)
         resp.raise_for_status()
