@@ -45,7 +45,7 @@ def _save(postal_code: str, region: str) -> None:
 
 
 def _lookup_dadata(postal_code: str) -> str:
-    """Определяет субъект РФ по индексу через DaData clean/address."""
+    """Определяет субъект РФ по индексу через DaData suggest postal_unit."""
     try:
         from django.conf import settings
         from dadata import Dadata
@@ -55,23 +55,24 @@ def _lookup_dadata(postal_code: str) -> str:
             return ""
 
         with Dadata(token) as client:
-            result = client.clean("address", postal_code)
+            results = client.suggest("postal_unit", postal_code, count=1)
 
-        if not result:
+        if not results:
             return ""
 
-        region = (result.get("region") or "").strip()
-        region_type_short = (result.get("region_type_short") or "").strip()
+        data = results[0].get("data", {})
+        region = (data.get("region") or "").strip()
+        region_type = (data.get("region_type") or "").strip()
 
         if not region:
             return ""
 
         # Города-субъекты: Москва, Санкт-Петербург, Севастополь
-        if region_type_short == "г":
+        if region_type == "г":
             return region
 
-        if region_type_short:
-            return f"{region} {region_type_short}"
+        if region_type:
+            return f"{region} {region_type}"
 
         return region
 
