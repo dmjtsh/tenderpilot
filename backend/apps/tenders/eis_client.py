@@ -409,18 +409,22 @@ def _fetch_tender_detail_223(purchase_number: str, source_url: str) -> dict[str,
                     customer_region = part.strip().title()
                     break
 
-    # ОКПД2
+    # ОКПД2 — на common-info.html кодов нет, они на lot-list.html
     okpd_codes: list[str] = []
-    for row in tree.xpath('//*[contains(@class,"tableBlock__row") or contains(@class,"lots-position")]'):
-        cells = row.xpath('.//*[contains(@class,"col") or self::td]')
-        texts = [
-            " ".join(t.strip() for t in c.xpath(".//text()") if t.strip())
-            for c in cells
-        ]
-        texts = [t for t in texts if t]
-        if texts and re.match(r"\d{2}\.\d{2}", texts[0]):
-            code = re.match(r"[\d.]+", texts[0]).group(0).rstrip(".")
-            okpd_codes.append(code)
+    lots_url = re.sub(r"common-info\.html", "lot-list.html", info_url)
+    if lots_url != info_url:
+        try:
+            lots_resp = requests.get(lots_url, headers=HEADERS, timeout=15)
+            if lots_resp.ok:
+                lots_tree = _tree_from_html(lots_resp.text)
+                for td in lots_tree.xpath("//td"):
+                    text = td.text_content().strip()
+                    if re.match(r"\d{2}\.\d{2}", text):
+                        code = re.match(r"[\d.]+", text).group(0).rstrip(".")
+                        if code not in okpd_codes:
+                            okpd_codes.append(code)
+        except Exception as exc:
+            logger.warning("Failed to fetch lot-list for %s: %s", purchase_number, exc)
 
     # Дедлайн — 223-ФЗ использует другой лейбл с уточнением "по местному времени"
     deadline_raw = (
