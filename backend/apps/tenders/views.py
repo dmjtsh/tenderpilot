@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Experiment, SummaryExperiment, Tender, TenderPipeline
+from .models import Customer, Experiment, SummaryExperiment, Tender, TenderPipeline
 from .serializers import TenderListSerializer, TenderDetailSerializer, TenderPipelineSerializer
 from .services import get_or_create_summary, get_or_create_summary_v2
 from apps.documents.services import answer_question
@@ -112,6 +112,21 @@ class OkvedSearchView(APIView):
                 break
 
         return Response({"data": results, "error": None})
+
+
+class CustomerSearchView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        q = request.query_params.get("q", "").strip()
+        if len(q) < 2:
+            return Response({"data": [], "error": None})
+
+        qs = Customer.objects.filter(
+            Q(name__icontains=q) | Q(inn__startswith=q)
+        ).values("inn", "name")[:15]
+
+        return Response({"data": list(qs), "error": None})
 
 
 class TenderViewSet(viewsets.ReadOnlyModelViewSet):

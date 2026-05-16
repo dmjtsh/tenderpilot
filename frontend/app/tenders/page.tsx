@@ -2,13 +2,13 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
 import { tendersApi, searchApi, directionsApi, pipelineApi, profileApi, type Tender, type PipelineStatus, type CompanyProfile } from "@/lib/api"
 import { TenderCard } from "@/components/tender-card"
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getDirectionColor } from "@/lib/direction-colors"
-import { Search, X, Sparkles, Building2, ChevronDown } from "lucide-react"
+import { Search, X, Sparkles, Building2, ChevronDown, ArrowUpDown } from "lucide-react"
 import Link from "next/link"
 import { useTenderFilters, filtersToApiParams, filtersToSearchBody, type TenderFilters } from "@/hooks/use-tender-filters"
 import { FilterBar } from "@/components/filters/filter-bar"
@@ -242,10 +242,32 @@ function ProfileSelector({
 
 // ─── Match tab ────────────────────────────────────────────────────────────────
 
+const SORT_OPTIONS = [
+  { value: "score", label: "По релевантности" },
+  { value: "deadline", label: "По дедлайну" },
+  { value: "published", label: "По дате публикации" },
+  { value: "nmck_asc", label: "По НМЦК ↑" },
+  { value: "nmck_desc", label: "По НМЦК ↓" },
+] as const
+
 function MatchTab({ filters }: { filters: TenderFilters }) {
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [selectedDirId, setSelectedDirId] = useState<number | null>(null)
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+  const [sortBy, setSortBy] = useState(() => searchParams.get("sort") || "score")
   const { pipelineMap, setStatus, removeEntry } = usePipelineActions(selectedProfileId)
+
+  function handleSortChange(value: string) {
+    setSortBy(value)
+    const params = new URLSearchParams(searchParams.toString())
+    if (value === "score") {
+      params.delete("sort")
+    } else {
+      params.set("sort", value)
+    }
+    router.replace(`/tenders?${params.toString()}`, { scroll: false })
+  }
 
   const { data: companies = [] } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
@@ -253,7 +275,6 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Default to first (most recently created) profile
   useEffect(() => {
     if (companies.length > 0 && !selectedProfileId) {
       setSelectedProfileId(companies[0].id)
@@ -267,94 +288,88 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
   })
 
   useEffect(() => {
-    setSelectedIds(directions.map((d) => d.id))
-  }, [directions])
+    if (directions.length > 0 && !selectedDirId) {
+      setSelectedDirId(directions[0].id)
+    }
+  }, [directions, selectedDirId])
 
-  const noneSelected = selectedIds.length === 0
-  const allSelected = directions.length > 0 && selectedIds.length === directions.length
-  const activeIds = allSelected ? undefined : selectedIds
+  const activeIds = selectedDirId ? [selectedDirId] : undefined
 
   const filterParams = filtersToApiParams(filters)
   const filterKey = JSON.stringify(filterParams)
 
-  const { data, isFetching, refetch } = useQuery({
-    queryKey: ["match", activeIds, filterKey, selectedProfileId],
-    queryFn: () => searchApi.match(20, activeIds, filterParams, selectedProfileId ?? undefined),
+  const {
+    data,
+    isFetching,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["match", activeIds, filterKey, selectedProfileId, sortBy],
+    queryFn: ({ pageParam = 1 }) =>
+      searchApi.match(20, activeIds, filterParams, selectedProfileId ?? undefined, pageParam, sortBy),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.has_more ? allPages.length + 1 : undefined,
+    initialPageParam: 1,
     retry: false,
-    enabled: !noneSelected && !!selectedProfileId,
+    enabled: !!selectedDirId && !!selectedProfileId,
   })
 
-  function toggleDirection(id: number) {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
-  }
-
-  function toggleAll() {
-    if (allSelected) {
-      setSelectedIds([])
-    } else {
-      setSelectedIds(directions.map((d) => d.id))
-    }
-  }
-
-  const tenders = data?.data ?? []
-  const error = data?.error
+  const tenders = data?.pages.flatMap((p) => p.data) ?? []
+  const error = data?.pages[0]?.error
 
   const directionFilter = (
     <div className="flex items-center gap-2 px-6 py-3 border-b border-gray-200 shrink-0 flex-wrap">
       <ProfileSelector
         companies={companies}
         selectedId={selectedProfileId}
-        onSelect={(id) => { setSelectedProfileId(id); setSelectedIds([]) }}
+        onSelect={(id) => { setSelectedProfileId(id); setSelectedDirId(null) }}
       />
       {companies.length > 1 && directions.length > 0 && (
         <span className="w-px h-5 bg-gray-200 mx-0.5" />
       )}
-      {directions.length > 1 && (
+      {directions.length > 0 && (
         <>
-          <span className="text-xs text-gray-400 uppercase tracking-wide mr-1 select-none">Направления</span>
-          <button
-            type="button"
-            onClick={toggleAll}
-            className={`h-8 px-3.5 text-sm border transition-all duration-200 ${
-              allSelected
-                ? "bg-[#111827] border-[#111827] text-white font-medium"
-                : "border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
-            }`}
-          >
-            Все
-          </button>
-          <span className="w-px h-5 bg-gray-200 mx-0.5" />
-          {directions.map((d) => {
-            const active = selectedIds.includes(d.id)
-            return (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => toggleDirection(d.id)}
-                className={`h-8 px-3.5 text-sm border transition-all duration-200 ${
-                  active
-                    ? "bg-violet-100 border-violet-300 text-violet-800 font-medium"
-                    : "border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
-                }`}
-              >
-                {d.name || "Без названия"}
-              </button>
-            )
-          })}
+          <span className="text-xs text-gray-400 uppercase tracking-wide mr-1 select-none">Направление</span>
+          {directions.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => setSelectedDirId(d.id)}
+              className={`h-8 px-3.5 text-sm border transition-all duration-200 ${
+                selectedDirId === d.id
+                  ? "bg-violet-100 border-violet-300 text-violet-800 font-medium"
+                  : "border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
+              }`}
+            >
+              {d.name || "Без названия"}
+            </button>
+          ))}
         </>
       )}
+      <div className="ml-auto flex items-center gap-1.5">
+        <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+        <select
+          value={sortBy}
+          onChange={(e) => handleSortChange(e.target.value)}
+          className="h-8 pl-1 pr-6 text-sm border border-gray-200 text-gray-600 bg-white hover:border-gray-300 transition-colors appearance-none cursor-pointer focus:outline-none"
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
     </div>
   )
 
-  if (noneSelected) {
+  if (!selectedDirId) {
     return (
       <>
         {directionFilter}
         <div className="flex flex-col items-center justify-center flex-1 h-48 gap-3">
           <Sparkles className="w-8 h-8 text-gray-300" />
-          <p className="text-sm text-gray-500">Выберите хотя бы одно направление</p>
+          <p className="text-sm text-gray-500">Выберите направление</p>
         </div>
       </>
     )
@@ -407,6 +422,17 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
                 const p = pipelineMap.get(t.id)
                 return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} profileId={selectedProfileId} />
               })}
+        {hasNextPage && (
+          <div className="flex justify-center py-4">
+            <button
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="text-xs text-muted-foreground hover:text-foreground transition-all duration-200 disabled:opacity-50"
+            >
+              {isFetchingNextPage ? "Загрузка..." : "Показать ещё"}
+            </button>
+          </div>
+        )}
       </div>
     </>
   )
@@ -436,6 +462,20 @@ function TendersPageInner() {
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
   }, [router])
+
+  const [onboardingChecked, setOnboardingChecked] = useState(false)
+  useEffect(() => {
+    if (onboardingChecked) return
+    if (!isAuthenticated()) return
+    const dismissed = localStorage.getItem("onboarding_dismissed")
+    if (dismissed) { setOnboardingChecked(true); return }
+    profileApi.listCompanies().then((companies) => {
+      if (companies.length === 0 || !companies[0].name) {
+        router.replace("/profile")
+      }
+      setOnboardingChecked(true)
+    }).catch(() => setOnboardingChecked(true))
+  }, [onboardingChecked, router])
 
   return (
     <div className="flex flex-col h-screen">

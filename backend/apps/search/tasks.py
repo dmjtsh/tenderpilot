@@ -35,6 +35,8 @@ def embed_tender(self, tender_id: int) -> None:
         "law_type": tender.law_type,
         "status": tender.status,
         "published_at": tender.published_at.isoformat() if tender.published_at else None,
+        "procedure_type": tender.procedure_type or "",
+        "deadline_at_ts": int(tender.deadline_at.timestamp()) if tender.deadline_at else 0,
     }
     qdrant.upsert_tender(tender.pk, vector, payload)
 
@@ -48,7 +50,7 @@ def rebuild_direction_vector(self, direction_id: int) -> str:
     from .hyde import build_direction_vector
 
     try:
-        direction = CompanyDirection.objects.get(id=direction_id)
+        direction = CompanyDirection.objects.select_related("profile").get(id=direction_id)
     except CompanyDirection.DoesNotExist:
         return "skip: direction not found"
 

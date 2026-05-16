@@ -223,7 +223,7 @@ export interface Tender {
   source?: "eis" | "other"
   ai_summary?: string
   score?: number
-  matched_direction?: string | null
+  score_label?: string
 }
 
 export interface TenderDoc {
@@ -290,17 +290,19 @@ export const searchApi = {
       .post("/search/", { query, limit: 20, ...filters })
       .then((r) => r.data.data as Tender[]),
 
-  match: (limit = 20, directionIds?: number[], filters: Record<string, string> = {}, profileId?: number) =>
+  match: (limit = 20, directionIds?: number[], filters: Record<string, string> = {}, profileId?: number, page = 1, sort = "score") =>
     client
       .get("/search/match/", {
         params: {
           limit,
+          page,
+          sort,
           ...(directionIds?.length ? { direction_ids: directionIds.join(",") } : {}),
           ...(profileId ? { profile_id: profileId } : {}),
           ...filters,
         },
       })
-      .then((r) => r.data as { data: Tender[]; error: string | null }),
+      .then((r) => r.data as { data: Tender[]; has_more: boolean; error: string | null }),
 }
 
 // Profile
@@ -317,6 +319,7 @@ export interface CompanyProfile {
 export interface CompanyDirection {
   id: number
   name: string
+  description: string
   okved_codes: string[]
   keywords: string[]
   regions: string[]
@@ -362,6 +365,13 @@ export const okvedApi = {
     client
       .get("/tenders/okved/", { params: { q } })
       .then((r) => r.data.data as { code: string; name: string }[]),
+}
+
+export const customerApi = {
+  search: (q: string) =>
+    client
+      .get("/tenders/customers/", { params: { q } })
+      .then((r) => r.data.data as { inn: string; name: string }[]),
 }
 
 // Pipeline

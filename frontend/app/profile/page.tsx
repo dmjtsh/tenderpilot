@@ -12,14 +12,12 @@ import { OkvedCombobox } from "@/components/okved-combobox"
 type FormValues = {
   name: string
   inn: string
-  description: string
 }
 
 function toForm(p: CompanyProfile): FormValues {
   return {
     name: p.name ?? "",
     inn: p.inn ?? "",
-    description: p.description ?? "",
   }
 }
 
@@ -27,7 +25,6 @@ function fromForm(f: FormValues): Partial<CompanyProfile> {
   return {
     name: f.name,
     inn: f.inn,
-    description: f.description,
   }
 }
 
@@ -135,6 +132,7 @@ function RegionSelect({
 // ─── NMC ranges ──────────────────────────────────────────────────────────────
 
 const NMCK_PRESETS = [
+  { label: "Любая сумма", min: null, max: null },
   { label: "до 1 млн", min: null, max: 1_000_000 },
   { label: "1–10 млн", min: 1_000_000, max: 10_000_000 },
   { label: "10–50 млн", min: 10_000_000, max: 50_000_000 },
@@ -153,6 +151,7 @@ const PROCEDURE_TYPES = [
   { value: "single_source", label: "Ед. поставщик" },
 ] as const
 
+
 // ─── DirectionCard ────────────────────────────────────────────────────────────
 
 function DirectionCard({
@@ -170,12 +169,14 @@ function DirectionCard({
   const [expanded, setExpanded] = useState(!direction.vector_updated_at)
 
   const [name, setName] = useState(direction.name)
+  const [description, setDescription] = useState(direction.description ?? "")
   const [okvedCodes, setOkvedCodes] = useState<string[]>(direction.okved_codes ?? [])
   const [keywords, setKeywords] = useState((direction.keywords ?? []).join(", "))
   const [regions, setRegions] = useState<string[]>(direction.regions ?? [])
   const [lawTypes, setLawTypes] = useState<string[]>(direction.law_types ?? [])
   const [procedureTypes, setProcedureTypes] = useState<string[]>(direction.procedure_types ?? [])
   const [nmckPreset, setNmckPreset] = useState(() => {
+    if (direction.nmck_min === null && direction.nmck_max === null) return 0
     const idx = NMCK_PRESETS.findIndex(
       (p) => p.min === direction.nmck_min && p.max === direction.nmck_max
     )
@@ -194,6 +195,7 @@ function DirectionCard({
       const nmck_max = isCustom ? (customMax ? parseInt(customMax) : null) : preset.max as number | null
       return directionsApi.update(direction.id, {
         name,
+        description,
         okved_codes: okvedCodes,
         keywords: split(keywords),
         regions,
@@ -251,6 +253,19 @@ function DirectionCard({
             />
           </div>
 
+          {/* Description */}
+          <div>
+            <p className="text-sm text-gray-500 mb-2">Описание направления <span className="text-muted-foreground/50">(специфика работ, типы объектов, материалы)</span></p>
+            <textarea
+              className="w-full bg-gray-50 border border-gray-200 px-4 py-3 text-base text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors resize-none"
+              rows={3}
+              maxLength={500}
+              placeholder="Капитальный ремонт мягкой кровли. Рулонные материалы, металлочерепица. Объекты: школы, детсады, жилые дома до 5 этажей."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
           {/* OKVED */}
           <div>
             <p className="text-sm text-gray-500 mb-2">ОКВЭД коды</p>
@@ -270,13 +285,13 @@ function DirectionCard({
 
           {/* Regions */}
           <div>
-            <p className="text-sm text-gray-500 mb-2">Регионы</p>
+            <p className="text-sm text-gray-500 mb-2">Регионы <span className="text-gray-400 font-normal">(необязательно)</span></p>
             <RegionSelect value={regions} onChange={setRegions} options={regionOptions} />
           </div>
 
           {/* NMC */}
           <div>
-            <p className="text-sm text-gray-500 mb-2">НМЦК</p>
+            <p className="text-sm text-gray-500 mb-2">НМЦК <span className="text-gray-400 font-normal">(необязательно)</span></p>
             <div className="flex flex-wrap gap-1.5">
               {NMCK_PRESETS.map((preset, idx) => (
                 <button
@@ -314,7 +329,7 @@ function DirectionCard({
 
           {/* Law types */}
           <div>
-            <p className="text-sm text-gray-500 mb-2">Типы закупок</p>
+            <p className="text-sm text-gray-500 mb-2">Типы закупок <span className="text-gray-400 font-normal">(необязательно)</span></p>
             <div className="flex gap-4">
               {LAW_TYPES.map((lt) => (
                 <label key={lt} className="flex items-center gap-2 cursor-pointer">
@@ -332,11 +347,14 @@ function DirectionCard({
                 </label>
               ))}
             </div>
+            {lawTypes.length === 0 && (
+              <p className="text-xs text-gray-400 mt-1.5">Если не выбрано — ищем по всем типам</p>
+            )}
           </div>
 
           {/* Procedure types */}
           <div>
-            <p className="text-sm text-gray-500 mb-2">Типы процедур</p>
+            <p className="text-sm text-gray-500 mb-2">Типы процедур <span className="text-gray-400 font-normal">(необязательно)</span></p>
             <div className="flex flex-wrap gap-4">
               {PROCEDURE_TYPES.map((pt) => (
                 <label key={pt.value} className="flex items-center gap-2 cursor-pointer">
@@ -354,6 +372,9 @@ function DirectionCard({
                 </label>
               ))}
             </div>
+            {procedureTypes.length === 0 && (
+              <p className="text-xs text-gray-400 mt-1.5">Если не выбрано — ищем по всем типам</p>
+            )}
           </div>
 
           <div className="flex justify-end">
@@ -386,7 +407,8 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
   const createMutation = useMutation({
     mutationFn: () =>
       directionsApi.create({
-        name: "Новое направление",
+        name: "",
+        description: "",
         okved_codes: [],
         keywords: [],
         regions: [],
@@ -426,8 +448,7 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
           <p className="text-[15px] text-gray-500">Загрузка...</p>
         ) : directions.length === 0 ? (
           <p className="text-[15px] text-gray-500">
-            Добавьте направления чтобы настроить точный поиск с фильтрами по НМЦК и типу закона.
-            HyDE-вектор строится автоматически через ~30 секунд после сохранения.
+            Добавьте направления, чтобы получать персональные рекомендации тендеров.
           </p>
         ) : (
           <div className="space-y-3">
@@ -447,10 +468,69 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
   )
 }
 
+// ─── ProfileCompleteness ─────────────────────────────────────────────────────
+
+function ProfileCompleteness({
+  profile,
+  directions,
+}: {
+  profile: CompanyProfile
+  directions: CompanyDirection[]
+}) {
+  const hasOkvedOrKeywords = directions.some(
+    (d) => (d.okved_codes?.length ?? 0) > 0 || (d.keywords?.length ?? 0) > 0
+  )
+  const items = [
+    { label: "Компания создана", done: !!profile.name },
+    { label: "Хотя бы 1 направление", done: directions.length > 0 },
+    { label: "ОКВЭД или ключевые слова указаны", done: hasOkvedOrKeywords },
+    { label: "Описание направления (улучшает точность)", done: directions.some((d) => (d.description?.length ?? 0) >= 30) },
+  ]
+  const doneCount = items.filter((i) => i.done).length
+  const percent = Math.round((doneCount / items.length) * 100)
+  const allDone = doneCount === items.length
+
+  if (allDone) {
+    return (
+      <div className="border border-emerald-200 bg-emerald-50/50 px-6 py-4 flex items-center gap-3">
+        <span className="text-emerald-600 text-sm font-medium">Профиль полностью заполнен</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border border-gray-200 bg-white">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-base font-semibold text-[#111827]">Качество рекомендаций</p>
+          <span className="text-sm font-medium text-violet-600">{percent}%</span>
+        </div>
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-violet-600 rounded-full transition-all duration-500"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+      <div className="px-6 py-4 space-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center gap-3 text-sm">
+            {item.done ? (
+              <span className="text-emerald-500 w-5 text-center font-medium">&#10003;</span>
+            ) : (
+              <span className="text-gray-300 w-5 text-center">&#9675;</span>
+            )}
+            <span className={item.done ? "text-gray-500" : "text-gray-700"}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 const inputCls = "w-full h-11 bg-gray-50 border border-gray-200 px-4 text-base text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
-const textareaCls = "w-full bg-gray-50 border border-gray-200 px-4 py-3 text-base text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors resize-none"
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -614,6 +694,10 @@ export default function ProfilePage() {
   const qc = useQueryClient()
   const [innSuggestion, setInnSuggestion] = useState<InnLookupResult | null>(null)
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+  const [showOnboarding] = useState(() => {
+    if (typeof window === "undefined") return false
+    return !localStorage.getItem("onboarding_dismissed")
+  })
   const [showNewCompanyForm, setShowNewCompanyForm] = useState(false)
   const [newCompanyName, setNewCompanyName] = useState("")
 
@@ -635,6 +719,12 @@ export default function ProfilePage() {
   const { data: regionOptions = [] } = useQuery<string[]>({
     queryKey: ["regions"],
     queryFn: () => tendersApi.regions(),
+  })
+
+  const { data: directionsForCompleteness = [] } = useQuery<CompanyDirection[]>({
+    queryKey: ["directions", selectedProfileId],
+    queryFn: () => directionsApi.list(selectedProfileId!),
+    enabled: !!selectedProfileId,
   })
 
   // Default to first profile
@@ -716,6 +806,7 @@ export default function ProfilePage() {
       selected.map((d) =>
         directionsApi.create({
           name: d.name,
+          description: "",
           okved_codes: [d.okved_code],
           keywords: [],
           regions: [],
@@ -750,6 +841,25 @@ export default function ProfilePage() {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+
+          {/* Onboarding banner — only when no directions */}
+          {showOnboarding && directionsForCompleteness.length === 0 && selectedCompany && (
+            <div className="border border-violet-200 bg-violet-50/50 px-6 py-5">
+              <p className="text-base font-medium text-[#111827]">
+                Создайте направление поиска, чтобы получать персональные рекомендации тендеров
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("directions-section")
+                  el?.scrollIntoView({ behavior: "smooth" })
+                }}
+                className="mt-3 h-9 px-4 text-sm font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors"
+              >
+                Создать направление
+              </button>
+            </div>
+          )}
 
           {/* Plan */}
           {billingInfo && <PlanBlock plan={billingInfo} />}
@@ -847,6 +957,9 @@ export default function ProfilePage() {
           {/* Company detail (shown when a company is selected) */}
           {selectedCompany && (
             <>
+              {/* Profile completeness */}
+              <ProfileCompleteness profile={selectedCompany} directions={directionsForCompleteness} />
+
               {/* Company info card */}
               <div className="border border-gray-200 bg-white">
                 <div className="px-6 py-4 border-b border-gray-200">
@@ -890,39 +1003,9 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Description card */}
-              <div className="border border-gray-200 bg-white">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <p className="text-base font-semibold text-[#111827]">Описание деятельности</p>
-                </div>
-                <div className="px-6 py-6 space-y-4">
-                  <textarea
-                    className={textareaCls}
-                    rows={4}
-                    placeholder="Разработка и поставка медицинского оборудования, ИТ-решений..."
-                    {...register("description")}
-                  />
-                  <div className="flex items-center justify-end gap-3">
-                    {saveMutation.isError && (
-                      <p className="text-sm text-red-500">Ошибка сохранения</p>
-                    )}
-                    {saveMutation.isSuccess && !isDirty && (
-                      <p className="text-sm text-emerald-600">Сохранено</p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleSubmit((data) => saveMutation.mutateAsync(data))}
-                      disabled={!isDirty || isSubmitting}
-                      className="h-10 px-5 text-sm font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-40"
-                    >
-                      {isSubmitting ? "Сохранение..." : "Сохранить"}
-                    </button>
-                  </div>
-                </div>
-              </div>
 
               {/* Directions card */}
-              <div className="border border-gray-200 bg-white">
+              <div id="directions-section" className="border border-gray-200 bg-white">
                 <DirectionsSection regionOptions={regionOptions} profileId={selectedProfileId ?? undefined} />
               </div>
             </>

@@ -47,6 +47,10 @@ export function MultiSelectFilter({
           o.value.toLowerCase().includes(query.toLowerCase())
       )
 
+  const selectedNotInResults = selected.filter(
+    (s) => !filtered.some((o) => o.value === s)
+  )
+
   const toggle = (val: string) => {
     onChange(
       selected.includes(val)
@@ -71,9 +75,24 @@ export function MultiSelectFilter({
           </div>
         </div>
       )}
-      <div className="max-h-56 overflow-y-auto">
+      <div className="max-h-64 overflow-y-auto">
+        {selectedNotInResults.map((val) => (
+          <button
+            key={val}
+            onClick={() => toggle(val)}
+            className="flex items-start gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center justify-center w-4 h-4 rounded border shrink-0 mt-0.5 bg-[#111827] border-[#111827]">
+              <Check className="w-3 h-3 text-white" />
+            </span>
+            <span className="text-[#111827]">{val}</span>
+          </button>
+        ))}
+        {selectedNotInResults.length > 0 && filtered.length > 0 && (
+          <div className="border-t border-gray-100 my-0.5" />
+        )}
         {loading && <div className="px-3 py-2 text-sm text-gray-400">Загрузка...</div>}
-        {!loading && filtered.length === 0 && (
+        {!loading && filtered.length === 0 && selectedNotInResults.length === 0 && (
           <div className="px-3 py-2 text-sm text-gray-400">Ничего не найдено</div>
         )}
         {filtered.map((o) => {
@@ -82,16 +101,16 @@ export function MultiSelectFilter({
             <button
               key={o.value}
               onClick={() => toggle(o.value)}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-gray-50 transition-colors"
+              className="flex items-start gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-gray-50 transition-colors"
             >
               <span
-                className={`flex items-center justify-center w-4 h-4 rounded border shrink-0 ${
+                className={`flex items-center justify-center w-4 h-4 rounded border shrink-0 mt-0.5 ${
                   isSelected ? "bg-[#111827] border-[#111827]" : "border-gray-300"
                 }`}
               >
                 {isSelected && <Check className="w-3 h-3 text-white" />}
               </span>
-              <span className="text-[#111827] truncate">{o.label}</span>
+              <span className="text-[#111827]">{o.label}</span>
             </button>
           )
         })}

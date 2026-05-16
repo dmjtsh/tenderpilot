@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { SlidersHorizontal, X } from "lucide-react"
 import type { TenderFilters } from "@/hooks/use-tender-filters"
-import { tendersApi, okvedApi } from "@/lib/api"
+import { tendersApi, okvedApi, customerApi } from "@/lib/api"
 import { FilterDropdown } from "./filter-dropdown"
 import { MultiSelectFilter } from "./multi-select-filter"
 import { RangeFilter } from "./range-filter"
@@ -25,8 +25,16 @@ const LAW_OPTIONS = [
   { value: "615-ПП", label: "615-ПП" },
 ]
 
-const SOURCE_OPTIONS = [
-  { value: "eis", label: "ЕИС (госзакупки)" },
+const PLATFORM_OPTIONS = [
+  { value: "РТС-тендер", label: "РТС-тендер" },
+  { value: "Сбербанк-АСТ", label: "Сбербанк-АСТ" },
+  { value: "РОСЭЛТОРГ", label: "РОСЭЛТОРГ" },
+  { value: "Фабрикант", label: "Фабрикант" },
+  { value: "Газпромбанк", label: "ЭТП Газпромбанк" },
+  { value: "АГЗ РТ", label: "АГЗ РТ" },
+  { value: "ТЭК-Торг", label: "ТЭК-Торг" },
+  { value: "РАД", label: "РАД" },
+  { value: "ЕЭТП", label: "ЕЭТП" },
 ]
 
 interface Props {
@@ -60,10 +68,17 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
     label: `${o.code} — ${o.name}`,
   }))
 
-  const [customerInput, setCustomerInput] = useState(filters.customer)
-  const applyCustomer = useCallback(() => {
-    if (customerInput !== filters.customer) setFilter("customer", customerInput)
-  }, [customerInput, filters.customer, setFilter])
+  const [customerQuery, setCustomerQuery] = useState("")
+  const { data: customerResults = [], isFetching: customerLoading } = useQuery({
+    queryKey: ["customer-search", customerQuery],
+    queryFn: () => customerApi.search(customerQuery),
+    enabled: customerQuery.length >= 2,
+    staleTime: 30_000,
+  })
+  const customerOptions = customerResults.map((c: { inn: string; name: string }) => ({
+    value: c.name,
+    label: c.name,
+  }))
 
   const content = (
     <>
@@ -83,11 +98,11 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
         />
       </FilterDropdown>
 
-      <FilterDropdown label="Источник" activeCount={filters.source.length}>
+      <FilterDropdown label="Площадка" activeCount={filters.platforms.length}>
         <MultiSelectFilter
-          options={SOURCE_OPTIONS}
-          selected={filters.source}
-          onChange={(v) => setFilter("source", v)}
+          options={PLATFORM_OPTIONS}
+          selected={filters.platforms}
+          onChange={(v) => setFilter("platforms", v)}
         />
       </FilterDropdown>
 
@@ -121,8 +136,9 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
         <DeadlineFilter
           min={filters.deadline_days_min}
           max={filters.deadline_days}
-          onChangeMin={(v) => setFilter("deadline_days_min", v)}
-          onChangeMax={(v) => setFilter("deadline_days", v)}
+          onChange={(min, max) => {
+            setFilters({ ...filters, deadline_days_min: min, deadline_days: max })
+          }}
         />
       </FilterDropdown>
 
@@ -140,31 +156,18 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
 
       <FilterDropdown
         label="Заказчик"
-        activeCount={filters.customer ? 1 : 0}
+        activeCount={filters.customers.length}
+        wide
       >
-        <div className="p-3 space-y-2">
-          <input
-            value={customerInput}
-            onChange={(e) => setCustomerInput(e.target.value)}
-            onBlur={applyCustomer}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") applyCustomer()
-            }}
-            placeholder="Название или ИНН"
-            className="w-full h-8 px-2.5 text-sm border border-gray-200 rounded-md bg-gray-50 text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300"
-          />
-          {filters.customer && (
-            <button
-              onClick={() => {
-                setCustomerInput("")
-                setFilter("customer", "")
-              }}
-              className="text-xs text-gray-500 hover:text-gray-700"
-            >
-              Сбросить
-            </button>
-          )}
-        </div>
+        <MultiSelectFilter
+          options={customerOptions}
+          selected={filters.customers}
+          onChange={(v) => setFilter("customers", v)}
+          searchable
+          searchPlaceholder="Название или ИНН..."
+          onSearch={setCustomerQuery}
+          loading={customerLoading}
+        />
       </FilterDropdown>
     </>
   )
@@ -263,8 +266,9 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
                 <DeadlineFilter
                   min={filters.deadline_days_min}
                   max={filters.deadline_days}
-                  onChangeMin={(v) => setFilter("deadline_days_min", v)}
-                  onChangeMax={(v) => setFilter("deadline_days", v)}
+                  onChange={(min, max) => {
+                    setFilters({ ...filters, deadline_days_min: min, deadline_days: max })
+                  }}
                 />
               </div>
               <div>
@@ -281,12 +285,14 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1.5">Заказчик</p>
-                <input
-                  value={customerInput}
-                  onChange={(e) => setCustomerInput(e.target.value)}
-                  onBlur={applyCustomer}
-                  placeholder="Название или ИНН"
-                  className="w-full h-9 px-3 text-sm border border-gray-200 rounded-md bg-gray-50 text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300"
+                <MultiSelectFilter
+                  options={customerOptions}
+                  selected={filters.customers}
+                  onChange={(v) => setFilter("customers", v)}
+                  searchable
+                  searchPlaceholder="Название или ИНН..."
+                  onSearch={setCustomerQuery}
+                  loading={customerLoading}
                 />
               </div>
             </div>

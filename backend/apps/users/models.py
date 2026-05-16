@@ -28,6 +28,9 @@ class CompanyProfile(models.Model):
     okved_codes = models.JSONField(default=list)
     regions = models.JSONField(default=list)
     keywords = models.JSONField(default=list)
+    contract_security_budget = models.BigIntegerField(null=True, blank=True)
+    has_bank_guarantee = models.BooleanField(default=False)
+    platforms = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -49,6 +52,7 @@ class CompanyDirection(models.Model):
     nmck_max = models.BigIntegerField(null=True, blank=True)
     law_types = ArrayField(models.CharField(max_length=10), default=list, blank=True)
     procedure_types = ArrayField(models.CharField(max_length=25), default=list, blank=True)
+    description = models.TextField(blank=True)
     hyde_texts = models.JSONField(null=True, blank=True)
     profile_vector = ArrayField(models.FloatField(), size=1024, null=True, blank=True)
     content_hash = models.CharField(max_length=16, blank=True)
@@ -66,6 +70,7 @@ class CompanyDirection(models.Model):
     def compute_content_hash(self) -> str:
         content = {
             "name": self.name,
+            "description": (self.description or "")[:500],
             "okved_codes": sorted(self.okved_codes or []),
             "keywords": sorted(self.keywords or []),
             "regions": sorted(self.regions or []),

@@ -19,11 +19,10 @@ const DEADLINE_PRESETS: Preset[] = [
 interface Props {
   min: number | null
   max: number | null
-  onChangeMin: (days: number | null) => void
-  onChangeMax: (days: number | null) => void
+  onChange: (min: number | null, max: number | null) => void
 }
 
-export function DeadlineFilter({ min, max, onChangeMin, onChangeMax }: Props) {
+export function DeadlineFilter({ min, max, onChange }: Props) {
   const [customMin, setCustomMin] = useState("")
   const [customMax, setCustomMax] = useState("")
   const [showCustom, setShowCustom] = useState(false)
@@ -41,19 +40,16 @@ export function DeadlineFilter({ min, max, onChangeMin, onChangeMax }: Props) {
 
   const selectPreset = (p: Preset, idx: number) => {
     if (activePreset === idx) {
-      onChangeMin(null)
-      onChangeMax(null)
+      onChange(null, null)
       setShowCustom(false)
     } else {
-      onChangeMin(p.min)
-      onChangeMax(p.max)
+      onChange(p.min, p.max)
       setShowCustom(false)
     }
   }
 
   const applyCustom = () => {
-    onChangeMin(customMin ? Number(customMin) : null)
-    onChangeMax(customMax ? Number(customMax) : null)
+    onChange(customMin ? Number(customMin) : null, customMax ? Number(customMax) : null)
   }
 
   return (
@@ -76,10 +72,7 @@ export function DeadlineFilter({ min, max, onChangeMin, onChangeMax }: Props) {
         <button
           onClick={() => {
             setShowCustom(!showCustom)
-            if (!showCustom) {
-              onChangeMin(null)
-              onChangeMax(null)
-            }
+            if (!showCustom) onChange(null, null)
           }}
           className={`h-7 px-2.5 text-xs border rounded-md transition-colors ${
             showCustom && activePreset === -1
@@ -120,8 +113,7 @@ export function DeadlineFilter({ min, max, onChangeMin, onChangeMax }: Props) {
       {(min !== null || max !== null) && (
         <button
           onClick={() => {
-            onChangeMin(null)
-            onChangeMax(null)
+            onChange(null, null)
             setShowCustom(false)
             setCustomMin("")
             setCustomMax("")

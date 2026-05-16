@@ -55,14 +55,8 @@ def tender_text(tender: "Tender") -> str:
     from apps.tenders.okved import okved_to_text
 
     okpd_names = okved_to_text(tender.okpd_codes or [])
-    ai_summary = (tender.ai_summary or "")[:500]
-
     parts = [
         tender.title + ".",
-        ai_summary,
         f"Вид работ: {okpd_names}." if okpd_names else "",
-        f"Заказчик: {tender.customer.name}." if tender.customer_id else "",
-        f"Регион: {tender.region}." if tender.region else "",
-        f"Закон: {tender.law_type}." if tender.law_type else "",
     ]
     return " ".join(p for p in parts if p)

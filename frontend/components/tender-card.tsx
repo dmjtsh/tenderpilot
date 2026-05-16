@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import type { Tender, PipelineStatus } from "@/lib/api"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Star } from "lucide-react"
 
 const PROCEDURE_BADGE: Record<string, { label: string; cls: string }> = {
   auction: { label: "Аукцион", cls: "bg-gray-100 text-gray-600" },
@@ -16,9 +16,10 @@ const PROCEDURE_BADGE: Record<string, { label: string; cls: string }> = {
 
 
 function scoreColor(score: number): string {
-  if (score >= 0.6) return "text-violet-600"
-  if (score >= 0.4) return "text-violet-500"
-  return "text-violet-400"
+  if (score >= 90) return "text-gray-900"
+  if (score >= 70) return "text-gray-700"
+  if (score >= 50) return "text-gray-500"
+  return "text-gray-400"
 }
 
 function fmtNmck(n: number | string | null): string | null {
@@ -181,15 +182,16 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
                 {procBadge.label}
               </span>
             )}
-            {tender.matched_direction && (
-              <span className="text-xs px-2 py-0.5 rounded bg-violet-100 text-violet-800 border border-violet-300 font-medium max-w-[180px] truncate">
-                {tender.matched_direction}
-              </span>
-            )}
             {tender.score != null && (
-              <span className={`text-sm font-semibold ${scoreColor(tender.score)}`}>
-                {(tender.score * 100).toFixed(0)}%
-              </span>
+              <div className="flex items-center gap-1.5">
+                <Star className={`w-4 h-4 ${scoreColor(tender.score)}`} />
+                <span className={`text-sm font-semibold ${scoreColor(tender.score)}`}>
+                  {tender.score}
+                </span>
+                {tender.score_label && (
+                  <span className="text-xs text-gray-500">{tender.score_label}</span>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -249,6 +251,8 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
             />
           )}
         </div>
+
+
       </div>
     </Link>
   )

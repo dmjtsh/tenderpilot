@@ -65,9 +65,10 @@ class Command(BaseCommand):
                 "customer_name": t.customer.name if t.customer else "",
                 "region": t.region,
                 "law_type": t.law_type,
-                "procedure_type": t.procedure_type,
+                "procedure_type": t.procedure_type or "",
                 "status": t.status,
                 "published_at": t.published_at.isoformat() if t.published_at else None,
+                "deadline_at_ts": int(t.deadline_at.timestamp()) if t.deadline_at else 0,
             }
             items.append((t.pk, vec, payload))
 

@@ -1,3 +1,4 @@
+import time
 from typing import Any
 from django.conf import settings
 from qdrant_client import QdrantClient
@@ -109,6 +110,7 @@ class QdrantService:
         for direction in directions:
             conditions = [
                 FieldCondition(key="status", match=MatchValue(value="active")),
+                FieldCondition(key="deadline_at_ts", range=Range(gt=int(time.time()))),
             ]
 
             regions = list(set(direction.regions or []) & set(extra_regions)) if extra_regions and direction.regions else (extra_regions or direction.regions)
@@ -151,11 +153,12 @@ class QdrantService:
                         "id": r.id,
                         "score": r.score,
                         "matched_direction": direction.name,
+                        "matched_direction_id": direction.id,
                         **r.payload,
                     }
 
         sorted_results = sorted(all_results.values(), key=lambda x: x["score"], reverse=True)
-        return sorted_results[:limit * 5]
+        return sorted_results[:limit * 10]
 
     def search_doc_chunks(
         self,

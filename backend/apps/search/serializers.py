@@ -17,6 +17,11 @@ class SearchQuerySerializer(serializers.Serializer):
     customer = serializers.CharField(required=False, allow_blank=True, default="")
 
 
+class ExplanationSerializer(serializers.Serializer):
+    icon = serializers.CharField()
+    text = serializers.CharField()
+
+
 class SearchResultItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     number = serializers.CharField()
@@ -33,4 +38,6 @@ class SearchResultItemSerializer(serializers.Serializer):
     auction_date = serializers.DateTimeField(allow_null=True, required=False)
     procedure_type = serializers.CharField(allow_null=True, required=False, allow_blank=True)
     score = serializers.FloatField()
+    score_label = serializers.CharField(required=False, default="")
+    explanations = ExplanationSerializer(many=True, required=False, default=list)
     matched_direction = serializers.CharField(allow_null=True, required=False)

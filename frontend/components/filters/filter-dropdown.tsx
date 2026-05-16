@@ -8,9 +8,10 @@ interface Props {
   activeCount?: number
   children: ReactNode
   className?: string
+  wide?: boolean
 }
 
-export function FilterDropdown({ label, activeCount, children, className }: Props) {
+export function FilterDropdown({ label, activeCount, children, className, wide }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -41,7 +42,7 @@ export function FilterDropdown({ label, activeCount, children, className }: Prop
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[220px]">
+        <div className={`absolute top-full left-0 mt-1.5 z-50 bg-white border border-gray-200 rounded-lg shadow-lg ${wide ? "w-[420px]" : "min-w-[220px]"}`}>
           {children}
         </div>
       )}

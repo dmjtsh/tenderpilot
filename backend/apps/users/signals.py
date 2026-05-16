@@ -19,3 +19,5 @@ def schedule_vector_rebuild(sender, instance, **kwargs):
         task_id=f"direction-vector-{instance.id}",
     )
     logger.info("Scheduled vector rebuild for direction %d", instance.id)
+
+
