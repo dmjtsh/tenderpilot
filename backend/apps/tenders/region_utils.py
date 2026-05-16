@@ -1,16 +1,12 @@
 """
-Утилиты для нормализации регионов тендеров.
-
-Пайплайн для 223-ФЗ (FIAS-адрес):
-  "625000, Г.. ТЮМЕНЬ, ул. Ленина 5"
-    → extract postal_code "625000"
-    → lookup в postal_region.json
-    → "Тюменская обл"
+Утилиты для определения субъекта РФ по почтовому индексу из FIAS-адреса.
 
 Файл postal_region.json генерируется скриптом:
     python scripts/build_postal_region.py
 и коммитится в репо.
 """
+from __future__ import annotations
+
 import json
 import re
 from pathlib import Path
@@ -29,26 +25,18 @@ def _load() -> dict[str, str]:
     return _postal_map
 
 
-def get_region_by_postal(postal_code: str) -> str:
-    """Возвращает канонический субъект по почтовому индексу или '' если не найден."""
-    return _load().get(postal_code, "")
-
-
 def extract_region_from_fias(address: str) -> str:
     """
-    Извлекает субъект РФ из строки FIAS-адреса.
+    Определяет субъект РФ из FIAS-адреса по почтовому индексу.
 
-    Формат: "625000, Г.. ТЮМЕНЬ, ул. Ленина, д. 5"
-    → ищет 6-значный индекс в начале → lookup → "Тюменская обл"
+    "625000, Г.. ТЮМЕНЬ, ул. Ленина, д. 5" → "Тюменская обл"
+    "127006, Г.МОСКВА, ..."                 → "Москва"
 
-    Возвращает '' если индекс не найден или не в маппинге.
+    Возвращает '' если индекс не найден в маппинге.
     """
     if not address:
         return ""
-    parts = [p.strip() for p in address.split(",")]
-    if not parts:
-        return ""
-    first = parts[0]
+    first = address.split(",")[0].strip()
     if re.match(r"^\d{6}$", first):
-        return get_region_by_postal(first)
+        return _load().get(first, "")
     return ""
