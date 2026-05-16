@@ -92,18 +92,34 @@ def classify_documents_priority(filenames: list[str]) -> dict[str, int]:
     if not filenames:
         return {}
 
-    from openai import OpenAI
+    from apps.tenders.services import get_llm_client
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY, base_url=settings.OPENAI_BASE_URL or None)
     prompt = CLASSIFY_PROMPT.format(filenames=json.dumps(filenames, ensure_ascii=False))
+    messages = [{"role": "user", "content": prompt}]
 
     try:
+        client = get_llm_client("deepseek-chat")
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            model="deepseek-chat",
+            messages=messages,
             max_tokens=500,
             temperature=0,
         )
+    except Exception as e:
+        logger.warning("DeepSeek classify failed, falling back to GPT-4o-mini: %s", e)
+        try:
+            client = get_llm_client("gpt-4o-mini")
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                max_tokens=500,
+                temperature=0,
+            )
+        except Exception as exc:
+            logger.warning("GPT classify_documents_priority also failed: %s", exc)
+            return {fname: detect_content_priority(fname) for fname in filenames}
+
+    try:
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
@@ -118,7 +134,7 @@ def classify_documents_priority(filenames: list[str]) -> dict[str, int]:
             for fname, p in result.items()
         }
     except Exception as exc:
-        logger.warning("GPT classify_documents_priority failed: %s", exc)
+        logger.warning("classify_documents_priority parse failed: %s", exc)
         return {fname: detect_content_priority(fname) for fname in filenames}
 
 
