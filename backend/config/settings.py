@@ -123,6 +123,13 @@ REST_FRAMEWORK = {
 # CORS
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:3000", cast=Csv())
 
+# CSRF
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default="https://pilot-tender.ru,https://www.pilot-tender.ru",
+    cast=Csv(),
+)
+
 # JWT
 from datetime import timedelta
 from celery.schedules import crontab
