@@ -172,6 +172,7 @@ function DirectionCard({
   const [description, setDescription] = useState(direction.description ?? "")
   const [okvedCodes, setOkvedCodes] = useState<string[]>(direction.okved_codes ?? [])
   const [keywords, setKeywords] = useState((direction.keywords ?? []).join(", "))
+  const [excludeKeywords, setExcludeKeywords] = useState((direction.exclude_keywords ?? []).join(", "))
   const [regions, setRegions] = useState<string[]>(direction.regions ?? [])
   const [lawTypes, setLawTypes] = useState<string[]>(direction.law_types ?? [])
   const [procedureTypes, setProcedureTypes] = useState<string[]>(direction.procedure_types ?? [])
@@ -198,6 +199,7 @@ function DirectionCard({
         description,
         okved_codes: okvedCodes,
         keywords: split(keywords),
+        exclude_keywords: split(excludeKeywords),
         regions,
         law_types: lawTypes,
         procedure_types: procedureTypes,
@@ -280,6 +282,17 @@ function DirectionCard({
               placeholder="кровля, кровельные работы"
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
+            />
+          </div>
+
+          {/* Exclude Keywords */}
+          <div>
+            <p className="text-sm text-gray-500 mb-2">Слова-исключения <span className="text-muted-foreground/50">(через запятую, тендеры с этими словами в названии будут скрыты)</span></p>
+            <input
+              className={inputCls}
+              placeholder="уборка, клининг, озеленение"
+              value={excludeKeywords}
+              onChange={(e) => setExcludeKeywords(e.target.value)}
             />
           </div>
 
@@ -411,6 +424,7 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
         description: "",
         okved_codes: [],
         keywords: [],
+        exclude_keywords: [],
         regions: [],
         law_types: [],
         procedure_types: [],
@@ -809,6 +823,7 @@ export default function ProfilePage() {
           description: "",
           okved_codes: [d.okved_code],
           keywords: [],
+          exclude_keywords: [],
           regions: [],
           law_types: [],
           procedure_types: [],

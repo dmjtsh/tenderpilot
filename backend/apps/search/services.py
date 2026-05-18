@@ -164,7 +164,12 @@ class QdrantService:
                 with_payload=True,
             ).points
 
+            exclude_kws = [kw.lower() for kw in (direction.exclude_keywords or [])]
             for r in results:
+                if exclude_kws:
+                    title_lower = ((r.payload or {}).get("title") or "").lower()
+                    if any(kw in title_lower for kw in exclude_kws):
+                        continue
                 existing = all_results.get(r.id)
                 if existing is None or r.score > existing["score"]:
                     all_results[r.id] = {

@@ -47,6 +47,7 @@ class CompanyDirection(models.Model):
     name = models.CharField(max_length=255)
     okved_codes = ArrayField(models.CharField(max_length=10), default=list, blank=True)
     keywords = ArrayField(models.CharField(max_length=100), default=list, blank=True)
+    exclude_keywords = ArrayField(models.CharField(max_length=100), default=list, blank=True)
     regions = ArrayField(models.CharField(max_length=100), default=list, blank=True)
     nmck_min = models.BigIntegerField(null=True, blank=True)
     nmck_max = models.BigIntegerField(null=True, blank=True)

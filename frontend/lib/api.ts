@@ -325,6 +325,7 @@ export interface CompanyDirection {
   description: string
   okved_codes: string[]
   keywords: string[]
+  exclude_keywords: string[]
   regions: string[]
   nmck_min: number | null
   nmck_max: number | null
