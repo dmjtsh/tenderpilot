@@ -1681,24 +1681,25 @@ function SimilarTendersBlock({ tenderId, profileId }: { tenderId: number; profil
   if (tenders.length === 0) return null
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-2 mb-4">
-        <Copy className="w-4 h-4 text-gray-400" />
-        <h2 className="text-base font-semibold text-[#111827]">Похожие тендеры</h2>
+    <div className="mb-8 border border-gray-200 bg-white">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
+        <Copy className="w-5 h-5 text-gray-400" />
+        <p className="text-base font-semibold text-[#111827]">Похожие тендеры</p>
+        <span className="text-sm text-gray-400">{tenders.length}</span>
       </div>
-      <div className="space-y-3">
+      <div className="px-6 py-5 space-y-3">
         {tenders.map((t) => (
           <TenderCard key={t.id} tender={t} profileId={profileId} />
         ))}
+        {hasMore && (
+          <button
+            onClick={() => setLimit(prev => prev + 3)}
+            className="text-sm text-gray-500 hover:text-[#111827] transition-colors"
+          >
+            Показать ещё
+          </button>
+        )}
       </div>
-      {hasMore && (
-        <button
-          onClick={() => setLimit(prev => prev + 3)}
-          className="mt-3 text-sm text-gray-500 hover:text-[#111827] transition-colors"
-        >
-          Показать ещё
-        </button>
-      )}
     </div>
   )
 }
