@@ -35,7 +35,7 @@ export function FAQ() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className={`scroll-hidden ${isVisible ? "scroll-visible" : ""}`}>
           <h2 className="text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">
-            Есть вопросы?
+            Частые вопросы о поиске тендеров
           </h2>
           <p className="mt-2 text-base text-[#6B7280]">
             Ответили на самые частые из них

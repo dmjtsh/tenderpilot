@@ -32,7 +32,7 @@ export function HowItWorks() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className={`text-center scroll-hidden ${isVisible ? "scroll-visible" : ""}`}>
           <h2 className="text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">
-            Как это работает
+            Как работает автоматический поиск тендеров
           </h2>
         </div>
 
@@ -44,7 +44,7 @@ export function HowItWorks() {
             >
               <Image
                 src={step.image}
-                alt=""
+                alt={step.title}
                 width={220}
                 height={220}
                 className="mx-auto w-[180px] sm:w-[210px]"

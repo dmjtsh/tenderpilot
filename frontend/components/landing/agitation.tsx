@@ -13,7 +13,7 @@ export function Agitation() {
           <div className="shrink-0">
             <Image
               src="/sculptures/hourglass.png"
-              alt=""
+              alt="Время уходит на ручной поиск тендеров"
               width={240}
               height={240}
               className="w-[160px] sm:w-[200px] lg:w-[240px]"

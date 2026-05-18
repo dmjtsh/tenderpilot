@@ -13,7 +13,7 @@ export function Hero() {
           <div className="max-w-2xl text-center lg:text-left">
             <div className="animate-hero" style={{ animationDelay: "0.15s" }}>
               <h1 className="text-5xl font-bold tracking-tight leading-tight text-[#111827] sm:text-6xl lg:text-7xl">
-                <span className="text-balance">Находите нужные тендеры.</span>
+                <span className="text-balance">ИИ-поиск тендеров и госзакупок.</span>
                 <br />
                 <span className="font-serif italic text-[#111827]">Пока конкуренты ищут вручную.</span>
               </h1>
