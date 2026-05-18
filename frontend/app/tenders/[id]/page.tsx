@@ -1236,6 +1236,29 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
           <p className="text-sm font-semibold text-[#111827]">AI-резюме</p>
           <div className="ml-auto flex items-center gap-2">
             <button
+              onClick={async () => {
+                const res = await client.get(`/tenders/${tenderId}/summary/export/`, { params: { type: "pdf" }, responseType: "blob" })
+                const url = URL.createObjectURL(res.data)
+                const a = document.createElement("a"); a.href = url; a.download = `summary_${tenderId}.pdf`; a.click(); URL.revokeObjectURL(url)
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              PDF
+            </button>
+            <button
+              onClick={async () => {
+                const res = await client.get(`/tenders/${tenderId}/summary/export/`, { params: { type: "docx" }, responseType: "blob" })
+                const url = URL.createObjectURL(res.data)
+                const a = document.createElement("a"); a.href = url; a.download = `summary_${tenderId}.docx`; a.click(); URL.revokeObjectURL(url)
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              DOCX
+            </button>
+            <span className="w-px h-4 bg-gray-200" />
+            <button
               onClick={() => handleGenerate(true)}
               className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#111827] transition-colors"
             >

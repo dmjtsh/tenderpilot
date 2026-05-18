@@ -193,6 +193,36 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         except Exception as e:
             return Response({"data": None, "error": str(e)}, status=500)
 
+    @action(detail=True, methods=["get"], url_path="summary/export")
+    def summary_export(self, request, pk=None):
+        from django.http import HttpResponse
+        from apps.tenders.models import TenderSummaryV2
+        from apps.tenders.summary_export import render_summary_pdf, render_summary_docx
+
+        tender = self.get_object()
+        obj = TenderSummaryV2.objects.filter(tender=tender, user=request.user).first()
+        if not obj:
+            obj = TenderSummaryV2.objects.filter(tender=tender).first()
+        if not obj:
+            return Response({"data": None, "error": "Резюме не найдено"}, status=404)
+
+        fmt = request.query_params.get("type", "pdf")
+        summary = obj.summary
+
+        if fmt == "docx":
+            buf = render_summary_docx(tender, summary)
+            content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            ext = "docx"
+        else:
+            buf = render_summary_pdf(tender, summary)
+            content_type = "application/pdf"
+            ext = "pdf"
+
+        filename = f"summary_{tender.number}.{ext}"
+        response = HttpResponse(buf.getvalue(), content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
     @action(detail=True, methods=["get"], url_path="docs")
     def docs(self, request, pk=None):
         from apps.documents.models import TenderDocument
