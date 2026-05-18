@@ -91,7 +91,7 @@ function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-baseline gap-2 text-sm">
       <span className="text-xs font-medium uppercase text-gray-500 shrink-0">{label}:</span>
-      <span className="text-gray-900">{value}</span>
+      <span className="text-gray-900 break-words min-w-0">{value}</span>
     </div>
   )
 }
@@ -547,7 +547,7 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
               {(work.scope?.volume_metrics?.length ?? 0) > 0 && (
                 <>
                   <SubHeading>Объёмы</SubHeading>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                  <div className="space-y-1">
                     {work.scope.volume_metrics.map((m, i) => (
                       <FieldRow key={i} label={m.metric} value={m.value} />
                     ))}
@@ -600,8 +600,8 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
         {/* 3. Financial (ЗА СКОЛЬКО) */}
         {fin && (
           <Disclosure title="Финансы" icon={DollarSign} defaultOpen={true}>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-1">
+            <div className="grid md:grid-cols-2 gap-x-6 gap-y-4 items-start">
+              <div className="space-y-1 min-w-0">
                 <SubHeading>Оплата</SubHeading>
                 {fin.advance?.has_advance ? (
                   <FieldRow label="Аванс" value={`${fin.advance.amount_pct ? `${fin.advance.amount_pct}%` : fin.advance.amount_rub ? fmtVolume(fin.advance.amount_rub) : "да"}${fin.advance.description ? ` — ${fin.advance.description}` : ""}`} />
@@ -613,7 +613,7 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
                 )}
                 {fin.funding_source && <FieldRow label="Источник" value={fin.funding_source} />}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <SubHeading>Обеспечение и штрафы</SubHeading>
                 {(fin.securities?.bid_pct != null || fin.securities?.bid_amount_rub != null) && (
                   <FieldRow label="Заявка" value={`${fin.securities.bid_pct ? `${fin.securities.bid_pct}%` : ""}${fin.securities.bid_amount_rub ? ` (${fmtVolume(fin.securities.bid_amount_rub)})` : ""}`} />
