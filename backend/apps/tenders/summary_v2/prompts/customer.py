@@ -50,9 +50,20 @@ SYSTEM_PROMPT = """\
 
 ПРИНЦИПЫ:
 1. Используй ВСЕ доступные данные: и из документации, и из профиля обогащения
-2. Числа ТОЧНО как в данных
-3. Не придумывай данные — если профиль обогащения пуст, финансы = null
+2. Числа ТОЧНО как в данных — копируй из профиля обогащения
+3. Не придумывай данные — если профиля обогащения нет, ставь null
 4. red_flags — только подтверждённые фактами
+5. ОБЯЗАТЕЛЬНО заполни procurement_history и risk_indicators если данные есть в профиле обогащения:
+   - procurement_history.total_purchases = "Закупок как заказчик" из профиля
+   - procurement_history.total_amount_rub = "Сумма закупок" из профиля
+   - risk_indicators.arbitration_count = "Арбитражных дел" из профиля
+   - risk_indicators.fssp_count = "Исполнительных производств ФССП" из профиля
+   - risk_indicators.licenses_count = "Лицензий" из профиля
+   НЕ ставь null если число указано в данных, даже если оно 0
+6. В notes ОБЯЗАТЕЛЬНО упомяни арбитражные дела и историю закупок если данные есть:
+   - "У заказчика N арбитражных дел" (если >0, добавь оценку — много/мало для такого объёма)
+   - "Заказчик провёл N закупок на сумму X" (объём и опыт)
+   - "Исполнительных производств ФССП: N" (если >0)
 
 Возвращай ТОЛЬКО валидный JSON.
 
@@ -168,6 +179,65 @@ def _build_customer_section(tender) -> str:
     return "\n".join(lines)
 
 
+def _hardcode_profile_data(result: dict, tender) -> dict:
+    """Override LLM output with actual RusProfile/DaData data — numbers must be exact."""
+    from apps.tenders.summary_v2.context import get_customer_profile
+
+    profile = get_customer_profile(tender)
+    if not profile:
+        return result
+
+    # Basic info
+    if profile.full_name:
+        result["name"] = profile.full_name
+    if profile.inn:
+        result["inn"] = profile.inn
+    if profile.region:
+        result["region"] = profile.region
+    if profile.founded_date:
+        result["founded_date"] = profile.founded_date
+    if profile.status:
+        result["status"] = profile.status
+    if profile.director_name:
+        result["director_name"] = profile.director_name
+    if profile.okved_main:
+        from apps.tenders.okved import okved_to_text
+        result["okved_main"] = f"{profile.okved_main} — {okved_to_text([profile.okved_main])}"
+
+    # Financials
+    fin = result.setdefault("financials", {})
+    if profile.revenue_rub is not None:
+        fin["revenue_rub"] = profile.revenue_rub
+    if profile.profit_rub is not None:
+        fin["profit_rub"] = profile.profit_rub
+    if profile.employees_count is not None:
+        fin["employees_count"] = profile.employees_count
+    if profile.revenue_year is not None:
+        fin["revenue_year"] = profile.revenue_year
+
+    # Procurement history
+    proc = result.setdefault("procurement_history", {})
+    if profile.purchases_customer_count is not None:
+        proc["total_purchases"] = profile.purchases_customer_count
+    if profile.purchases_customer_amount is not None:
+        proc["total_amount_rub"] = profile.purchases_customer_amount
+    if profile.purchases_supplier_count is not None:
+        proc["as_supplier_count"] = profile.purchases_supplier_count
+
+    # Risk indicators
+    risk = result.setdefault("risk_indicators", {})
+    if profile.arbitration_count is not None:
+        risk["arbitration_count"] = profile.arbitration_count
+    if profile.fssp_count is not None:
+        risk["fssp_count"] = profile.fssp_count
+    if profile.licenses_count is not None:
+        risk["licenses_count"] = profile.licenses_count
+    if profile.licenses_summary:
+        risk["licenses_summary"] = profile.licenses_summary
+
+    return result
+
+
 def analyze_customer(
     tender,
     doc_context: str,
@@ -218,6 +288,7 @@ def analyze_customer(
     raw = response.choices[0].message.content.strip()
     cleaned = clean_json_response(raw)
     result = json.loads(cleaned)
+    result = _hardcode_profile_data(result, tender)
 
     usage = response.usage
     input_tokens = usage.prompt_tokens if usage else 0

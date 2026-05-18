@@ -478,7 +478,10 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
                 <FieldRow label="Регион" value={cust.region} />
                 <FieldRow label="Тип" value={cust.org_type} />
                 <FieldRow label="Отрасль" value={cust.industry} />
+                <FieldRow label="ОКВЭД" value={cust.okved_main} />
                 <FieldRow label="Основана" value={cust.founded_date} />
+                <FieldRow label="Статус" value={cust.status} />
+                <FieldRow label="Руководитель" value={cust.director_name} />
               </div>
               {cust.financials?.revenue_rub != null && (
                 <>
@@ -494,8 +497,9 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
                 <>
                   <SubHeading>Закупочная история</SubHeading>
                   <div className="space-y-1">
-                    <FieldRow label="Закупки" value={`${cust.procurement_history.total_purchases} шт.`} />
-                    <FieldRow label="Сумма" value={cust.procurement_history.total_amount_rub != null ? fmtVolume(cust.procurement_history.total_amount_rub) : null} />
+                    <FieldRow label="Как заказчик" value={`${cust.procurement_history.total_purchases} закупок`} />
+                    <FieldRow label="Сумма закупок" value={cust.procurement_history.total_amount_rub != null ? fmtVolume(cust.procurement_history.total_amount_rub) : null} />
+                    <FieldRow label="Как поставщик" value={cust.procurement_history.as_supplier_count != null ? `${cust.procurement_history.as_supplier_count} закупок` : null} />
                   </div>
                 </>
               )}
@@ -503,9 +507,10 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
                 <>
                   <SubHeading>Индикаторы</SubHeading>
                   <div className="space-y-1">
-                    <FieldRow label="Арбитражи" value={cust.risk_indicators.arbitration_count || null} />
-                    <FieldRow label="ФССП" value={cust.risk_indicators.fssp_count || null} />
-                    <FieldRow label="Лицензий" value={cust.risk_indicators.licenses_count || null} />
+                    <FieldRow label="Арбитражные дела" value={cust.risk_indicators.arbitration_count != null ? cust.risk_indicators.arbitration_count : null} />
+                    <FieldRow label="Исп. производства ФССП" value={cust.risk_indicators.fssp_count != null ? cust.risk_indicators.fssp_count : null} />
+                    <FieldRow label="Лицензий" value={cust.risk_indicators.licenses_count != null ? cust.risk_indicators.licenses_count : null} />
+                    <FieldRow label="Лицензии" value={cust.risk_indicators.licenses_summary || null} />
                   </div>
                 </>
               )}

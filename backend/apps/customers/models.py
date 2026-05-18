@@ -35,7 +35,7 @@ class CustomerProfile(models.Model):
     risk_indicators = models.JSONField(default=dict)
 
     # Мета
-    rusprofile_id = models.IntegerField(null=True, blank=True)
+    rusprofile_id = models.BigIntegerField(null=True, blank=True)
     dadata_updated_at = models.DateTimeField(null=True, blank=True)
     rusprofile_updated_at = models.DateTimeField(null=True, blank=True)
     rusprofile_failed = models.BooleanField(default=False)

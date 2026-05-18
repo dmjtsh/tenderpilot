@@ -86,10 +86,13 @@ export interface TenderSummaryV2 {
     region: string | null
     org_type: string | null
     industry: string | null
+    okved_main: string | null
     founded_date: string | null
+    status: string | null
+    director_name: string | null
     financials: { revenue_rub: number | null; profit_rub: number | null; employees_count: number | null; revenue_year: number | null }
-    procurement_history: { total_purchases: number | null; total_amount_rub: number | null; avg_contract_rub: number | null }
-    risk_indicators: { arbitration_count: number | null; fssp_count: number | null; licenses_count: number | null; red_flags: string[] }
+    procurement_history: { total_purchases: number | null; total_amount_rub: number | null; avg_contract_rub: number | null; as_supplier_count: number | null }
+    risk_indicators: { arbitration_count: number | null; fssp_count: number | null; licenses_count: number | null; licenses_summary: string | null; red_flags: string[] }
     notes: string[]
     reliability: string | null
   } | null
