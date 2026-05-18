@@ -5,6 +5,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance, VectorParams, PointStruct,
     Filter, FieldCondition, MatchValue, MatchAny, Range,
+    HasIdCondition,
 )
 
 
@@ -48,6 +49,16 @@ class QdrantService:
         ]
         self.client.upsert(collection_name=COLLECTION_TENDERS, points=points)
 
+    def get_tender_vector(self, tender_id: int) -> list[float] | None:
+        points = self.client.retrieve(
+            collection_name=COLLECTION_TENDERS,
+            ids=[tender_id],
+            with_vectors=True,
+        )
+        if not points:
+            return None
+        return points[0].vector
+
     def search_tenders(
         self,
         vector: list[float],
@@ -59,8 +70,10 @@ class QdrantService:
         nmck_max: float | None = None,
         law_types: list[str] | None = None,
         procedure_types: list[str] | None = None,
+        exclude_ids: list[int] | None = None,
     ) -> list[dict[str, Any]]:
         conditions = []
+        must_not = []
         if regions:
             conditions.append(FieldCondition(key="region", match=MatchAny(any=regions)))
         elif region:
@@ -75,8 +88,13 @@ class QdrantService:
             conditions.append(FieldCondition(key="law_type", match=MatchAny(any=law_types)))
         if procedure_types:
             conditions.append(FieldCondition(key="procedure_type", match=MatchAny(any=procedure_types)))
+        if exclude_ids:
+            must_not.append(HasIdCondition(has_id=exclude_ids))
 
-        query_filter = Filter(must=conditions) if conditions else None
+        query_filter = Filter(
+            must=conditions or None,
+            must_not=must_not or None,
+        ) if conditions or must_not else None
 
         results = self.client.query_points(
             collection_name=COLLECTION_TENDERS,

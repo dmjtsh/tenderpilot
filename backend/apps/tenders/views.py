@@ -149,6 +149,60 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             return TenderDetailSerializer
         return TenderListSerializer
 
+    @action(detail=True, methods=["get"], url_path="similar")
+    def similar(self, request, pk=None):
+        from apps.search.services import qdrant
+        from apps.search.scoring import score_label
+
+        tender = self.get_object()
+        limit = min(int(request.query_params.get("limit", 3)), 20)
+
+        vector = qdrant.get_tender_vector(tender.id)
+        if vector is None:
+            return Response({"data": [], "has_more": False, "error": None})
+
+        results = qdrant.search_tenders(
+            vector=vector,
+            limit=limit + 1,
+            status="active",
+            exclude_ids=[tender.id],
+        )
+
+        has_more = len(results) > limit
+        results = results[:limit]
+
+        tender_ids = [r["id"] for r in results]
+        tenders_db = {
+            t.id: t
+            for t in Tender.objects.select_related("customer").filter(id__in=tender_ids)
+        }
+
+        data = []
+        for r in results:
+            t = tenders_db.get(r["id"])
+            if not t:
+                continue
+            data.append({
+                "id": t.id,
+                "number": t.number,
+                "title": t.title,
+                "nmck": float(t.nmck) if t.nmck else None,
+                "customer_name": t.customer.name if t.customer else r.get("customer_name", ""),
+                "region": t.region or "",
+                "law_type": t.law_type or "",
+                "procedure_type": t.procedure_type or "",
+                "deadline_at": t.deadline_at.isoformat() if t.deadline_at else None,
+                "auction_date": t.auction_date.isoformat() if t.auction_date else None,
+                "published_at": t.published_at.isoformat() if t.published_at else None,
+                "trading_platform": t.trading_platform or "",
+                "source_url": t.source_url or "",
+                "status": t.status,
+                "score": round(r["score"] * 100),
+                "score_label": score_label(r["score"]),
+            })
+
+        return Response({"data": data, "has_more": has_more, "error": None})
+
     @action(detail=True, methods=["get"], url_path="summary")
     def summary(self, request, pk=None):
         from apps.billing.services import check_and_increment

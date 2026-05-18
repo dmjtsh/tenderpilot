@@ -5,9 +5,10 @@ import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
 import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderSummaryV2, type AnySummary, isV2Summary, type TenderDoc, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
-import { AlertTriangle, Building2, Calendar, Check, ChevronDown, ChevronLeft, ClipboardList, Clock, DollarSign, Download, ExternalLink, FileText, Loader2, Minus, RefreshCw, Send, Shield, Sparkles, XCircle, Wrench } from "lucide-react"
+import { AlertTriangle, Building2, Calendar, Check, ChevronDown, ChevronLeft, ClipboardList, Clock, Copy, DollarSign, Download, ExternalLink, FileText, Loader2, Minus, RefreshCw, Send, Shield, Sparkles, XCircle, Wrench } from "lucide-react"
 import Link from "next/link"
 import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
+import { TenderCard } from "@/components/tender-card"
 
 const STATUS_LABEL: Record<string, string> = {
   published: "Опубликован",
@@ -1665,6 +1666,43 @@ function TenderChat({ tenderId }: { tenderId: number }) {
   )
 }
 
+function SimilarTendersBlock({ tenderId, profileId }: { tenderId: number; profileId?: number | null }) {
+  const [limit, setLimit] = useState(3)
+  const { data, isLoading } = useQuery<{ data: Tender[]; has_more: boolean }>({
+    queryKey: ["similar-tenders", tenderId, limit],
+    queryFn: () => client.get(`/tenders/${tenderId}/similar/`, { params: { limit } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const tenders = data?.data ?? []
+  const hasMore = data?.has_more ?? false
+
+  if (isLoading) return null
+  if (tenders.length === 0) return null
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <Copy className="w-4 h-4 text-gray-400" />
+        <h2 className="text-base font-semibold text-[#111827]">Похожие тендеры</h2>
+      </div>
+      <div className="space-y-3">
+        {tenders.map((t) => (
+          <TenderCard key={t.id} tender={t} profileId={profileId} />
+        ))}
+      </div>
+      {hasMore && (
+        <button
+          onClick={() => setLimit(prev => prev + 3)}
+          className="mt-3 text-sm text-gray-500 hover:text-[#111827] transition-colors"
+        >
+          Показать ещё
+        </button>
+      )}
+    </div>
+  )
+}
+
 function MetaRow({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div className="flex items-start gap-4 py-3.5 px-6 border-b border-gray-200 last:border-0">
@@ -1832,6 +1870,9 @@ function TenderDetailPageInner() {
 
           {/* Chat */}
           <TenderChat tenderId={tender.id} />
+
+          {/* Similar tenders */}
+          <SimilarTendersBlock tenderId={tender.id} profileId={profileId} />
 
           {/* Source link */}
           <a
