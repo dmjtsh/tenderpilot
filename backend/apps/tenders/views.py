@@ -12,7 +12,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Customer, Experiment, SummaryExperiment, Tender, TenderPipeline
 from .serializers import TenderListSerializer, TenderDetailSerializer, TenderPipelineSerializer
-from .services import get_or_create_summary, get_or_create_summary_v2
+from .services import get_or_create_summary_v2
 from apps.documents.services import answer_question
 
 
@@ -210,23 +210,6 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
         tender = self.get_object()
         is_refresh = request.query_params.get("refresh") == "true"
-        use_v1 = request.query_params.get("v") == "1"
-
-        if use_v1:
-            needs_generation = is_refresh or not tender.ai_summary
-            if needs_generation:
-                try:
-                    check_and_increment(request.user, "ai_summary")
-                except QuotaExceeded as e:
-                    return Response({"data": None, "error": e.detail}, status=402)
-            try:
-                if is_refresh:
-                    tender.ai_summary = ""
-                    tender.save(update_fields=["ai_summary"])
-                data = get_or_create_summary(tender)
-                return Response({"data": data, "error": None})
-            except Exception as e:
-                return Response({"data": None, "error": str(e)}, status=500)
 
         from apps.tenders.models import TenderSummaryV2
         user = request.user

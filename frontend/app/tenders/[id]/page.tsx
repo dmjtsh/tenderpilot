@@ -1157,17 +1157,15 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
   const latestFull = legacyExperiments.find((e) => e.strategy === "full")
   const canCompareLegacy = !!latestRag && !!latestFull && namedExperiments.length === 0
 
-  const [loadingCache, setLoadingCache] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    tendersApi.getSummary(tenderId).then((data) => {
-      if (!cancelled) { setSummary(data); setLoadingCache(false) }
-    }).catch(() => {
-      if (!cancelled) setLoadingCache(false)
-    })
-    return () => { cancelled = true }
-  }, [tenderId])
+  const {
+    data: cachedSummary,
+    isLoading: loadingCache,
+  } = useQuery({
+    queryKey: ["tender-summary", tenderId],
+    queryFn: () => tendersApi.getSummary(tenderId),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
 
   async function generateSummary(refresh = false) {
     setPhase("analyzing")
@@ -1175,6 +1173,7 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
     try {
       const data = await tendersApi.getSummary(tenderId, refresh)
       setSummary(data)
+      queryClient.setQueryData(["tender-summary", tenderId], data)
       setPhase("idle")
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status
@@ -1232,9 +1231,10 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
     await generateSummary(refresh)
   }
 
-  const isV2 = summary && isV2Summary(summary)
+  const effectiveSummary = summary ?? cachedSummary ?? null
+  const isV2 = effectiveSummary && isV2Summary(effectiveSummary)
 
-  if (isV2) {
+  if (isV2 && phase === "idle") {
     return (
       <div className="mb-8 border border-gray-200 bg-white">
         <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-200">
@@ -1273,7 +1273,7 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
             </button>
           </div>
         </div>
-        <SummaryV2Sections s={summary as TenderSummaryV2} tender={tender} />
+        <SummaryV2Sections s={effectiveSummary as TenderSummaryV2} tender={tender} />
 
         {isStaff && (
           <div className="px-6 pb-5">
@@ -1330,8 +1330,8 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
       </div>
 
       <div className="px-6 py-5">
-        {summary && phase === "idle" ? (
-          <SummaryBlock s={summary as TenderSummary} />
+        {effectiveSummary && phase === "idle" ? (
+          <SummaryBlock s={effectiveSummary as TenderSummary} />
         ) : phase === "downloading" ? (
           <DocsProgressInline docs={docs} downloading={downloading} tenderId={tenderId} />
         ) : phase === "analyzing" ? (

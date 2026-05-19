@@ -73,262 +73,6 @@ def detect_procedure_type(source_url: str) -> str:
             return proc_type
     return Tender.ProcedureType.OTHER
 
-SUMMARY_PROMPT = """Ты эксперт по госзакупкам России.
-Определи тип тендера: строительство / поставка / услуги / проектирование / IT / другое.
-
-ДАННЫЕ ТЕНДЕРА:
-Название: {title}
-НМЦК: {nmck}
-Дней до дедлайна: {days_left}
-Регион: {region}
-ОКПД: {okpd_names}
-Тип закупки: {law_type}
-Обеспечение заявки: {bid_security}
-Обеспечение контракта: {contract_security}
-
-ДАННЫЕ ЗАКАЗЧИКА:
-Название: {customer_name}
-ИНН: {customer_inn}
-Регион заказчика: {customer_region}
-Основной ОКВЭД: {customer_okved}
-Тендеров в нашей базе: {customer_tender_count}
-Общий объём закупок: {customer_total_volume}
-
-{docs_section}
-
-Проанализируй и верни JSON без markdown:
-{{
-  "customer_analysis": {{
-    "notes": ["заметки о заказчике если есть"]
-  }},
-  "work_description": {{
-    "essence": "одно-два предложения что конкретно нужно сделать",
-    "payment_terms": "условия оплаты: аванс, поэтапная, по факту — или null",
-    "execution_period": "конкретный срок выполнения или null",
-    "experience_requirements": ["конкретное требование к опыту/квалификации с цифрами"],
-    "deadline_info": "информация о сроке подачи заявки или null"
-  }},
-  "key_risks": {{
-    "certifications": ["требуемые лицензии, допуски, сертификаты"],
-    "financial_risks": ["финансовые риски: высокое обеспечение, штрафы, пени с размером"],
-    "technical_risks": ["технические риски: сжатые сроки, запрет субподряда, сложные условия"],
-    "unusual_conditions": ["необычные или нестандартные условия"]
-  }},
-  "required_documents": {{
-    "mandatory": ["обязательный документ в составе заявки"],
-    "optional": ["рекомендуемый/желательный документ"],
-    "special_forms": ["особая форма или шаблон заказчика"]
-  }},
-  "verdict": "участвовать | изучить | пропустить",
-  "verdict_reason": "одно предложение",
-  "tender_type": "строительство | поставка | услуги | проектирование | IT | другое",
-  "urgency": "нормально | сжато | очень сжато"
-}}
-
-ПРАВИЛА:
-- Все числовые значения копируй ТОЧНО как в документах — не округляй, не конвертируй
-- НЕ придумывай требования которых нет в документах
-- НЕ пиши общие фразы — только конкретика с цифрами
-- Обеспечение контракта <= 15% НЕ является риском
-- Обеспечение контракта > 15% → добавь в financial_risks с точным процентом
-- required_documents: извлекай из документации или инструкции участнику
-- Если документов нет — секции будут пустыми, это нормально
-- customer_analysis.notes: нетипичный ОКВЭД для данного типа тендера, малый объём закупок и т.д."""
-
-VERDICT_MAP: dict[str, str] = {
-    "участвовать": "go",
-    "изучить": "maybe",
-    "пропустить": "pass",
-}
-
-URGENCY_MAP: dict[str, str] = {
-    "нормально": "low",
-    "сжато": "medium",
-    "очень сжато": "high",
-}
-
-
-def _get_customer_context(tender: Tender) -> dict:
-    result = {"name": "", "inn": "", "region": "", "okved_main": "", "tender_count": 0, "total_volume": 0}
-    if not tender.customer:
-        return result
-    customer = tender.customer
-    result["name"] = customer.name
-    result["inn"] = customer.inn or ""
-    result["region"] = customer.region or tender.region or ""
-    stats = Tender.objects.filter(customer=customer).aggregate(count=Count("id"), total=Sum("nmck"))
-    result["tender_count"] = stats["count"] or 0
-    result["total_volume"] = float(stats["total"] or 0)
-    if customer.inn:
-        try:
-            from apps.users.dadata import enrich_company_by_inn
-            info = enrich_company_by_inn(customer.inn)
-            if info and info["okved_main"]:
-                from apps.tenders.okved import okved_to_text
-                result["okved_main"] = f'{info["okved_main"]} — {okved_to_text([info["okved_main"]])}'
-        except Exception:
-            logger.warning("DaData enrichment failed for INN %s", customer.inn, exc_info=True)
-    return result
-
-
-SUMMARY_MODEL = "deepseek-chat"
-SUMMARY_FALLBACK_MODEL = "gpt-4o-mini"
-
-
-def generate_tender_summary(tender: Tender) -> dict:
-    from apps.tenders.okved import okved_to_text
-    from apps.documents.services import get_summary_context
-
-    days_left = None
-    if tender.deadline_at:
-        days_left = (tender.deadline_at.date() - timezone.now().date()).days
-
-    bid_security = (
-        "не требуется" if tender.bid_security_required is False
-        else f"{tender.bid_security_amount:,.0f} ₽".replace(",", " ") if tender.bid_security_amount
-        else "не указано"
-    )
-    contract_security = (
-        f"{tender.contract_security_amount:,.0f} ₽ ({tender.contract_security_percent}%)".replace(",", " ")
-        if tender.contract_security_amount and tender.contract_security_percent
-        else f"{tender.contract_security_percent}%" if tender.contract_security_percent
-        else "не указано"
-    )
-
-    cust = _get_customer_context(tender)
-
-    ctx = get_summary_context(tender)
-    source = ctx["source"]
-    has_docs = source in ("rag", "text", "full_tz")
-
-    if source == "full_tz":
-        docs_section = f"ДОКУМЕНТАЦИЯ (техзадание целиком + релевантные разделы других документов):\n{ctx['context']}"
-    elif source == "rag":
-        docs_section = f"ДОКУМЕНТАЦИЯ (релевантные разделы):\n{ctx['context']}"
-    elif source == "text":
-        docs_section = f"ДОКУМЕНТАЦИЯ (полный текст):\n{ctx['context']}"
-    else:
-        docs_section = "ВНИМАНИЕ: документы не загружены, анализ только по метаданным."
-
-    cust_total_fmt = f"{cust['total_volume']:,.0f} ₽".replace(",", " ") if cust["total_volume"] else "нет данных"
-
-    prompt = SUMMARY_PROMPT.format(
-        title=tender.title,
-        nmck=f"{tender.nmck:,.0f} ₽".replace(",", " ") if tender.nmck else "не указана",
-        days_left=f"{days_left}" if days_left is not None else "не указан",
-        region=tender.region or "не указан",
-        okpd_names=okved_to_text(tender.okpd_codes or []) or "не указан",
-        law_type=tender.law_type or "не указан",
-        bid_security=bid_security,
-        contract_security=contract_security,
-        customer_name=cust["name"] or "не указан",
-        customer_inn=cust["inn"] or "не указан",
-        customer_region=cust["region"] or "не указан",
-        customer_okved=cust["okved_main"] or "не указан",
-        customer_tender_count=cust["tender_count"],
-        customer_total_volume=cust_total_fmt,
-        docs_section=docs_section,
-    )
-
-    model_name = SUMMARY_MODEL
-    try:
-        client = get_llm_client(model_name)
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=2800,
-            temperature=0.3,
-        )
-        raw = response.choices[0].message.content.strip()
-    except Exception:
-        logger.warning("DeepSeek API failed for tender %d, falling back to %s", tender.id, SUMMARY_FALLBACK_MODEL)
-        model_name = SUMMARY_FALLBACK_MODEL
-        client = get_llm_client(model_name)
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=2800,
-            temperature=0.3,
-        )
-        raw = response.choices[0].message.content.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
-
-    gpt = json.loads(raw)
-
-    verdict_raw = gpt.get("verdict", "изучить")
-    urgency_raw = gpt.get("urgency", "нормально")
-
-    key_risks = gpt.get("key_risks") or {}
-    financial_risks = key_risks.get("financial_risks") or []
-    contract_pct = tender.contract_security_percent
-    if contract_pct is not None:
-        has_flag = any("обеспечен" in f.lower() for f in financial_risks)
-        if contract_pct > 15 and not has_flag:
-            financial_risks.append(f"Обеспечение контракта {contract_pct}% (выше 15%)")
-        elif contract_pct <= 15:
-            financial_risks = [f for f in financial_risks if "обеспечен" not in f.lower()]
-
-    customer_analysis = gpt.get("customer_analysis") or {}
-    work_description = gpt.get("work_description") or {}
-    required_documents = gpt.get("required_documents") or {}
-
-    return {
-        "version": 2,
-        "customer_analysis": {
-            "name": cust["name"],
-            "inn": cust["inn"],
-            "region": cust["region"],
-            "okved_main": cust["okved_main"],
-            "tender_count": cust["tender_count"],
-            "total_volume": cust["total_volume"],
-            "notes": customer_analysis.get("notes") or [],
-        },
-        "work_description": {
-            "essence": work_description.get("essence", ""),
-            "payment_terms": work_description.get("payment_terms"),
-            "execution_period": work_description.get("execution_period"),
-            "experience_requirements": work_description.get("experience_requirements") or [],
-            "deadline_info": work_description.get("deadline_info"),
-        },
-        "key_risks": {
-            "certifications": key_risks.get("certifications") or [],
-            "financial_risks": financial_risks,
-            "technical_risks": key_risks.get("technical_risks") or [],
-            "unusual_conditions": key_risks.get("unusual_conditions") or [],
-        },
-        "required_documents": {
-            "mandatory": required_documents.get("mandatory") or [],
-            "optional": required_documents.get("optional") or [],
-            "special_forms": required_documents.get("special_forms") or [],
-        },
-        "verdict": VERDICT_MAP.get(verdict_raw, verdict_raw),
-        "verdict_reason": gpt.get("verdict_reason", ""),
-        "tender_type": gpt.get("tender_type", "другое"),
-        "has_docs": has_docs,
-        "days_left": days_left,
-        "urgency": URGENCY_MAP.get(urgency_raw, urgency_raw),
-    }
-
-
-def get_or_create_summary(tender: Tender) -> dict:
-    if tender.ai_summary:
-        try:
-            data = json.loads(tender.ai_summary)
-            if data.get("version") == 2:
-                return data
-        except (json.JSONDecodeError, ValueError):
-            pass
-
-    summary = generate_tender_summary(tender)
-    tender.ai_summary = json.dumps(summary, ensure_ascii=False)
-    tender.save(update_fields=["ai_summary"])
-    return summary
-
-
 def get_or_create_summary_v2(tender: Tender, user=None) -> dict:
     from apps.tenders.models import TenderSummaryV2
     try:
@@ -381,6 +125,100 @@ def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> Decimal
     pricing = MODEL_PRICING.get(model, MODEL_PRICING["gpt-4o-mini"])
     cost = (input_tokens * pricing["input"] + output_tokens * pricing["output"]) / 1_000_000
     return Decimal(str(round(cost, 6)))
+
+
+SUMMARY_PROMPT = """Ты эксперт по госзакупкам России.
+Определи тип тендера: строительство / поставка / услуги / проектирование / IT / другое.
+
+ДАННЫЕ ТЕНДЕРА:
+Название: {title}
+НМЦК: {nmck}
+Дней до дедлайна: {days_left}
+Регион: {region}
+ОКПД: {okpd_names}
+Тип закупки: {law_type}
+Обеспечение заявки: {bid_security}
+Обеспечение контракта: {contract_security}
+
+ДАННЫЕ ЗАКАЗЧИКА:
+Название: {customer_name}
+ИНН: {customer_inn}
+Регион заказчика: {customer_region}
+Основной ОКВЭД: {customer_okved}
+Тендеров в нашей базе: {customer_tender_count}
+Общий объём закупок: {customer_total_volume}
+
+{docs_section}
+
+Проанализируй и верни JSON без markdown:
+{{
+  "customer_analysis": {{
+    "notes": ["заметки о заказчике если есть"]
+  }},
+  "work_description": {{
+    "essence": "одно-два предложения что конкретно нужно сделать",
+    "payment_terms": "условия оплаты или null",
+    "execution_period": "конкретный срок выполнения или null",
+    "experience_requirements": ["требование к опыту/квалификации"],
+    "deadline_info": "информация о сроке подачи заявки или null"
+  }},
+  "key_risks": {{
+    "certifications": ["требуемые лицензии, допуски, сертификаты"],
+    "financial_risks": ["финансовые риски с размером"],
+    "technical_risks": ["технические риски"],
+    "unusual_conditions": ["необычные условия"]
+  }},
+  "required_documents": {{
+    "mandatory": ["обязательный документ"],
+    "optional": ["рекомендуемый документ"],
+    "special_forms": ["особая форма заказчика"]
+  }},
+  "verdict": "участвовать | изучить | пропустить",
+  "verdict_reason": "одно предложение",
+  "tender_type": "строительство | поставка | услуги | проектирование | IT | другое",
+  "urgency": "нормально | сжато | очень сжато"
+}}
+
+ПРАВИЛА:
+- Числовые значения копируй ТОЧНО — не округляй, не конвертируй
+- НЕ придумывай требования которых нет в документах
+- Обеспечение контракта <= 15% НЕ является риском
+- Обеспечение контракта > 15% → добавь в financial_risks"""
+
+VERDICT_MAP: dict[str, str] = {
+    "участвовать": "go",
+    "изучить": "maybe",
+    "пропустить": "pass",
+}
+
+URGENCY_MAP: dict[str, str] = {
+    "нормально": "low",
+    "сжато": "medium",
+    "очень сжато": "high",
+}
+
+
+def _get_customer_context(tender: Tender) -> dict:
+    result = {"name": "", "inn": "", "region": "", "okved_main": "", "tender_count": 0, "total_volume": 0}
+    if not tender.customer:
+        return result
+    customer = tender.customer
+    result["name"] = customer.name
+    result["inn"] = customer.inn or ""
+    result["region"] = customer.region or tender.region or ""
+    stats = Tender.objects.filter(customer=customer).aggregate(count=Count("id"), total=Sum("nmck"))
+    result["tender_count"] = stats["count"] or 0
+    result["total_volume"] = float(stats["total"] or 0)
+    if customer.inn:
+        try:
+            from apps.users.dadata import enrich_company_by_inn
+            info = enrich_company_by_inn(customer.inn)
+            if info and info["okved_main"]:
+                from apps.tenders.okved import okved_to_text
+                result["okved_main"] = f'{info["okved_main"]} — {okved_to_text([info["okved_main"]])}'
+        except Exception:
+            logger.warning("DaData enrichment failed for INN %s", customer.inn, exc_info=True)
+    return result
 
 
 def _build_context_vars(tender: Tender, strategy: str) -> tuple[dict, dict]:

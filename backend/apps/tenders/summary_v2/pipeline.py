@@ -104,7 +104,7 @@ def generate_tender_summary_v2(
 
     has_docs = any(ctx["source"] != "none" for ctx in contexts.values())
     if not has_docs:
-        raise ValueError(f"No documents for tender {tender_id}")
+        raise ValueError("Загрузите документы тендера, чтобы сгенерировать AI-резюме")
 
     step_results: dict[str, dict | None] = {}
     step_metrics: dict[str, dict] = {}
