@@ -215,6 +215,9 @@ DEEPSEEK_BASE_URL = config("DEEPSEEK_BASE_URL", default="https://api.deepseek.co
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 TELEGRAM_ADMIN_CHAT_ID = config("TELEGRAM_ADMIN_CHAT_ID", default="")
 
+# Proxy (для RusProfile)
+RUSPROFILE_PROXY_URL = config("RUSPROFILE_PROXY_URL", default="")
+
 # DaData
 DADATA_TOKEN = config("DADATA_TOKEN", default="")
 

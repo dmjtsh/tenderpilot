@@ -92,8 +92,13 @@ class RusProfileParser:
             "Sec-Fetch-User": "?1",
             "Upgrade-Insecure-Requests": "1",
         }
+        from django.conf import settings
+        proxies = None
+        if settings.RUSPROFILE_PROXY_URL:
+            proxies = {"http": settings.RUSPROFILE_PROXY_URL, "https": settings.RUSPROFILE_PROXY_URL}
+
         try:
-            resp = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
+            resp = requests.get(url, headers=headers, timeout=15, allow_redirects=True, proxies=proxies)
             if resp.status_code == 429:
                 logger.warning("RusProfile rate limited (429)")
                 return None
