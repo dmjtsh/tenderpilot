@@ -64,6 +64,22 @@ def _get_first_profile(user: User) -> CompanyProfile:
     return CompanyProfile.objects.create(user=user, name="")
 
 
+def _trigger_won_tender_embeds(old_ids: list, new_ids: list) -> None:
+    """Запускает embed_tender(force=True) для новых won-тендеров без вектора в Qdrant."""
+    added = set(new_ids or []) - set(old_ids or [])
+    if not added:
+        return
+    from apps.tenders.models import Tender
+    from apps.search.tasks import embed_tender
+    for tid in added:
+        try:
+            tender = Tender.objects.only("id", "embedding_id").get(pk=tid)
+            if not tender.embedding_id:
+                embed_tender.apply_async(args=[tid], kwargs={"force": True})
+        except Tender.DoesNotExist:
+            pass
+
+
 # ─── Backward-compat single-company endpoints ────────────────────────────────
 
 class CompanyProfileView(generics.RetrieveUpdateAPIView):
@@ -72,6 +88,11 @@ class CompanyProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return _get_first_profile(self.request.user)
+
+    def perform_update(self, serializer):
+        old_ids = list(serializer.instance.won_tender_ids or [])
+        instance = serializer.save()
+        _trigger_won_tender_embeds(old_ids, instance.won_tender_ids or [])
 
 
 # ─── Multi-company CRUD ───────────────────────────────────────────────────────
@@ -101,6 +122,11 @@ class CompanyProfileDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return CompanyProfile.objects.filter(user=self.request.user)
+
+    def perform_update(self, serializer):
+        old_ids = list(serializer.instance.won_tender_ids or [])
+        instance = serializer.save()
+        _trigger_won_tender_embeds(old_ids, instance.won_tender_ids or [])
 
 
 # ─── Directions ───────────────────────────────────────────────────────────────

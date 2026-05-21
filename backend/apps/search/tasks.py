@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
-def embed_tender(self, tender_id: int) -> None:
+def embed_tender(self, tender_id: int, force: bool = False) -> None:
     """Генерирует embedding для тендера и загружает в Qdrant."""
     from apps.tenders.models import Tender
     from .embedder import embedder, tender_text
@@ -19,7 +19,8 @@ def embed_tender(self, tender_id: int) -> None:
         return
 
     # Не индексируем неактивные тендеры — экономим память Qdrant
-    if tender.status != Tender.Status.ACTIVE:
+    # Исключение: force=True для won-тендеров профиля (нужен вектор для re-scoring)
+    if not force and tender.status != Tender.Status.ACTIVE:
         logger.info("Skipping embed for non-active tender %d (status=%s)", tender_id, tender.status)
         return
 

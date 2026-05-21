@@ -125,6 +125,14 @@ class QdrantService:
 
         all_results: dict[int, dict[str, Any]] = {}
 
+        # Pre-fetch won tender vectors once (shared across all directions)
+        won_tender_ids = getattr(profile, "won_tender_ids", None) or []
+        won_vectors: dict[int, list[float]] = {}
+        for won_tid in won_tender_ids:
+            vec = self.get_tender_vector(won_tid)
+            if vec is not None:
+                won_vectors[won_tid] = vec
+
         for direction in directions:
             conditions = [
                 FieldCondition(key="status", match=MatchValue(value="active")),
@@ -156,52 +164,57 @@ class QdrantService:
                     FieldCondition(key="procedure_type", match=MatchAny(any=proc_types))
                 )
 
-            results = self.client.query_points(
+            direction_filter = Filter(must=conditions) if conditions else None
+
+            # 1. Hyde search
+            hyde_results = self.client.query_points(
                 collection_name=COLLECTION_TENDERS,
                 query=direction.profile_vector,
-                query_filter=Filter(must=conditions) if conditions else None,
+                query_filter=direction_filter,
                 limit=100,
                 with_payload=True,
             ).points
 
-            # Re-score: 50% hyde + 50% won tender similarity
-            won_ids = getattr(profile, "won_tender_ids", None) or []
-            if won_ids and results:
-                candidate_ids = [r.id for r in results]
-                won_scores_map: dict[int, list[float]] = {cid: [] for cid in candidate_ids}
-                for won_tid in won_ids:
-                    won_vec = self.get_tender_vector(won_tid)
-                    if won_vec is None:
-                        continue
-                    won_hits = self.client.query_points(
-                        collection_name=COLLECTION_TENDERS,
-                        query=won_vec,
-                        query_filter=Filter(must=[HasIdCondition(has_id=candidate_ids)]),
-                        limit=len(candidate_ids),
-                        with_payload=False,
-                    ).points
-                    for hit in won_hits:
-                        won_scores_map[hit.id].append(hit.score)
-                for r in results:
-                    won_list = won_scores_map.get(r.id, [])
-                    won_avg = sum(won_list) / len(won_list) if won_list else 0.0
-                    r.score = 0.5 * r.score + 0.5 * won_avg
-                results = sorted(results, key=lambda r: -r.score)
+            # 2. Won tender searches — separate queries, bring in new candidates
+            # candidates: {id: {hyde: float, won: {tid: float}, payload: dict}}
+            candidates: dict[int, dict] = {}
+            for r in hyde_results:
+                candidates[r.id] = {"hyde": r.score, "won": {}, "payload": r.payload}
 
+            for won_tid, won_vec in won_vectors.items():
+                won_hits = self.client.query_points(
+                    collection_name=COLLECTION_TENDERS,
+                    query=won_vec,
+                    query_filter=direction_filter,
+                    limit=50,
+                    with_payload=True,
+                ).points
+                for r in won_hits:
+                    if r.id not in candidates:
+                        candidates[r.id] = {"hyde": 0.0, "won": {}, "payload": r.payload}
+                    candidates[r.id]["won"][won_tid] = r.score
+
+            # 3. Final score: 0.5*hyde + (0.5/N)*sum(won_i)  [N = total won vectors]
+            N = len(won_vectors)
             exclude_kws = [kw.lower() for kw in (direction.exclude_keywords or [])]
-            for r in results:
+            for cid, data in candidates.items():
                 if exclude_kws:
-                    title_lower = ((r.payload or {}).get("title") or "").lower()
+                    title_lower = (data["payload"].get("title") or "").lower()
                     if any(kw in title_lower for kw in exclude_kws):
                         continue
-                existing = all_results.get(r.id)
-                if existing is None or r.score > existing["score"]:
-                    all_results[r.id] = {
-                        "id": r.id,
-                        "score": r.score,
+                if N > 0:
+                    won_total = sum(data["won"].get(tid, 0.0) for tid in won_vectors)
+                    final = 0.5 * data["hyde"] + (0.5 / N) * won_total
+                else:
+                    final = data["hyde"]
+                existing = all_results.get(cid)
+                if existing is None or final > existing["score"]:
+                    all_results[cid] = {
+                        "id": cid,
+                        "score": final,
                         "matched_direction": direction.name,
                         "matched_direction_id": direction.id,
-                        **r.payload,
+                        **data["payload"],
                     }
 
         sorted_results = sorted(all_results.values(), key=lambda x: x["score"], reverse=True)
