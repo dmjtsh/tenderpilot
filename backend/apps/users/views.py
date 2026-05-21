@@ -65,7 +65,7 @@ def _get_first_profile(user: User) -> CompanyProfile:
 
 
 def _trigger_won_tender_embeds(old_ids: list, new_ids: list) -> None:
-    """Запускает embed_tender(force=True) для новых won-тендеров без вектора в Qdrant."""
+    """Запускает embed_tender(force=True) для новых won-тендеров."""
     added = set(new_ids or []) - set(old_ids or [])
     if not added:
         return
@@ -73,9 +73,10 @@ def _trigger_won_tender_embeds(old_ids: list, new_ids: list) -> None:
     from apps.search.tasks import embed_tender
     for tid in added:
         try:
-            tender = Tender.objects.only("id", "embedding_id").get(pk=tid)
-            if not tender.embedding_id:
-                embed_tender.apply_async(args=[tid], kwargs={"force": True})
+            Tender.objects.only("id").get(pk=tid)
+            # Всегда запускаем embed — upsert идемпотентен,
+            # а embedding_id в Postgres может расходиться с реальным Qdrant
+            embed_tender.apply_async(args=[tid], kwargs={"force": True})
         except Tender.DoesNotExist:
             pass
 
