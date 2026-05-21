@@ -497,6 +497,8 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         # Try to extract regNumber from EIS URL
         try:
             parsed = urlparse(q)
+            if parsed.scheme in ("http", "https") and "zakupki.gov.ru" not in parsed.netloc:
+                return Response({"data": [], "error": "Принимаются только ссылки с zakupki.gov.ru"})
             if parsed.scheme in ("http", "https") and "zakupki.gov.ru" in parsed.netloc:
                 params = parse_qs(parsed.query)
                 reg_number = (params.get("regNumber") or params.get("regnum") or [""])[0].strip()
