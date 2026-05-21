@@ -485,6 +485,11 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=["get"], url_path="search-won-candidates")
     def search_won_candidates(self, request):
         from urllib.parse import urlparse, parse_qs
+        from .eis_client import fetch_tender_detail
+        from .services import upsert_tender as _upsert
+        import logging
+        log = logging.getLogger(__name__)
+
         q = (request.query_params.get("q") or "").strip()
         if not q:
             return Response({"data": [], "error": None})
@@ -495,12 +500,30 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             if parsed.scheme in ("http", "https") and "zakupki.gov.ru" in parsed.netloc:
                 params = parse_qs(parsed.query)
                 reg_number = (params.get("regNumber") or params.get("regnum") or [""])[0].strip()
-                if reg_number:
-                    tender = Tender.objects.filter(number=reg_number).only("id", "number", "title").first()
-                    if tender:
-                        return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
-                    return Response({"data": [], "error": "Тендер не найден в базе"})
-                return Response({"data": [], "error": "Не удалось извлечь номер тендера из ссылки"})
+                if not reg_number:
+                    return Response({"data": [], "error": "Не удалось извлечь номер тендера из ссылки"})
+
+                tender = Tender.objects.filter(number=reg_number).only("id", "number", "title").first()
+                if tender:
+                    return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
+
+                # Not in DB — fetch from EIS and import
+                try:
+                    detail = fetch_tender_detail(reg_number, fallback_url=q)
+                except Exception as exc:
+                    log.warning("EIS fetch failed for %s: %s", reg_number, exc)
+                    detail = {}
+
+                if not detail or not detail.get("number"):
+                    return Response({"data": [], "error": "Тендер не найден ни в базе, ни на ЕИС"})
+
+                try:
+                    tender = _upsert(detail)
+                except Exception as exc:
+                    log.error("upsert failed for %s: %s", reg_number, exc)
+                    return Response({"data": [], "error": "Ошибка при сохранении тендера"})
+
+                return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
         except Exception:
             pass
 
