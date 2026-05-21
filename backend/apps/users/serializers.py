@@ -57,15 +57,38 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
 
 class CompanyDirectionSerializer(serializers.ModelSerializer):
     name = serializers.CharField(allow_blank=True, default="")
+    won_tender_ids = serializers.ListField(
+        child=serializers.IntegerField(), default=list, required=False
+    )
+    won_tenders = serializers.SerializerMethodField()
 
     class Meta:
         model = CompanyDirection
         fields = [
             "id", "name", "description", "okved_codes", "keywords", "exclude_keywords", "regions",
             "nmck_min", "nmck_max", "law_types", "procedure_types",
+            "won_tender_ids", "won_tenders",
             "vector_updated_at", "created_at",
         ]
-        read_only_fields = ["id", "vector_updated_at", "created_at"]
+        read_only_fields = ["id", "won_tenders", "vector_updated_at", "created_at"]
+
+    def get_won_tenders(self, obj):
+        from apps.tenders.models import Tender
+        ids = obj.won_tender_ids or []
+        if not ids:
+            return []
+        tenders = Tender.objects.filter(id__in=ids).only("id", "number", "title")
+        by_id = {t.id: t for t in tenders}
+        return [
+            {"id": tid, "number": by_id[tid].number, "title": by_id[tid].title}
+            for tid in ids
+            if tid in by_id
+        ]
+
+    def validate_won_tender_ids(self, value):
+        if len(value) > 3:
+            raise serializers.ValidationError("Максимум 3 выигранных тендера")
+        return list(dict.fromkeys(value))
 
     def validate(self, attrs):
         is_partial = self.partial

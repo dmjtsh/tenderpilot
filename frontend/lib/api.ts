@@ -284,6 +284,9 @@ export const tendersApi = {
 
   getExperiments: (id: number) =>
     client.get(`/tenders/${id}/summary/experiments/`).then((r) => r.data.data as SummaryExperimentResult[]),
+
+  searchWonCandidates: (q: string) =>
+    client.get("/tenders/search-won-candidates/", { params: { q } }).then((r) => r.data.data as WonTenderRef[]),
 }
 
 // Search
@@ -319,6 +322,12 @@ export interface CompanyProfile {
   keywords: string[]
 }
 
+export interface WonTenderRef {
+  id: number
+  number: string
+  title: string
+}
+
 export interface CompanyDirection {
   id: number
   name: string
@@ -331,6 +340,8 @@ export interface CompanyDirection {
   nmck_max: number | null
   law_types: string[]
   procedure_types: string[]
+  won_tender_ids: number[]
+  won_tenders: WonTenderRef[]
   vector_updated_at: string | null
   created_at: string
 }

@@ -164,6 +164,30 @@ class QdrantService:
                 with_payload=True,
             ).points
 
+            # Re-score: 50% hyde + 50% won tender similarity
+            won_ids = direction.won_tender_ids or []
+            if won_ids and results:
+                candidate_ids = [r.id for r in results]
+                won_scores_map: dict[int, list[float]] = {cid: [] for cid in candidate_ids}
+                for won_tid in won_ids:
+                    won_vec = self.get_tender_vector(won_tid)
+                    if won_vec is None:
+                        continue
+                    won_hits = self.client.query_points(
+                        collection_name=COLLECTION_TENDERS,
+                        query=won_vec,
+                        query_filter=Filter(must=[HasIdCondition(has_id=candidate_ids)]),
+                        limit=len(candidate_ids),
+                        with_payload=False,
+                    ).points
+                    for hit in won_hits:
+                        won_scores_map[hit.id].append(hit.score)
+                for r in results:
+                    won_list = won_scores_map.get(r.id, [])
+                    won_avg = sum(won_list) / len(won_list) if won_list else 0.0
+                    r.score = 0.5 * r.score + 0.5 * won_avg
+                results = sorted(results, key=lambda r: -r.score)
+
             exclude_kws = [kw.lower() for kw in (direction.exclude_keywords or [])]
             for r in results:
                 if exclude_kws:

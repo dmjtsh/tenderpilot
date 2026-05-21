@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { isAuthenticated } from "@/lib/auth"
-import { profileApi, directionsApi, tendersApi, billingApi, type CompanyProfile, type CompanyDirection, type InnLookupResult, type UserPlan } from "@/lib/api"
+import { profileApi, directionsApi, tendersApi, billingApi, type CompanyProfile, type CompanyDirection, type WonTenderRef, type InnLookupResult, type UserPlan } from "@/lib/api"
 import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles, Building2 } from "lucide-react"
 import { OkvedCombobox } from "@/components/okved-combobox"
 
@@ -152,6 +152,131 @@ const PROCEDURE_TYPES = [
 ] as const
 
 
+// ─── WonTendersPicker ─────────────────────────────────────────────────────────
+
+function WonTendersPicker({
+  wonIds,
+  wonTenders,
+  onChange,
+}: {
+  wonIds: number[]
+  wonTenders: WonTenderRef[]
+  onChange: (ids: number[]) => void
+}) {
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<WonTenderRef[]>([])
+  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", onClickOutside)
+    return () => document.removeEventListener("mousedown", onClickOutside)
+  }, [])
+
+  function handleInput(val: string) {
+    setQuery(val)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    if (val.length < 2) { setResults([]); setOpen(false); return }
+    timerRef.current = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const data = await tendersApi.searchWonCandidates(val)
+        setResults(data.filter((r) => !wonIds.includes(r.id)))
+        setOpen(true)
+      } finally {
+        setLoading(false)
+      }
+    }, 300)
+  }
+
+  function addTender(t: WonTenderRef) {
+    onChange([...wonIds, t.id])
+    setQuery("")
+    setResults([])
+    setOpen(false)
+  }
+
+  function removeTender(id: number) {
+    onChange(wonIds.filter((x) => x !== id))
+  }
+
+  const byId = Object.fromEntries(wonTenders.map((t) => [t.id, t]))
+  const canAdd = wonIds.length < 3
+
+  return (
+    <div>
+      {/* Chips */}
+      {wonIds.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {wonIds.map((id) => {
+            const t = byId[id]
+            return (
+              <div key={id} className="flex items-center gap-1.5 h-7 px-3 bg-violet-50 border border-violet-200 text-xs text-violet-800 max-w-xs">
+                <span className="font-mono shrink-0">№{t?.number ?? id}</span>
+                {t?.title && (
+                  <span className="truncate text-violet-600">{t.title.slice(0, 40)}{t.title.length > 40 ? "…" : ""}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeTender(id)}
+                  className="shrink-0 text-violet-400 hover:text-violet-700 ml-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Search */}
+      {canAdd && (
+        <div ref={ref} className="relative">
+          <div className="relative">
+            {loading && <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 animate-spin" />}
+            {!loading && <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />}
+            <input
+              className="w-full h-9 pl-9 pr-3 bg-gray-50 border border-gray-200 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
+              placeholder="Поиск по номеру или названию тендера..."
+              value={query}
+              onChange={(e) => handleInput(e.target.value)}
+              onFocus={() => results.length > 0 && setOpen(true)}
+            />
+          </div>
+          {open && results.length > 0 && (
+            <div className="absolute z-50 top-full mt-1 w-full bg-white border border-gray-200 shadow-lg max-h-52 overflow-y-auto">
+              {results.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => addTender(t)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                >
+                  <span className="font-mono text-xs text-gray-500 mr-2">№{t.number}</span>
+                  <span className="text-[#111827]">{t.title.slice(0, 80)}{t.title.length > 80 ? "…" : ""}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {open && !loading && query.length >= 2 && results.length === 0 && (
+            <div className="absolute z-50 top-full mt-1 w-full bg-white border border-gray-200 shadow-lg px-3 py-2">
+              <p className="text-sm text-gray-400">Ничего не найдено</p>
+            </div>
+          )}
+        </div>
+      )}
+      {!canAdd && (
+        <p className="text-xs text-gray-400">Максимум 3 тендера добавлено</p>
+      )}
+    </div>
+  )
+}
+
 // ─── DirectionCard ────────────────────────────────────────────────────────────
 
 function DirectionCard({
@@ -176,6 +301,8 @@ function DirectionCard({
   const [regions, setRegions] = useState<string[]>(direction.regions ?? [])
   const [lawTypes, setLawTypes] = useState<string[]>(direction.law_types ?? [])
   const [procedureTypes, setProcedureTypes] = useState<string[]>(direction.procedure_types ?? [])
+  const [wonTenderIds, setWonTenderIds] = useState<number[]>(direction.won_tender_ids ?? [])
+  const [wonTenders, setWonTenders] = useState<WonTenderRef[]>(direction.won_tenders ?? [])
   const [nmckPreset, setNmckPreset] = useState(() => {
     if (direction.nmck_min === null && direction.nmck_max === null) return 0
     const idx = NMCK_PRESETS.findIndex(
@@ -205,9 +332,11 @@ function DirectionCard({
         procedure_types: procedureTypes,
         nmck_min,
         nmck_max,
+        won_tender_ids: wonTenderIds,
       }, profileId)
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      if (updated?.won_tenders) setWonTenders(updated.won_tenders)
       qc.invalidateQueries({ queryKey: ["directions", profileId] })
       setExpanded(false)
     },
@@ -390,6 +519,22 @@ function DirectionCard({
             )}
           </div>
 
+          {/* Won tenders */}
+          <div>
+            <p className="text-sm text-gray-500 mb-1">
+              Выигранные тендеры{" "}
+              <span className="text-gray-400 font-normal">(до 3 — улучшают ранжирование «Для вас»)</span>
+            </p>
+            <WonTendersPicker
+              wonIds={wonTenderIds}
+              wonTenders={wonTenders}
+              onChange={(ids) => {
+                setWonTenderIds(ids)
+                setWonTenders((prev) => prev.filter((t) => ids.includes(t.id)))
+              }}
+            />
+          </div>
+
           <div className="flex justify-end">
             <button
               type="button"
@@ -430,6 +575,8 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
         procedure_types: [],
         nmck_min: null,
         nmck_max: null,
+        won_tender_ids: [],
+        won_tenders: [],
       }, profileId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["directions", profileId] }),
     onError: (e: unknown) => console.error("create direction failed:", e),
@@ -829,6 +976,8 @@ export default function ProfilePage() {
           procedure_types: [],
           nmck_min: null,
           nmck_max: null,
+          won_tender_ids: [],
+          won_tenders: [],
         }, selectedProfileId ?? undefined)
       )
     )

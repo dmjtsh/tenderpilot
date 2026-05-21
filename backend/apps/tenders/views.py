@@ -482,6 +482,18 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({"data": data, "error": None})
 
 
+    @action(detail=False, methods=["get"], url_path="search-won-candidates")
+    def search_won_candidates(self, request):
+        q = (request.query_params.get("q") or "").strip()
+        if len(q) < 2:
+            return Response({"data": []})
+        qs = Tender.objects.filter(
+            Q(number__icontains=q) | Q(title__icontains=q)
+        ).only("id", "number", "title")[:10]
+        data = [{"id": t.id, "number": t.number, "title": t.title[:100]} for t in qs]
+        return Response({"data": data})
+
+
 class TenderPipelineViewSet(viewsets.ModelViewSet):
     serializer_class = TenderPipelineSerializer
     permission_classes = [permissions.IsAuthenticated]
