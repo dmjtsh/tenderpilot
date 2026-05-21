@@ -328,6 +328,8 @@ export interface WonTenderRef {
   id: number
   number: string
   title: string
+  is_indexed: boolean
+  status: string
 }
 
 export interface CompanyDirection {

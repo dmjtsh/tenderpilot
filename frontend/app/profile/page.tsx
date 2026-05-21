@@ -161,6 +161,7 @@ function WonTendersSection({
   profile: CompanyProfile
   onSave: (ids: number[]) => Promise<void>
 }) {
+  const qc = useQueryClient()
   const [wonIds, setWonIds] = useState<number[]>(profile.won_tender_ids ?? [])
   const [wonTenders, setWonTenders] = useState<WonTenderRef[]>(profile.won_tenders ?? [])
   const [url, setUrl] = useState("")
@@ -168,13 +169,30 @@ function WonTendersSection({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // sync when profile changes (e.g. company switch)
+  // sync when profile changes (e.g. company switch) or after refetch
   useEffect(() => {
     setWonIds(profile.won_tender_ids ?? [])
-    setWonTenders(profile.won_tenders ?? [])
+    setWonTenders((prev) => {
+      const incoming = profile.won_tenders ?? []
+      // merge: keep local state for any ID not yet returned by server
+      const byServerId = Object.fromEntries(incoming.map((t) => [t.id, t]))
+      return (profile.won_tender_ids ?? []).map(
+        (id) => byServerId[id] ?? prev.find((t) => t.id === id) ?? { id, number: String(id), title: "—", is_indexed: false, status: "" }
+      )
+    })
     setUrl("")
     setError(null)
-  }, [profile.id])
+  }, [profile.id, profile.won_tenders])
+
+  // poll every 5s while any won tender is still indexing
+  const hasUnindexed = wonTenders.some((t) => !t.is_indexed)
+  useEffect(() => {
+    if (!hasUnindexed) return
+    const timer = setInterval(() => {
+      qc.invalidateQueries({ queryKey: ["companies"] })
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [hasUnindexed, qc])
 
   async function handleAdd() {
     const val = url.trim()
@@ -235,16 +253,23 @@ function WonTendersSection({
           <div className="space-y-2">
             {wonIds.map((id) => {
               const t = byId[id]
+              const indexing = t ? !t.is_indexed : false
               return (
                 <div key={id} className="flex items-start gap-3 px-4 py-3 bg-violet-50 border border-violet-200">
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-xs text-violet-500 mb-0.5">№{t?.number ?? id}</p>
                     <p className="text-sm text-[#111827] leading-snug">{t?.title ?? "—"}</p>
                   </div>
+                  {indexing && (
+                    <span className="flex items-center gap-1 text-[10px] text-amber-500 shrink-0 self-center">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      индексируется
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleRemove(id)}
-                    className="shrink-0 p-1 text-violet-300 hover:text-violet-600 transition-colors"
+                    className="shrink-0 p-1 text-violet-300 hover:text-violet-600 transition-colors self-center"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

@@ -65,10 +65,16 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         ids = obj.won_tender_ids or []
         if not ids:
             return []
-        tenders = Tender.objects.filter(id__in=ids).only("id", "number", "title")
+        tenders = Tender.objects.filter(id__in=ids).only("id", "number", "title", "embedding_id", "status")
         by_id = {t.id: t for t in tenders}
         return [
-            {"id": tid, "number": by_id[tid].number, "title": by_id[tid].title}
+            {
+                "id": tid,
+                "number": by_id[tid].number,
+                "title": by_id[tid].title,
+                "is_indexed": by_id[tid].embedding_id is not None,
+                "status": by_id[tid].status,
+            }
             for tid in ids
             if tid in by_id
         ]

@@ -80,6 +80,23 @@ def _trigger_won_tender_embeds(old_ids: list, new_ids: list) -> None:
             pass
 
 
+def _cleanup_won_tender_vectors(old_ids: list, new_ids: list) -> None:
+    """Удаляет из Qdrant векторы won-тендеров которые убрали из профиля, если они не active."""
+    removed = set(old_ids or []) - set(new_ids or [])
+    if not removed:
+        return
+    from apps.tenders.models import Tender
+    from apps.search.services import qdrant
+    for tid in removed:
+        try:
+            tender = Tender.objects.only("id", "status", "embedding_id").get(pk=tid)
+            if tender.status != Tender.Status.ACTIVE and tender.embedding_id:
+                qdrant.delete_tender(tid)
+                Tender.objects.filter(pk=tid).update(embedding_id=None)
+        except Tender.DoesNotExist:
+            pass
+
+
 # ─── Backward-compat single-company endpoints ────────────────────────────────
 
 class CompanyProfileView(generics.RetrieveUpdateAPIView):
@@ -92,7 +109,9 @@ class CompanyProfileView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         old_ids = list(serializer.instance.won_tender_ids or [])
         instance = serializer.save()
-        _trigger_won_tender_embeds(old_ids, instance.won_tender_ids or [])
+        new_ids = instance.won_tender_ids or []
+        _trigger_won_tender_embeds(old_ids, new_ids)
+        _cleanup_won_tender_vectors(old_ids, new_ids)
 
 
 # ─── Multi-company CRUD ───────────────────────────────────────────────────────
@@ -126,7 +145,9 @@ class CompanyProfileDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         old_ids = list(serializer.instance.won_tender_ids or [])
         instance = serializer.save()
-        _trigger_won_tender_embeds(old_ids, instance.won_tender_ids or [])
+        new_ids = instance.won_tender_ids or []
+        _trigger_won_tender_embeds(old_ids, new_ids)
+        _cleanup_won_tender_vectors(old_ids, new_ids)
 
 
 # ─── Directions ───────────────────────────────────────────────────────────────
