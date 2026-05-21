@@ -504,6 +504,8 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 reg_number = (params.get("regNumber") or params.get("regnum") or [""])[0].strip()
                 if not reg_number:
                     return Response({"data": [], "error": "Не удалось извлечь номер тендера из ссылки"})
+                if not reg_number.isdigit():
+                    return Response({"data": [], "error": "Некорректный номер тендера в ссылке"})
 
                 tender = Tender.objects.filter(number=reg_number).only("id", "number", "title").first()
                 if tender:
@@ -516,7 +518,7 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                     log.warning("EIS fetch failed for %s: %s", reg_number, exc)
                     detail = {}
 
-                if not detail or not detail.get("number"):
+                if not detail or not detail.get("number") or not detail.get("title", "").strip():
                     return Response({"data": [], "error": "Тендер не найден ни в базе, ни на ЕИС"})
 
                 try:
