@@ -286,7 +286,7 @@ export const tendersApi = {
     client.get(`/tenders/${id}/summary/experiments/`).then((r) => r.data.data as SummaryExperimentResult[]),
 
   searchWonCandidates: (q: string) =>
-    client.get("/tenders/search-won-candidates/", { params: { q } }).then((r) => r.data.data as WonTenderRef[]),
+    client.get("/tenders/search-won-candidates/", { params: { q } }).then((r) => r.data as { data: WonTenderRef[]; error: string | null }),
 }
 
 // Search
@@ -320,6 +320,8 @@ export interface CompanyProfile {
   okved_codes: string[]
   regions: string[]
   keywords: string[]
+  won_tender_ids: number[]
+  won_tenders: WonTenderRef[]
 }
 
 export interface WonTenderRef {
@@ -340,8 +342,6 @@ export interface CompanyDirection {
   nmck_max: number | null
   law_types: string[]
   procedure_types: string[]
-  won_tender_ids: number[]
-  won_tenders: WonTenderRef[]
   vector_updated_at: string | null
   created_at: string
 }

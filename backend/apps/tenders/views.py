@@ -484,14 +484,33 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="search-won-candidates")
     def search_won_candidates(self, request):
+        from urllib.parse import urlparse, parse_qs
         q = (request.query_params.get("q") or "").strip()
+        if not q:
+            return Response({"data": [], "error": None})
+
+        # Try to extract regNumber from EIS URL
+        try:
+            parsed = urlparse(q)
+            if parsed.scheme in ("http", "https") and "zakupki.gov.ru" in parsed.netloc:
+                params = parse_qs(parsed.query)
+                reg_number = (params.get("regNumber") or params.get("regnum") or [""])[0].strip()
+                if reg_number:
+                    tender = Tender.objects.filter(number=reg_number).only("id", "number", "title").first()
+                    if tender:
+                        return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
+                    return Response({"data": [], "error": "Тендер не найден в базе"})
+                return Response({"data": [], "error": "Не удалось извлечь номер тендера из ссылки"})
+        except Exception:
+            pass
+
         if len(q) < 2:
-            return Response({"data": []})
+            return Response({"data": [], "error": None})
         qs = Tender.objects.filter(
             Q(number__icontains=q) | Q(title__icontains=q)
         ).only("id", "number", "title")[:10]
         data = [{"id": t.id, "number": t.number, "title": t.title[:100]} for t in qs]
-        return Response({"data": data})
+        return Response({"data": data, "error": None})
 
 
 class TenderPipelineViewSet(viewsets.ModelViewSet):

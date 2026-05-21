@@ -46,31 +46,19 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CompanyProfile
-        fields = [
-            "id", "name", "inn", "description", "okved_codes", "regions", "keywords",
-            "created_at",
-        ]
-        read_only_fields = ["id", "created_at"]
-
-
-class CompanyDirectionSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(allow_blank=True, default="")
     won_tender_ids = serializers.ListField(
         child=serializers.IntegerField(), default=list, required=False
     )
     won_tenders = serializers.SerializerMethodField()
 
     class Meta:
-        model = CompanyDirection
+        model = CompanyProfile
         fields = [
-            "id", "name", "description", "okved_codes", "keywords", "exclude_keywords", "regions",
-            "nmck_min", "nmck_max", "law_types", "procedure_types",
+            "id", "name", "inn", "description", "okved_codes", "regions", "keywords",
             "won_tender_ids", "won_tenders",
-            "vector_updated_at", "created_at",
+            "created_at",
         ]
-        read_only_fields = ["id", "won_tenders", "vector_updated_at", "created_at"]
+        read_only_fields = ["id", "won_tenders", "created_at"]
 
     def get_won_tenders(self, obj):
         from apps.tenders.models import Tender
@@ -89,6 +77,19 @@ class CompanyDirectionSerializer(serializers.ModelSerializer):
         if len(value) > 3:
             raise serializers.ValidationError("Максимум 3 выигранных тендера")
         return list(dict.fromkeys(value))
+
+
+class CompanyDirectionSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(allow_blank=True, default="")
+
+    class Meta:
+        model = CompanyDirection
+        fields = [
+            "id", "name", "description", "okved_codes", "keywords", "exclude_keywords", "regions",
+            "nmck_min", "nmck_max", "law_types", "procedure_types",
+            "vector_updated_at", "created_at",
+        ]
+        read_only_fields = ["id", "vector_updated_at", "created_at"]
 
     def validate(self, attrs):
         is_partial = self.partial

@@ -165,7 +165,7 @@ class QdrantService:
             ).points
 
             # Re-score: 50% hyde + 50% won tender similarity
-            won_ids = direction.won_tender_ids or []
+            won_ids = getattr(profile, "won_tender_ids", None) or []
             if won_ids and results:
                 candidate_ids = [r.id for r in results]
                 won_scores_map: dict[int, list[float]] = {cid: [] for cid in candidate_ids}
