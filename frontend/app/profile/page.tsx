@@ -243,7 +243,7 @@ function WonTendersSection({
       <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <div>
           <p className="text-base font-semibold text-[#111827]">Выигранные тендеры</p>
-          <p className="text-xs text-gray-400 mt-0.5">До 3 тендеров — улучшают ранжирование в «Для вас»</p>
+          <p className="text-sm text-[#111827] mt-0.5">До 3 тендеров, улучшают ранжирование в «Для вас»</p>
         </div>
         {saving && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
       </div>
@@ -283,7 +283,7 @@ function WonTendersSection({
         {/* URL input */}
         {canAdd ? (
           <div>
-            <p className="text-sm text-gray-500 mb-2">Вставьте ссылку на тендер с zakupki.gov.ru</p>
+            <p className="text-[15px] text-[#111827] mb-2">Вставьте ссылку на тендер с zakupki.gov.ru</p>
             <div className="flex gap-2">
               <input
                 className="flex-1 h-10 bg-gray-50 border border-gray-200 px-3 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
@@ -521,7 +521,7 @@ function DirectionCard({
               ))}
             </div>
             {lawTypes.length === 0 && (
-              <p className="text-xs text-gray-400 mt-1.5">Если не выбрано — ищем по всем типам</p>
+              <p className="text-xs text-gray-400 mt-1.5">Если не выбрано, ищем по всем типам</p>
             )}
           </div>
 
@@ -546,7 +546,7 @@ function DirectionCard({
               ))}
             </div>
             {procedureTypes.length === 0 && (
-              <p className="text-xs text-gray-400 mt-1.5">Если не выбрано — ищем по всем типам</p>
+              <p className="text-xs text-gray-400 mt-1.5">Если не выбрано, ищем по всем типам</p>
             )}
           </div>
 
@@ -815,7 +815,7 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
   const nearLimit = pct >= 80
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between text-[15px]">
         <span className="text-gray-600">{label}</span>
         <span className={`font-medium tabular-nums ${nearLimit ? "text-amber-600" : "text-gray-700"}`}>
           {used} / {limit}
@@ -855,7 +855,7 @@ function PlanBlock({ plan }: { plan: UserPlan }) {
         <UsageBar used={plan.ai_summaries.used} limit={plan.ai_summaries.limit} label="AI-резюме" />
         <UsageBar used={plan.rag_questions.used} limit={plan.rag_questions.limit} label="Вопросы по тендеру" />
         <UsageBar used={plan.companies.used} limit={plan.companies.limit} label="Компании" />
-        <p className="text-xs text-gray-400">Счётчики сбрасываются {resetDate}</p>
+        <p className="text-sm text-[#111827]">Счётчики сбрасываются <span className="font-semibold">{resetDate}</span></p>
       </div>
     </div>
   )

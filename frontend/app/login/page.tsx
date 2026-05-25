@@ -56,7 +56,7 @@ function LoginTab({ onSuccess }: { onSuccess: () => void }) {
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } }; code?: string }
       if (!err.response) {
-        setError("Сервер недоступен — запустите backend (manage.py runserver 8080)")
+        setError("Сервер недоступен. Запустите backend (manage.py runserver 8080)")
       } else {
         setError(err.response.data?.detail ?? "Неверный email или пароль")
       }
@@ -98,7 +98,7 @@ function RegisterTab({ onSuccess }: { onSuccess: () => void }) {
     } catch (e: unknown) {
       const err = e as { response?: { data?: Record<string, string[]> } }
       if (!err.response) {
-        setError("Сервер недоступен — запустите backend (manage.py runserver 8080)")
+        setError("Сервер недоступен. Запустите backend (manage.py runserver 8080)")
       } else {
         const d = err.response.data
         setError(d ? Object.values(d).flat().join("; ") : "Ошибка регистрации")

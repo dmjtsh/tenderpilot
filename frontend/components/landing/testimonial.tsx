@@ -18,7 +18,7 @@ export function Testimonial() {
           <blockquote className="relative pt-12">
             <p className="text-xl leading-relaxed text-[#111827] sm:text-2xl">
               За первый месяц нашли 3 тендера которые раньше пропускали.
-              Один выиграли на 8.4 млн ₽ — окупили подписку в 200 раз.
+              Один выиграли на 8.4 млн ₽, окупили подписку в 200 раз.
             </p>
 
             <footer className="mt-8">

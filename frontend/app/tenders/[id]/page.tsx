@@ -616,7 +616,7 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
               <div className="space-y-1 min-w-0">
                 <SubHeading>Оплата</SubHeading>
                 {fin.advance?.has_advance ? (
-                  <FieldRow label="Аванс" value={`${fin.advance.amount_pct ? `${fin.advance.amount_pct}%` : fin.advance.amount_rub ? fmtVolume(fin.advance.amount_rub) : "да"}${fin.advance.description ? ` — ${fin.advance.description}` : ""}`} />
+                  <FieldRow label="Аванс" value={`${fin.advance.amount_pct ? `${fin.advance.amount_pct}%` : fin.advance.amount_rub ? fmtVolume(fin.advance.amount_rub) : "да"}${fin.advance.description ? `: ${fin.advance.description}` : ""}`} />
                 ) : (
                   <FieldRow label="Аванс" value="не предусмотрен" />
                 )}
@@ -671,7 +671,7 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
                         <span className="text-gray-400 shrink-0 w-5 text-right">{st.number || i + 1}.</span>
                         <div>
                           <span className="text-gray-900">{st.name}</span>
-                          {st.duration_days && <span className="text-gray-400"> — {st.duration_days} дн.</span>}
+                          {st.duration_days && <span className="text-gray-400">, {st.duration_days} дн.</span>}
                           {(st.deliverables?.length ?? 0) > 0 && (
                             <ul className="mt-1 space-y-0.5">
                               {st.deliverables.map((d, j) => (
@@ -716,7 +716,7 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
               {(req.eligibility?.licenses?.length ?? 0) > 0 && (
                 <>
                   <SubHeading>Лицензии</SubHeading>
-                  <BulletList items={req.eligibility.licenses.map(l => `${l.name}${l.issuer ? ` (${l.issuer})` : ""}${l.mandatory ? "" : " — желательно"}`)} />
+                  <BulletList items={req.eligibility.licenses.map(l => `${l.name}${l.issuer ? ` (${l.issuer})` : ""}${l.mandatory ? "" : " (желательно)"}`)} />
                 </>
               )}
               {req.eligibility?.sro?.required && (
@@ -728,7 +728,7 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
               {(req.eligibility?.staff?.length ?? 0) > 0 && (
                 <>
                   <SubHeading>Персонал</SubHeading>
-                  <BulletList items={req.eligibility.staff.map(st => `${st.role}${st.count ? ` × ${st.count}` : ""}${st.qualifications ? ` — ${st.qualifications}` : ""}`)} />
+                  <BulletList items={req.eligibility.staff.map(st => `${st.role}${st.count ? ` × ${st.count}` : ""}${st.qualifications ? `: ${st.qualifications}` : ""}`)} />
                 </>
               )}
               {(req.eligibility?.other?.length ?? 0) > 0 && (

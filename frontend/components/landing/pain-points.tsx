@@ -36,7 +36,7 @@ export function PainPoints() {
           <div className="flex-1">
             <div className={`scroll-hidden ${isVisible ? "scroll-visible" : ""}`}>
               <h2 className="text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">
-                Поиск тендеров вручную — непростое и времязатратное занятие
+                Поиск тендеров вручную: непростое и времязатратное занятие
               </h2>
               <p className="mt-4 text-lg text-[#6B7280]">
                 Вот с чем приходится иметь дело

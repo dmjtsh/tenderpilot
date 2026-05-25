@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
 import Image from "next/image"
-import { FileText, Columns3, Settings, LogOut, Send, Mail, HeadphonesIcon, Globe } from "lucide-react"
+import { FileText, Columns3, Settings, LogOut, Send, Mail } from "lucide-react"
 
 const NAV = [
   { href: "/tenders", icon: FileText, label: "Тендеры" },
@@ -52,48 +52,23 @@ function Sidebar() {
 
       {/* Support block */}
       <div className="px-3 pb-2 shrink-0">
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-1">
-          <div className="flex items-center gap-2 px-1 pb-1">
-            <HeadphonesIcon className="w-4 h-4 text-violet-600 shrink-0" />
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Тех. поддержка</span>
-          </div>
+        <div className="border-t border-gray-200 pt-3 space-y-0.5">
+          <p className="px-3 text-sm font-medium text-gray-400 uppercase tracking-wide mb-1.5">Поддержка</p>
           <a
             href="https://t.me/tender_pilot"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50 transition-all duration-150 group"
+            className="flex items-center gap-2.5 px-3 py-2 text-[15px] text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-colors"
           >
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#2AABEE]/10 group-hover:bg-[#2AABEE]/20 transition-colors">
-              <Send className="w-3.5 h-3.5 text-[#2AABEE]" />
-            </span>
-            <div className="min-w-0">
-              <div className="font-medium leading-tight">Telegram</div>
-              <div className="text-xs text-gray-400">@tender_pilot</div>
-            </div>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50 transition-all duration-150 group cursor-not-allowed opacity-60"
-          >
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-orange-100 group-hover:bg-orange-200 transition-colors">
-              <Globe className="w-3.5 h-3.5 text-orange-500" />
-            </span>
-            <div className="min-w-0">
-              <div className="font-medium leading-tight">Max</div>
-              <div className="text-xs text-gray-400">скоро</div>
-            </div>
+            <Send className="w-[18px] h-[18px]" />
+            <span>Telegram</span>
           </a>
           <a
             href="mailto:support@tenderpilot.ru"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-violet-700 hover:bg-violet-50 transition-all duration-150 group"
+            className="flex items-center gap-2.5 px-3 py-2 text-[15px] text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-colors"
           >
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-100 group-hover:bg-violet-200 transition-colors">
-              <Mail className="w-3.5 h-3.5 text-violet-600" />
-            </span>
-            <div className="min-w-0">
-              <div className="font-medium leading-tight">Email</div>
-              <div className="text-xs text-gray-400">support@tenderpilot.ru</div>
-            </div>
+            <Mail className="w-[18px] h-[18px]" />
+            <span>Email</span>
           </a>
         </div>
       </div>

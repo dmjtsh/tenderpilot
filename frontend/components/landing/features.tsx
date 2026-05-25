@@ -12,7 +12,7 @@ const demos = [
   {
     imageSrc: "/screenshot-chat.png",
     imageAlt: "Чат с тендером",
-    caption: "Спросили \u00ABкакие сроки?\u00BB — получили ответ с цитатой из пункта контракта.",
+    caption: "Спросили \u00ABкакие сроки?\u00BB и получили ответ с цитатой из пункта контракта.",
   },
   {
     imageSrc: "/screenshot-pipeline.png",

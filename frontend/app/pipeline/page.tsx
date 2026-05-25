@@ -117,14 +117,14 @@ function PipelineCard({
           className={`${snapshot.isDragging ? "shadow-lg ring-1 ring-violet-200" : ""}`}
           onClick={() => onOpen(entry)}
         >
-          <div className="bg-white border border-gray-200 p-4 hover:border-gray-300 transition-colors cursor-pointer">
-            <p className="text-sm font-medium text-[#111827] line-clamp-2 mb-2">
+          <div className="bg-white border border-gray-200 p-5 hover:border-gray-300 transition-colors cursor-pointer">
+            <p className="text-[15px] font-medium text-[#111827] line-clamp-3 mb-2.5">
               {entry.tender_title}
             </p>
             {entry.tender_customer_name && (
-              <p className="text-xs text-gray-500 mb-2 truncate">{entry.tender_customer_name}</p>
+              <p className="text-sm text-gray-500 mb-2.5 line-clamp-2">{entry.tender_customer_name}</p>
             )}
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center justify-between text-sm text-gray-500">
               <span>{fmt(entry.tender_nmck)}</span>
               {(() => {
                 const dl = deadlineInfo(entry.tender_deadline_at)
@@ -232,7 +232,7 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto">
+    <div className="p-8 max-w-[1600px] mx-auto flex flex-col min-h-screen">
       {/* Topbar */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <h1 className="text-2xl font-bold text-[#111827] mr-auto">Мои тендеры</h1>
@@ -327,9 +327,9 @@ export default function PipelinePage() {
         </div>
       ) : view === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-6 gap-4">
+          <div className="flex gap-4 overflow-x-auto scrollbar-thin pb-2 flex-1 min-h-0">
             {grouped.map((col) => (
-              <div key={col.status}>
+              <div key={col.status} className="min-w-[280px] flex-1">
                 <div className={`border-t-2 ${col.color} bg-gray-50 px-3 py-2 mb-3`}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-[#111827]">
