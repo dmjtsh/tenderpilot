@@ -394,8 +394,10 @@ def _parse_links_tender_xml(links_xml) -> list[dict]:
     for d in items:
         if not isinstance(d, dict):
             continue
-        name = d.get("linkName", "").strip().strip('"')
-        download = d.get("linkURL", "") or d.get("download", "")
+        raw_name = d.get("linkName", "")
+        name = raw_name.strip().strip('"') if isinstance(raw_name, str) else ""
+        raw_dl = d.get("linkURL", "") or d.get("download", "")
+        download = raw_dl if isinstance(raw_dl, str) else ""
         if not download or not name:
             continue
         if name.lower() in ("источник",):
