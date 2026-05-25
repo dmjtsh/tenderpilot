@@ -181,6 +181,10 @@ def enrich_from_detail(base: dict, detail: dict) -> dict:
     info_parsed = _parse_info_html(info_html) if info_html else {}
 
     customer_inn = str(detail.get("CustomerINN", "")).strip()
+    if "/" in customer_inn:
+        customer_inn = customer_inn.split("/")[0].strip()
+    if not customer_inn.isdigit() or len(customer_inn) > 12:
+        customer_inn = ""
     if customer_inn and customer_inn != "0":
         base["customer_inn"] = customer_inn
 
