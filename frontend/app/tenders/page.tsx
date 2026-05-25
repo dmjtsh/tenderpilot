@@ -463,22 +463,33 @@ function TendersPageInner() {
     if (!isAuthenticated()) router.replace("/login")
   }, [router])
 
-  const [onboardingChecked, setOnboardingChecked] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   useEffect(() => {
-    if (onboardingChecked) return
     if (!isAuthenticated()) return
     const dismissed = localStorage.getItem("onboarding_dismissed")
-    if (dismissed) { setOnboardingChecked(true); return }
+    if (dismissed) return
     profileApi.listCompanies().then((companies) => {
       if (companies.length === 0 || !companies[0].name) {
-        router.replace("/profile")
+        setShowOnboarding(true)
       }
-      setOnboardingChecked(true)
-    }).catch(() => setOnboardingChecked(true))
-  }, [onboardingChecked, router])
+    }).catch(() => {})
+  }, [router])
 
   return (
     <div className="flex flex-col h-screen">
+      {showOnboarding && (
+        <div className="flex items-center justify-between px-6 py-3 bg-violet-50 border-b border-violet-200 text-sm">
+          <span className="text-violet-800">
+            Заполните <Link href="/profile" className="underline font-medium">профиль компании</Link>, чтобы получать персональную подборку тендеров
+          </span>
+          <button
+            onClick={() => { setShowOnboarding(false); localStorage.setItem("onboarding_dismissed", "1") }}
+            className="text-violet-400 hover:text-violet-600 ml-4"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Top bar with tabs */}
       <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-200 shrink-0">
         <button
