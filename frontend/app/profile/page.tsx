@@ -141,7 +141,7 @@ const NMCK_PRESETS = [
   { label: "своё", min: -1, max: -1 },
 ] as const
 
-const LAW_TYPES = ["44-ФЗ", "223-ФЗ", "615-ПП"] as const
+const LAW_TYPES = ["44-ФЗ", "223-ФЗ", "615-ПП", "b2b"] as const
 
 const PROCEDURE_TYPES = [
   { value: "auction", label: "Аукцион" },
@@ -149,6 +149,7 @@ const PROCEDURE_TYPES = [
   { value: "request_quotations", label: "Запрос котировок" },
   { value: "request_proposals", label: "Запрос предложений" },
   { value: "single_source", label: "Ед. поставщик" },
+  { value: "other", label: "Иной способ" },
 ] as const
 
 

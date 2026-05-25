@@ -10,6 +10,8 @@ class PipelineRun(models.Model):
         CLEANUP_DOCS = "cleanup_old_documents"
         CLEANUP_TENDERS = "cleanup_finished_tenders"
         RECOVER = "recover_failed_tenders"
+        SYNC_KOMTENDER = "sync_komtender"
+        SYNC_TENDERGURU = "sync_tenderguru"
 
     class Status(models.TextChoices):
         OK = "ok"

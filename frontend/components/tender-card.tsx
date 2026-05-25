@@ -14,6 +14,46 @@ const PROCEDURE_BADGE: Record<string, { label: string; cls: string }> = {
   other: { label: "Иной способ", cls: "bg-orange-50 text-orange-700" },
 }
 
+const PLATFORM_RULES: [string, string][] = [
+  ["b2b-center", "B2B-Center"], ["b2b center", "B2B-Center"],
+  ["березка", "Берёзка"], ["agregatoreat", "Берёзка"],
+  ["ртс-маркет", "РТС-Маркет"], ["rts-market", "РТС-Маркет"],
+  ["отс-тендер", "ОТС"], ["ots", "ОТС"],
+  ["tender.pro", "Tender.Pro"], ["тендер про", "Tender.Pro"],
+  ["фабрикант", "Фабрикант"], ["fabrikant", "Фабрикант"],
+  ["росэлторг", "Росэлторг"], ["roseltorg", "Росэлторг"],
+  ["сбербанк", "Сбербанк-АСТ"], ["sberbank-ast", "Сбербанк-АСТ"],
+  ["zakaz.rf", "Заказ.РФ"], ["заказ.рф", "Заказ.РФ"],
+  ["pulscen", "Пульс цен"],
+  ["tektorg", "ТЭК-Торг"],
+  ["etp-ets", "ЕТС"],
+  ["zakupki.mos", "Портал поставщиков"],
+]
+
+function _shortPlatform(name: string | null | undefined, sourceUrl?: string | null): string {
+  const haystack = [name, sourceUrl].filter(Boolean).join(" ").toLowerCase()
+  if (!haystack) return ""
+  for (const [key, label] of PLATFORM_RULES) {
+    if (haystack.includes(key)) return label
+  }
+  if (name && name.length > 20) return name.slice(0, 18) + "…"
+  if (name) return name
+  if (sourceUrl) {
+    try {
+      const host = new URL(sourceUrl).hostname.replace("www.", "")
+      return host.length > 20 ? host.slice(0, 18) + "…" : host
+    } catch {}
+  }
+  return ""
+}
+
+const LAW_BADGE: Record<string, { label: string; cls: string }> = {
+  "44-ФЗ": { label: "44-ФЗ", cls: "bg-gray-100 text-gray-600" },
+  "223-ФЗ": { label: "223-ФЗ", cls: "bg-gray-100 text-gray-600" },
+  "615-ПП": { label: "615-ПП", cls: "bg-gray-100 text-gray-600" },
+  "b2b": { label: "Коммерческий", cls: "bg-amber-50 text-amber-700" },
+}
+
 
 function scoreColor(score: number): string {
   if (score >= 90) return "text-gray-900"
@@ -166,6 +206,9 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
   const deadlineInfo = daysUntilDeadline(tender.deadline_at)
   const auctionDate = fmtShortDate(tender.auction_date)
   const procBadge = tender.procedure_type ? PROCEDURE_BADGE[tender.procedure_type] : null
+  const lawBadge = tender.law_type === "b2b"
+    ? { label: _shortPlatform(tender.trading_platform, tender.source_url) || "Коммерческий", cls: "bg-amber-50 text-amber-700" }
+    : tender.law_type ? LAW_BADGE[tender.law_type] : null
   const tenderHref = profileId ? `/tenders/${tender.id}?profile_id=${profileId}` : `/tenders/${tender.id}`
 
   return (
@@ -177,6 +220,11 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
             {tender.title}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {lawBadge && (
+              <span className={`text-xs px-2 py-0.5 rounded font-medium ${lawBadge.cls}`}>
+                {lawBadge.label}
+              </span>
+            )}
             {procBadge && (
               <span className={`text-xs px-2 py-0.5 rounded font-medium ${procBadge.cls}`}>
                 {procBadge.label}
@@ -212,11 +260,13 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
         {/* Row 4: Metrics + Stage */}
         <div className="flex items-end">
           <div className="flex items-baseline flex-1 min-w-0">
-            {nmck && (
-              <LabeledValue label="НМЦК">
-                <span className="text-xl text-gray-900 font-semibold">{nmck}</span>
-              </LabeledValue>
-            )}
+            <LabeledValue label="НМЦК">
+              {nmck ? (
+                <span className="text-xl font-semibold text-gray-900">{nmck}</span>
+              ) : (
+                <span className="text-lg font-normal text-gray-400">Не указана</span>
+              )}
+            </LabeledValue>
 
             <div className="flex items-baseline gap-x-5 flex-wrap gap-y-2 ml-16">
               {deadlineInfo && (

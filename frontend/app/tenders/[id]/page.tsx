@@ -11,21 +11,25 @@ import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
 import { TenderCard } from "@/components/tender-card"
 
 const STATUS_LABEL: Record<string, string> = {
+  active: "Активный",
   published: "Опубликован",
   accepting: "Приём заявок",
+  finished: "Завершён",
   closed: "Закрыт",
   cancelled: "Отменён",
 }
 
 const STATUS_DOT: Record<string, string> = {
+  active: "bg-emerald-500",
   published: "bg-gray-400",
   accepting: "bg-emerald-500",
+  finished: "bg-gray-300",
   closed: "bg-gray-300",
   cancelled: "bg-red-400",
 }
 
 function fmt(n: number | null) {
-  if (n == null) return "—"
+  if (n == null) return "Не указана"
   return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(n)
 }
 
@@ -442,7 +446,9 @@ function SummaryV2Sections({ s, tender }: { s: TenderSummaryV2; tender: Tender }
       <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           {tender.law_type && (
-            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 border border-gray-200">{tender.law_type}</span>
+            <span className={`text-xs px-2 py-0.5 border ${tender.law_type === "b2b" ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
+              {tender.law_type === "b2b" ? "Коммерческая закупка" : tender.law_type}
+            </span>
           )}
           <span className="text-sm font-medium text-gray-900 truncate">{tender.title}</span>
         </div>
@@ -908,14 +914,21 @@ function docsAreProcessing(docs: TenderDoc[]): boolean {
 function DocumentsBlock({ tenderId }: { tenderId: number }) {
   const queryClient = useQueryClient()
   const [downloading, setDownloading] = useState(false)
-  const { data: docs = [], isLoading } = useDocsQuery(tenderId, downloading)
+  const [noDocs, setNoDocs] = useState(false)
+  const { data: docs = [], isLoading } = useDocsQuery(tenderId, downloading && !noDocs)
 
   const isProcessing = docsAreProcessing(docs)
 
   async function handleDownload() {
     setDownloading(true)
+    setNoDocs(false)
     try {
-      await tendersApi.downloadDocs(tenderId)
+      const res = await tendersApi.downloadDocs(tenderId)
+      if (res?.no_docs) {
+        setDownloading(false)
+        setNoDocs(true)
+        return
+      }
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
       }, 1500)
@@ -926,8 +939,6 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
 
   useEffect(() => {
     if (downloading && docs.length > 0 && !isProcessing) {
-      // Docs already exist and are all done/skipped — reset after short delay
-      // to allow refetch to settle (handles repeated clicks)
       const t = setTimeout(() => setDownloading(false), 2000)
       return () => clearTimeout(t)
     }
@@ -956,20 +967,22 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
           <div className="flex items-center gap-2 text-[15px] text-gray-500">
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
+        ) : noDocs ? (
+          <p className="text-[15px] text-gray-400">Документы недоступны на площадке</p>
         ) : docs.length === 0 && !downloading ? (
           <button
             onClick={handleDownload}
             className="flex items-center gap-3 text-[15px] text-gray-500 hover:text-[#111827] transition-colors group"
           >
             <Download className="w-5 h-5 group-hover:text-[#111827] transition-colors" />
-            Загрузить документы с ЕИС
+            Загрузить документы
           </button>
         ) : (
           <div className="border border-gray-200 overflow-hidden divide-y divide-gray-200">
             {downloading && docs.length === 0 && (
               <div className="flex items-center gap-3 px-4 py-3 text-[15px] text-gray-500">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                Загружаем документы с ЕИС...
+                Загружаем документы...
               </div>
             )}
             {docs.map((doc) => (
@@ -987,7 +1000,7 @@ function DocsProgressInline({ docs, downloading, tenderId }: { docs: TenderDoc[]
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
-        Загружаем документы с ЕИС...
+        Загружаем документы...
       </div>
     )
   }
@@ -1115,6 +1128,7 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
   const [phase, setPhase] = useState<SummaryPhase>("idle")
   const [error, setError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
+  const [noDocs, setNoDocs] = useState(false)
   const downloadStartRef = useRef<number | null>(null)
   const [autoStarted, setAutoStarted] = useState(false)
 
@@ -1204,9 +1218,9 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
     }
 
     const currentDocs = queryClient.getQueryData<TenderDoc[]>(["tender-docs", tenderId])
-    const noDocs = !currentDocs || currentDocs.length === 0
+    const docsEmpty = !currentDocs || currentDocs.length === 0
 
-    if (noDocs && !autoStarted) {
+    if (docsEmpty && !autoStarted) {
       setAutoStarted(true)
       setPhase("downloading")
       setDownloading(true)
@@ -1215,7 +1229,14 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
         queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
       }, 32_000)
       try {
-        await tendersApi.downloadDocs(tenderId)
+        const res = await tendersApi.downloadDocs(tenderId)
+        if (res?.no_docs) {
+          clearTimeout(timeoutId)
+          setDownloading(false)
+          setNoDocs(true)
+          setPhase("idle")
+          return
+        }
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
         }, 1500)
@@ -1358,6 +1379,8 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
               Попробовать снова
             </button>
           </div>
+        ) : noDocs ? (
+          <p className="text-[15px] text-gray-400">AI-резюме недоступно: документы не найдены на площадке</p>
         ) : (
           <button
             onClick={() => handleGenerate()}
@@ -1606,8 +1629,8 @@ function TenderChat({ tenderId }: { tenderId: number }) {
             </a>
           </div>
         ) : noDocs ? (
-          <p className="text-sm text-gray-500">
-            Загрузите документы тендера, чтобы задавать вопросы.
+          <p className="text-sm text-gray-400">
+            Вопросы недоступны: документы не найдены на площадке
           </p>
         ) : (
           <>
@@ -1783,9 +1806,6 @@ function TenderDetailPageInner() {
                 <span className={`w-2 h-2 rounded-full ${STATUS_DOT[tender.status] ?? "bg-gray-400"}`} />
                 {STATUS_LABEL[tender.status] ?? tender.status}
               </span>
-              {tender.number && (
-                <span className="text-sm text-gray-500 font-mono">{tender.number}</span>
-              )}
             </div>
             <h1 className="text-2xl font-bold leading-snug text-[#111827]">
               {tender.title}
@@ -1795,7 +1815,7 @@ function TenderDetailPageInner() {
           {/* Meta */}
           <div className="mb-8 border border-gray-200 bg-white overflow-hidden">
             {tender.law_type && (
-              <MetaRow label="Тип закупки" value={tender.law_type} />
+              <MetaRow label="Тип закупки" value={tender.law_type === "b2b" ? "Коммерческая закупка" : tender.law_type} />
             )}
             {tender.procedure_type && (
               <MetaRow label="Процедура" value={PROCEDURE_LABEL[tender.procedure_type] ?? tender.procedure_type} />
@@ -1810,32 +1830,34 @@ function TenderDetailPageInner() {
               href={tender.trading_platform_url || undefined}
             />
             <MetaRow label="Подача заявок до" value={fmtDate(tender.deadline_at)} />
-            <MetaRow
-              label="Дата торгов"
-              value={tender.auction_date ? fmtDate(tender.auction_date) : "—"}
-            />
-            <MetaRow
-              label="Обеспечение заявки"
-              value={
-                tender.bid_security_required === false
-                  ? "Не требуется"
-                  : tender.bid_security_amount != null
-                  ? fmt(tender.bid_security_amount)
-                  : "—"
-              }
-            />
-            <MetaRow
-              label="Обеспечение контракта"
-              value={
-                tender.contract_security_amount != null && tender.contract_security_percent != null
-                  ? `${fmt(tender.contract_security_amount)} (${tender.contract_security_percent}%)`
-                  : tender.contract_security_amount != null
-                  ? fmt(tender.contract_security_amount)
-                  : tender.contract_security_percent != null
-                  ? `${tender.contract_security_percent}%`
-                  : "—"
-              }
-            />
+            {tender.auction_date && (
+              <MetaRow
+                label="Дата торгов"
+                value={fmtDate(tender.auction_date)}
+              />
+            )}
+            {(tender.bid_security_required === false || tender.bid_security_amount != null) && (
+              <MetaRow
+                label="Обеспечение заявки"
+                value={
+                  tender.bid_security_required === false
+                    ? "Не требуется"
+                    : fmt(tender.bid_security_amount!)
+                }
+              />
+            )}
+            {(tender.contract_security_amount != null || tender.contract_security_percent != null) && (
+              <MetaRow
+                label="Обеспечение контракта"
+                value={
+                  tender.contract_security_amount != null && tender.contract_security_percent != null
+                    ? `${fmt(tender.contract_security_amount)} (${tender.contract_security_percent}%)`
+                    : tender.contract_security_amount != null
+                    ? fmt(tender.contract_security_amount)
+                    : `${tender.contract_security_percent}%`
+                }
+              />
+            )}
             <MetaRow label="Опубликован" value={fmtDate(tender.published_at)} />
             {(tender.customer_name || tender.customer) && (
               <MetaRow
@@ -1888,7 +1910,7 @@ function TenderDetailPageInner() {
             className="inline-flex items-center gap-2.5 h-11 px-5 text-base font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors"
           >
             <ExternalLink className="w-5 h-5" />
-            Открыть на ЕИС
+            Открыть на площадке
           </a>
         </div>
       </div>

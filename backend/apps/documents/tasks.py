@@ -25,6 +25,50 @@ from apps.tenders.models import Tender
 
 logger = logging.getLogger(__name__)
 
+KOMTENDER_BASE = "https://www.komtender.ru"
+
+
+def _komtender_doc_links(tender: Tender) -> list[dict[str, str]]:
+    doc_files = tender.raw_json.get("doc_files", [])
+    if not doc_files:
+        nested = tender.raw_json.get("raw_json", {})
+        if isinstance(nested, dict):
+            doc_files = nested.get("doc_files", [])
+    links = []
+    for f in doc_files:
+        link = f.get("link", "")
+        title = f.get("title", "")
+        ext = f.get("extension", "")
+        if not link:
+            continue
+        url = KOMTENDER_BASE + link if link.startswith("/") else link
+        filename = title if title else f"doc.{ext}"
+        if ext and not filename.endswith(f".{ext}"):
+            filename = f"{filename}.{ext}"
+        links.append({"url": url, "filename": filename})
+    return links
+
+
+def _tenderguru_doc_links(tender: Tender) -> list[dict[str, str]]:
+    """Extract document links from TenderGuru raw_json.doc_files."""
+    doc_files = tender.raw_json.get("doc_files", [])
+    if not doc_files:
+        nested = tender.raw_json.get("raw_json", {})
+        if isinstance(nested, dict):
+            doc_files = nested.get("doc_files", [])
+    links = []
+    for f in doc_files:
+        link = f.get("link", "")
+        title = f.get("title", "")
+        ext = f.get("extension", "")
+        if not link:
+            continue
+        filename = title if title else f"doc.{ext}"
+        if ext and not filename.endswith(f".{ext}"):
+            filename = f"{filename}.{ext}"
+        links.append({"url": link, "filename": filename})
+    return links
+
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
 def download_and_parse_documents(self, tender_id: int) -> str:
@@ -33,7 +77,12 @@ def download_and_parse_documents(self, tender_id: int) -> str:
     except Tender.DoesNotExist:
         return f"tender {tender_id} not found"
 
-    links = fetch_document_links(tender.number, source_url=tender.source_url or "")
+    if tender.source == Tender.Source.KOMTENDER:
+        links = _komtender_doc_links(tender)
+    elif tender.source == Tender.Source.TENDERGURU:
+        links = _tenderguru_doc_links(tender)
+    else:
+        links = fetch_document_links(tender.number, source_url=tender.source_url or "")
 
     if not links:
         return f"no documents for tender {tender.number}"

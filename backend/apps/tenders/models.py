@@ -36,6 +36,8 @@ class Tender(models.Model):
     class Source(models.TextChoices):
         EIS = "eis", "ЕИС (zakupki.gov.ru)"
         BIDZAAR = "bidzaar", "Bidzaar"
+        KOMTENDER = "komtender", "Komtender"
+        TENDERGURU = "tenderguru", "TenderGuru"
         OTHER = "other", "Другой источник"
 
     class LawType(models.TextChoices):

@@ -29,6 +29,7 @@ class TenderFilterSet(django_filters.FilterSet):
     deadline_days_min = django_filters.NumberFilter(method="filter_deadline_days_min")
     okpd = django_filters.CharFilter(method="filter_okpd")
     customer = django_filters.CharFilter(method="filter_customer")
+    platform = django_filters.CharFilter(method="filter_platform")
 
     class Meta:
         model = Tender
@@ -78,6 +79,15 @@ class TenderFilterSet(django_filters.FilterSet):
         return queryset.filter(
             Q(customer__name__icontains=value) | Q(customer__inn__startswith=value)
         )
+
+    def filter_platform(self, queryset, name, value):
+        vals = [v.strip() for v in value.split(",") if v.strip()]
+        if not vals:
+            return queryset
+        q = Q()
+        for p in vals:
+            q |= Q(trading_platform__icontains=p)
+        return queryset.filter(q)
 
 
 class RegionsListView(APIView):
@@ -378,8 +388,25 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="download-docs")
     def download_docs(self, request, pk=None):
-        from apps.documents.tasks import download_and_parse_documents
+        from apps.documents.tasks import (
+            download_and_parse_documents,
+            _komtender_doc_links,
+            _tenderguru_doc_links,
+        )
+        from apps.documents.eis_docs import fetch_document_links
+
         tender = self.get_object()
+
+        if tender.source == tender.Source.KOMTENDER:
+            has_links = bool(_komtender_doc_links(tender))
+        elif tender.source == tender.Source.TENDERGURU:
+            has_links = bool(_tenderguru_doc_links(tender))
+        else:
+            has_links = True
+
+        if not has_links:
+            return Response({"data": {"started": False, "no_docs": True}, "error": None})
+
         download_and_parse_documents.delay(tender.id)
         return Response({"data": {"started": True}, "error": None})
 

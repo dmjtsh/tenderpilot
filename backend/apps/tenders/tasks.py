@@ -22,6 +22,13 @@ def enrich_tender(self, tender_id: int) -> None:
         logger.warning("Tender %d not found", tender_id)
         return
 
+    if tender.source in (Tender.Source.KOMTENDER, Tender.Source.TENDERGURU):
+        if not tender.enriched_at:
+            Tender.objects.filter(pk=tender_id).update(enriched_at=timezone.now())
+        from apps.search.tasks import embed_tender
+        embed_tender.delay(tender_id)
+        return
+
     from apps.alerts.services import log_pipeline_run
 
     started_at = timezone.now()
@@ -301,6 +308,105 @@ def sync_active_tenders() -> dict:
     return stats
 
 
+KOMTENDER_MAX_PER_RUN = 500
+KOMTENDER_DELAY = 0.5
+
+
+@shared_task(name="apps.tenders.tasks.sync_komtender", time_limit=3600)
+def sync_komtender() -> dict:
+    """Синхронизация коммерческих тендеров с komtender.ru через sitemap."""
+    from .models import Tender
+    from .komtender_client import fetch_sitemap_urls, parse_tender_page
+    from .services import upsert_tender
+    from apps.alerts.models import PipelineRun
+    from apps.alerts.services import log_pipeline_run
+
+    import requests as req
+
+    start_time = timezone.now()
+    stats = {
+        "sitemap_total": 0,
+        "new_urls": 0,
+        "parsed": 0,
+        "skipped": 0,
+        "errors": 0,
+    }
+
+    last_run = (
+        PipelineRun.objects.filter(
+            task_name="sync_komtender", status__in=["ok", "partial"]
+        )
+        .order_by("-finished_at")
+        .first()
+    )
+    since = last_run.finished_at if last_run else timezone.now() - timedelta(days=7)
+
+    urls = fetch_sitemap_urls(since=since)
+    stats["sitemap_total"] = len(urls)
+
+    if not urls:
+        logger.info("sync_komtender: 0 URLs from sitemap since %s", since)
+        log_pipeline_run(
+            task_name="sync_komtender",
+            started_at=start_time,
+            stats=stats,
+            status="ok",
+        )
+        return stats
+
+    existing_numbers = set(
+        Tender.objects.filter(source=Tender.Source.KOMTENDER)
+        .values_list("number", flat=True)
+    )
+    new_items = [u for u in urls if u["komtender_id"] not in existing_numbers]
+    stats["new_urls"] = len(new_items)
+    stats["skipped"] = len(urls) - len(new_items)
+
+    logger.info(
+        "sync_komtender: sitemap=%d new=%d existing=%d since=%s",
+        len(urls), len(new_items), len(existing_numbers), since,
+    )
+
+    session = req.Session()
+    session.headers["User-Agent"] = "TenderPilot/1.0 (tender aggregator; contact@tenderpilot.ru)"
+
+    for item in new_items[:KOMTENDER_MAX_PER_RUN]:
+        try:
+            data = parse_tender_page(item["url"], session=session)
+            if not data:
+                stats["errors"] += 1
+                continue
+            data["raw_json"] = data.get("raw_json", {})
+            tender = upsert_tender(data)
+            Tender.objects.filter(pk=tender.pk).update(enriched_at=timezone.now())
+            enrich_tender.apply_async(args=[tender.pk], countdown=5)
+            stats["parsed"] += 1
+        except Exception as exc:
+            logger.error("sync_komtender parse error %s: %s", item["url"], exc)
+            stats["errors"] += 1
+
+        time.sleep(KOMTENDER_DELAY)
+
+    if stats["parsed"] == 0 and stats["errors"] > 0:
+        sync_status = "failed"
+    elif stats["errors"] > 0:
+        sync_status = "partial"
+    else:
+        sync_status = "ok"
+
+    logger.info(
+        "sync_komtender done: parsed=%d errors=%d new_urls=%d",
+        stats["parsed"], stats["errors"], stats["new_urls"],
+    )
+    log_pipeline_run(
+        task_name="sync_komtender",
+        started_at=start_time,
+        stats=stats,
+        status=sync_status,
+    )
+    return stats
+
+
 # Тендеры хранятся 30 дней после истечения дедлайна, затем удаляются из БД и MinIO.
 # Тендеры с pipeline-записями пользователей не трогаем никогда.
 TENDER_RETENTION_DAYS = 7
@@ -384,5 +490,140 @@ def cleanup_finished_tenders() -> dict:
         started_at=start_time,
         stats=stats,
         status="ok" if stats["errors"] == 0 else "partial",
+    )
+    return stats
+
+
+# ---------------------------------------------------------------------------
+# TenderGuru sync
+# ---------------------------------------------------------------------------
+
+TENDERGURU_MAX_PER_RUN = 500
+TENDERGURU_DELAY = 0.3
+TENDERGURU_STOP_AFTER = 3
+
+
+@shared_task(name="apps.tenders.tasks.sync_tenderguru", time_limit=3600)
+def sync_tenderguru() -> dict:
+    """Hourly sync of commercial tenders from TenderGuru API."""
+    from .models import Tender
+    from .tenderguru_client import (
+        search_tenders as tg_search,
+        fetch_tender_detail,
+        parse_list_item,
+        enrich_from_detail,
+    )
+    from .services import upsert_tender
+    from apps.alerts.services import log_pipeline_run
+
+    start_time = timezone.now()
+    stats = {
+        "pages": 0,
+        "fetched": 0,
+        "new": 0,
+        "enriched": 0,
+        "errors": 0,
+    }
+
+    existing_numbers = set(
+        Tender.objects.filter(source=Tender.Source.TENDERGURU)
+        .values_list("number", flat=True)
+    )
+
+    session = None
+    try:
+        import requests as req
+        session = req.Session()
+        session.headers["User-Agent"] = "TenderPilot/1.0 (tender aggregator; contact@tenderpilot.ru)"
+    except Exception:
+        pass
+
+    consecutive_no_new = 0
+    new_tender_pks: list[int] = []
+
+    for page in range(1, 100):
+        try:
+            items = tg_search(
+                page=page,
+                law_filter="kom",
+                actual=True,
+                session=session,
+            )
+        except Exception as exc:
+            logger.error("sync_tenderguru list page=%d error: %s", page, exc)
+            stats["errors"] += 1
+            break
+
+        if not items:
+            break
+
+        stats["pages"] = page
+        page_new = 0
+
+        for item in items:
+            try:
+                parsed = parse_list_item(item)
+                if not parsed:
+                    continue
+
+                stats["fetched"] += 1
+                is_new = parsed["number"] not in existing_numbers
+
+                if is_new:
+                    tg_id = item.get("ID")
+                    detail = fetch_tender_detail(tg_id, session=session)
+                    if detail:
+                        parsed = enrich_from_detail(parsed, detail)
+                        stats["enriched"] += 1
+                    time.sleep(TENDERGURU_DELAY)
+
+                    tender = upsert_tender(parsed)
+                    Tender.objects.filter(pk=tender.pk).update(enriched_at=timezone.now())
+                    existing_numbers.add(parsed["number"])
+                    new_tender_pks.append(tender.pk)
+                    page_new += 1
+                    stats["new"] += 1
+
+                    if len(new_tender_pks) >= TENDERGURU_MAX_PER_RUN:
+                        break
+            except Exception as exc:
+                logger.error("sync_tenderguru item error: %s", exc)
+                stats["errors"] += 1
+
+        if page_new == 0:
+            consecutive_no_new += 1
+            if consecutive_no_new >= TENDERGURU_STOP_AFTER:
+                break
+        else:
+            consecutive_no_new = 0
+
+        if len(items) < 20:
+            break
+
+        if len(new_tender_pks) >= TENDERGURU_MAX_PER_RUN:
+            break
+
+        time.sleep(TENDERGURU_DELAY)
+
+    for pk in new_tender_pks:
+        enrich_tender.apply_async(args=[pk], countdown=5)
+
+    if stats["new"] == 0 and stats["errors"] > 0:
+        sync_status = "failed"
+    elif stats["errors"] > 0:
+        sync_status = "partial"
+    else:
+        sync_status = "ok"
+
+    logger.info(
+        "sync_tenderguru done: pages=%d fetched=%d new=%d enriched=%d errors=%d",
+        stats["pages"], stats["fetched"], stats["new"],
+        stats["enriched"], stats["errors"],
+    )
+    log_pipeline_run(
+        task_name="sync_tenderguru",
+        started_at=start_time,
+        stats=stats,
+        status=sync_status,
     )
     return stats

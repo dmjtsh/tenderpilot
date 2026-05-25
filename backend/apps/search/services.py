@@ -139,7 +139,7 @@ class QdrantService:
                 FieldCondition(key="deadline_at_ts", range=Range(gt=int(time.time()))),
             ]
 
-            regions = list(set(direction.regions or []) & set(extra_regions)) if extra_regions and direction.regions else (extra_regions or direction.regions)
+            regions = extra_regions or direction.regions
             if regions:
                 conditions.append(
                     FieldCondition(key="region", match=MatchAny(any=regions))
@@ -152,13 +152,13 @@ class QdrantService:
                     FieldCondition(key="nmck", range=Range(gte=eff_nmck_min, lte=eff_nmck_max))
                 )
 
-            law_types = list(set(direction.law_types or []) & set(extra_law_types)) if extra_law_types and direction.law_types else (extra_law_types or direction.law_types)
+            law_types = extra_law_types or direction.law_types
             if law_types:
                 conditions.append(
                     FieldCondition(key="law_type", match=MatchAny(any=law_types))
                 )
 
-            proc_types = list(set(direction.procedure_types or []) & set(extra_procedure_types)) if extra_procedure_types and direction.procedure_types else (extra_procedure_types or direction.procedure_types)
+            proc_types = extra_procedure_types or direction.procedure_types
             if proc_types:
                 conditions.append(
                     FieldCondition(key="procedure_type", match=MatchAny(any=proc_types))

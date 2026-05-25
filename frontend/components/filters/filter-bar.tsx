@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { SlidersHorizontal, X } from "lucide-react"
 import type { TenderFilters } from "@/hooks/use-tender-filters"
-import { tendersApi, okvedApi, customerApi } from "@/lib/api"
+import { tendersApi, customerApi } from "@/lib/api"
 import { FilterDropdown } from "./filter-dropdown"
 import { MultiSelectFilter } from "./multi-select-filter"
 import { RangeFilter } from "./range-filter"
@@ -23,18 +23,29 @@ const LAW_OPTIONS = [
   { value: "44-ФЗ", label: "44-ФЗ" },
   { value: "223-ФЗ", label: "223-ФЗ" },
   { value: "615-ПП", label: "615-ПП" },
+  { value: "b2b", label: "Коммерческие" },
 ]
 
 const PLATFORM_OPTIONS = [
   { value: "РТС-тендер", label: "РТС-тендер" },
   { value: "Сбербанк-АСТ", label: "Сбербанк-АСТ" },
-  { value: "РОСЭЛТОРГ", label: "РОСЭЛТОРГ" },
+  { value: "Росэлторг", label: "Росэлторг" },
   { value: "Фабрикант", label: "Фабрикант" },
-  { value: "Газпромбанк", label: "ЭТП Газпромбанк" },
+  { value: "ГПБ", label: "ЭТП ГПБ" },
   { value: "АГЗ РТ", label: "АГЗ РТ" },
   { value: "ТЭК-Торг", label: "ТЭК-Торг" },
   { value: "РАД", label: "РАД" },
   { value: "ЕЭТП", label: "ЕЭТП" },
+  { value: "Портал поставщиков", label: "Портал поставщиков" },
+  { value: "РТС-МАРКЕТ", label: "РТС-Маркет" },
+  { value: "B2B-Center", label: "B2B-Center" },
+  { value: "Берез", label: "Берёзка" },
+  { value: "ОТС", label: "ОТС" },
+  { value: "Бидзаар", label: "Бидзаар" },
+  { value: "SberB2B", label: "SberB2B" },
+  { value: "Tender.Pro", label: "Tender.Pro" },
+  { value: "ЗаказРф", label: "ЗаказРФ" },
+  { value: "ONLINECONTRACT", label: "Онлайнконтракт" },
 ]
 
 interface Props {
@@ -54,19 +65,7 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
     staleTime: 5 * 60 * 1000,
   })
 
-  const [okvedQuery, setOkvedQuery] = useState("")
-  const { data: okvedOptions = [], isFetching: okvedLoading } = useQuery({
-    queryKey: ["okved-search", okvedQuery],
-    queryFn: () => okvedApi.search(okvedQuery),
-    enabled: okvedQuery.length > 0,
-    staleTime: 30_000,
-  })
-
   const regionOptions = regions.map((r: string) => ({ value: r, label: r }))
-  const okvedOpts = okvedOptions.map((o: { code: string; name: string }) => ({
-    value: o.code,
-    label: `${o.code} — ${o.name}`,
-  }))
 
   const [customerQuery, setCustomerQuery] = useState("")
   const { data: customerResults = [], isFetching: customerLoading } = useQuery({
@@ -139,18 +138,6 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
           onChange={(min, max) => {
             setFilters({ ...filters, deadline_days_min: min, deadline_days: max })
           }}
-        />
-      </FilterDropdown>
-
-      <FilterDropdown label="ОКВЭД" activeCount={filters.okpd.length}>
-        <MultiSelectFilter
-          options={okvedOpts}
-          selected={filters.okpd}
-          onChange={(v) => setFilter("okpd", v)}
-          searchable
-          searchPlaceholder="Код или название..."
-          onSearch={setOkvedQuery}
-          loading={okvedLoading}
         />
       </FilterDropdown>
 
@@ -269,18 +256,6 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
                   onChange={(min, max) => {
                     setFilters({ ...filters, deadline_days_min: min, deadline_days: max })
                   }}
-                />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1.5">ОКВЭД</p>
-                <MultiSelectFilter
-                  options={okvedOpts}
-                  selected={filters.okpd}
-                  onChange={(v) => setFilter("okpd", v)}
-                  searchable
-                  searchPlaceholder="Код или название..."
-                  onSearch={setOkvedQuery}
-                  loading={okvedLoading}
                 />
               </div>
               <div>
