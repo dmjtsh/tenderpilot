@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
+import { useQueryClient } from "@tanstack/react-query"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
 import Image from "next/image"
 import { FileText, Columns3, Settings, LogOut, Send, Mail } from "lucide-react"
@@ -16,6 +17,7 @@ const NAV = [
 function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const qc = useQueryClient()
 
   return (
     <aside className="w-[260px] shrink-0 border-r border-gray-200 bg-white flex flex-col h-screen sticky top-0">
@@ -76,7 +78,7 @@ function Sidebar() {
       {/* Bottom: logout */}
       <div className="px-3 py-3 border-t border-gray-200 shrink-0">
         <button
-          onClick={() => { clearTokens(); router.push("/login") }}
+          onClick={() => { clearTokens(); qc.clear(); router.push("/login") }}
           className="flex items-center gap-3 px-4 py-3 text-base text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-all duration-200 w-full"
         >
           <LogOut className="w-5 h-5" />

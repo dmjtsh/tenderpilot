@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { useQueryClient } from "@tanstack/react-query"
 import { authApi } from "@/lib/api"
 import { setTokens, isAuthenticated } from "@/lib/auth"
 import Image from "next/image"
@@ -134,13 +135,14 @@ function RegisterTab({ onSuccess }: { onSuccess: () => void }) {
 
 export default function LoginPage() {
   const router = useRouter()
+  const qc = useQueryClient()
   const [tab, setTab] = useState<"login" | "register">("login")
 
   useEffect(() => {
     if (isAuthenticated()) router.replace("/tenders")
   }, [router])
 
-  const handleSuccess = () => router.push("/tenders")
+  const handleSuccess = () => { qc.clear(); localStorage.removeItem("onboarding_dismissed"); router.push("/tenders") }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">

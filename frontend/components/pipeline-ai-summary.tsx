@@ -243,7 +243,7 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
     setPhase("analyzing")
     setError(null)
     try {
-      const data = await tendersApi.getSummary(tenderId, refresh)
+      const data = await tendersApi.getSummary(tenderId, { refresh, generate: true })
       setLocalSummary(data)
       qc.setQueryData(["tender-summary", tenderId], data)
       setPhase("idle")

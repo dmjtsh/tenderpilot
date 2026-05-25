@@ -225,11 +225,18 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
         tender = self.get_object()
         is_refresh = request.query_params.get("refresh") == "true"
+        generate = request.query_params.get("generate") == "true"
 
         from apps.tenders.models import TenderSummaryV2
         user = request.user
-        has_v2 = TenderSummaryV2.objects.filter(tender=tender, user=user).exists()
-        needs_generation = is_refresh or not has_v2
+
+        if not is_refresh and not generate:
+            cached = TenderSummaryV2.objects.filter(tender=tender, user=user).first()
+            if cached:
+                return Response({"data": cached.summary, "error": None})
+            return Response({"data": None, "error": None})
+
+        needs_generation = is_refresh or not TenderSummaryV2.objects.filter(tender=tender, user=user).exists()
 
         if needs_generation:
             from apps.documents.models import TenderDocument

@@ -363,6 +363,18 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
     </div>
   )
 
+  if (directions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center flex-1 h-48 gap-3">
+        <Sparkles className="w-8 h-8 text-gray-300" />
+        <p className="text-base text-gray-500">Заполните профиль компании, чтобы получать персональную подборку</p>
+        <Link href="/profile" className="text-sm text-violet-600 hover:underline font-medium">
+          Перейти в профиль
+        </Link>
+      </div>
+    )
+  }
+
   if (!selectedDirId) {
     return (
       <>
@@ -478,15 +490,15 @@ function TendersPageInner() {
   return (
     <div className="flex flex-col h-screen">
       {showOnboarding && (
-        <div className="flex items-center justify-between px-6 py-3 bg-violet-50 border-b border-violet-200 text-sm">
-          <span className="text-violet-800">
+        <div className="flex items-center justify-between px-6 h-16 bg-amber-50 border-b border-amber-200 text-base">
+          <span className="text-amber-900">
             Заполните <Link href="/profile" className="underline font-medium">профиль компании</Link>, чтобы получать персональную подборку тендеров
           </span>
           <button
             onClick={() => { setShowOnboarding(false); localStorage.setItem("onboarding_dismissed", "1") }}
-            className="text-violet-400 hover:text-violet-600 ml-4"
+            className="text-amber-400 hover:text-amber-600 ml-4"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
       )}

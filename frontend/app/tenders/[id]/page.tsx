@@ -1185,7 +1185,7 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
     setPhase("analyzing")
     setError(null)
     try {
-      const data = await tendersApi.getSummary(tenderId, refresh)
+      const data = await tendersApi.getSummary(tenderId, { refresh, generate: true })
       setSummary(data)
       queryClient.setQueryData(["tender-summary", tenderId], data)
       setPhase("idle")
