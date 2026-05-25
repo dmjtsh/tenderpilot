@@ -392,7 +392,7 @@ export const customerApi = {
 }
 
 // Pipeline
-export type PipelineStatus = "studying" | "preparing" | "submitted" | "won" | "lost"
+export type PipelineStatus = "new" | "studying" | "preparing" | "submitted" | "won" | "lost"
 
 export interface TenderPipelineEntry {
   id: number
@@ -406,8 +406,28 @@ export interface TenderPipelineEntry {
   tender_region: string
   tender_deadline_at: string | null
   tender_customer_name: string
+  tender_law_type: string
+  tender_overall_risk: "high" | "medium" | "low" | null
+  tender_docs_total: number
+  tender_docs_done: number
   created_at: string
   updated_at: string
+}
+
+export interface PipelineComment {
+  id: number
+  text: string
+  user_name: string
+  created_at: string
+}
+
+export interface PipelineActivityEntry {
+  id: number
+  action_type: "created" | "status_changed" | "comment_added"
+  old_value: string
+  new_value: string
+  user_name: string
+  created_at: string
 }
 
 export interface PipelineSummary {
@@ -422,7 +442,7 @@ export interface PipelineSummary {
 export const pipelineApi = {
   list: (profileId?: number | null) => {
     const params = profileId ? `?profile_id=${profileId}` : ""
-    return client.get(`/tenders/pipeline/${params}`).then((r) => (r.data.results ?? r.data) as TenderPipelineEntry[])
+    return client.get(`/tenders/pipeline/${params}`).then((r) => (r.data.data ?? r.data.results ?? r.data) as TenderPipelineEntry[])
   },
   create: (tender: number, status: PipelineStatus, profileId?: number | null) =>
     client.post("/tenders/pipeline/", { tender, status, profile: profileId ?? null }).then((r) => r.data as TenderPipelineEntry),
@@ -436,6 +456,12 @@ export const pipelineApi = {
   },
   byTender: (tenderId: number) =>
     client.get(`/tenders/pipeline/by-tender/${tenderId}/`).then((r) => r.data.data as TenderPipelineEntry | null),
+  getComments: (entryId: number) =>
+    client.get(`/tenders/pipeline/${entryId}/comments/`).then((r) => r.data.data as PipelineComment[]),
+  addComment: (entryId: number, text: string) =>
+    client.post(`/tenders/pipeline/${entryId}/comments/`, { text }).then((r) => r.data.data as PipelineComment),
+  getActivity: (entryId: number) =>
+    client.get(`/tenders/pipeline/${entryId}/activity/`).then((r) => r.data.data as PipelineActivityEntry[]),
 }
 
 export const directionsApi = {

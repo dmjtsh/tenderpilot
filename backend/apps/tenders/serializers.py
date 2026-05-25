@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Customer, Tender, TenderPipeline
+from .models import Customer, Tender, TenderPipeline, PipelineComment
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -51,6 +51,10 @@ class TenderPipelineSerializer(serializers.ModelSerializer):
     tender_customer_name = serializers.CharField(
         source="tender.customer.name", read_only=True, default=""
     )
+    tender_law_type = serializers.CharField(source="tender.law_type", read_only=True)
+    tender_overall_risk = serializers.SerializerMethodField()
+    tender_docs_total = serializers.IntegerField(read_only=True, default=0)
+    tender_docs_done = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = TenderPipeline
@@ -58,6 +62,23 @@ class TenderPipelineSerializer(serializers.ModelSerializer):
             "id", "tender", "profile", "status", "notes",
             "tender_title", "tender_number", "tender_nmck",
             "tender_region", "tender_deadline_at", "tender_customer_name",
+            "tender_law_type", "tender_overall_risk",
+            "tender_docs_total", "tender_docs_done",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_tender_overall_risk(self, obj) -> str | None:
+        return getattr(obj, "_summary_risk", None)
+
+
+class PipelineCommentSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PipelineComment
+        fields = ["id", "text", "user_name", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def get_user_name(self, obj) -> str:
+        return obj.user.get_full_name() or obj.user.email

@@ -1,15 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useDeferredValue, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
 import { pipelineApi, profileApi, type PipelineStatus, type TenderPipelineEntry } from "@/lib/api"
 import Link from "next/link"
-import { Briefcase, Trophy, XCircle, Building2, ChevronDown } from "lucide-react"
+import {
+  Briefcase, Trophy, XCircle, Building2, ChevronDown,
+  Search, LayoutGrid, List, Plus, Clock,
+} from "lucide-react"
+import { deadlineInfo } from "@/lib/deadline"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
+import { PipelineSidePanel } from "@/components/pipeline-side-panel"
+import { PipelineListView } from "@/components/pipeline-list-view"
 
 const COLUMNS: { status: PipelineStatus; label: string; color: string }[] = [
+  { status: "new", label: "Новые", color: "border-t-slate-400" },
   { status: "studying", label: "Изучаю", color: "border-t-blue-400" },
   { status: "preparing", label: "Готовлю", color: "border-t-amber-400" },
   { status: "submitted", label: "Подал", color: "border-t-violet-400" },
@@ -18,18 +25,31 @@ const COLUMNS: { status: PipelineStatus; label: string; color: string }[] = [
 ]
 
 function fmt(n: number | string | null | undefined) {
-  if (n == null) return "—"
+  if (n == null) return "Не указано"
   const num = typeof n === "string" ? parseFloat(n) : n
-  if (isNaN(num)) return "—"
+  if (isNaN(num)) return "Не указано"
   return num.toLocaleString("ru-RU", { maximumFractionDigits: 0 }) + "\u00A0₽"
 }
 
-function fmtDate(s: string | null) {
-  if (!s) return null
-  return new Date(s).toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "short",
-  })
+
+function fmtSum(entries: TenderPipelineEntry[]): string | null {
+  const total = entries.reduce((s, e) => s + (Number(e.tender_nmck) || 0), 0)
+  if (total === 0) return null
+  if (total >= 1_000_000_000) return (total / 1_000_000_000).toFixed(1) + " млрд"
+  if (total >= 1_000_000) return (total / 1_000_000).toFixed(1) + " млн"
+  return (total / 1_000).toFixed(0) + " тыс"
+}
+
+const RISK_BADGE: Record<string, string> = {
+  high: "bg-red-50 text-red-700",
+  medium: "bg-amber-50 text-amber-700",
+  low: "bg-green-50 text-green-700",
+}
+
+const RISK_LABEL: Record<string, string> = {
+  high: "Высокий риск",
+  medium: "Средний риск",
+  low: "Низкий риск",
 }
 
 function SummaryCards({ profileId }: { profileId?: number | null }) {
@@ -80,7 +100,13 @@ function SummaryCards({ profileId }: { profileId?: number | null }) {
   )
 }
 
-function PipelineCard({ entry, index }: { entry: TenderPipelineEntry; index: number }) {
+function PipelineCard({
+  entry, index, onOpen,
+}: {
+  entry: TenderPipelineEntry
+  index: number
+  onOpen: (entry: TenderPipelineEntry) => void
+}) {
   return (
     <Draggable draggableId={String(entry.id)} index={index}>
       {(provided, snapshot) => (
@@ -89,25 +115,47 @@ function PipelineCard({ entry, index }: { entry: TenderPipelineEntry; index: num
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={`${snapshot.isDragging ? "shadow-lg ring-1 ring-violet-200" : ""}`}
+          onClick={() => onOpen(entry)}
         >
-          <Link
-            href={`/tenders/${entry.tender}`}
-            className="block bg-white border border-gray-200 p-4 hover:border-gray-300 transition-colors"
-          >
-            <p className="text-xs font-mono text-gray-400 mb-1">{entry.tender_number}</p>
+          <div className="bg-white border border-gray-200 p-4 hover:border-gray-300 transition-colors cursor-pointer">
             <p className="text-sm font-medium text-[#111827] line-clamp-2 mb-2">
               {entry.tender_title}
             </p>
+            {entry.tender_customer_name && (
+              <p className="text-xs text-gray-500 mb-2 truncate">{entry.tender_customer_name}</p>
+            )}
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>{fmt(entry.tender_nmck)}</span>
-              {entry.tender_deadline_at && (
-                <span>{fmtDate(entry.tender_deadline_at)}</span>
-              )}
+              {(() => {
+                const dl = deadlineInfo(entry.tender_deadline_at)
+                if (!dl) return null
+                return (
+                  <span className={`flex items-center gap-1 ${dl.className}`}>
+                    {dl.days <= 3 && dl.days >= 0 && <Clock className="w-3 h-3" />}
+                    {dl.text}
+                  </span>
+                )
+              })()}
             </div>
-            {entry.tender_region && (
-              <p className="text-xs text-gray-400 mt-1 truncate">{entry.tender_region}</p>
+            {entry.tender_overall_risk && (
+              <span className={`inline-block mt-2 px-2 py-0.5 text-xs font-medium rounded ${RISK_BADGE[entry.tender_overall_risk]}`}>
+                {RISK_LABEL[entry.tender_overall_risk]}
+              </span>
             )}
-          </Link>
+            {entry.tender_docs_total > 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                  <span>{entry.tender_docs_done}/{entry.tender_docs_total} документов</span>
+                </div>
+                <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-violet-400 rounded-full transition-all"
+                    style={{ width: `${(entry.tender_docs_done / entry.tender_docs_total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </Draggable>
@@ -117,9 +165,12 @@ function PipelineCard({ entry, index }: { entry: TenderPipelineEntry; index: num
 export default function PipelinePage() {
   const router = useRouter()
   const qc = useQueryClient()
-  // null = все компании (default — показываем все записи без фильтра)
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
   const [profileSelectorOpen, setProfileSelectorOpen] = useState(false)
+  const [view, setView] = useState<"board" | "list">("board")
+  const [search, setSearch] = useState("")
+  const deferredSearch = useDeferredValue(search)
+  const [selectedEntry, setSelectedEntry] = useState<{ entryId: number; tenderId: number } | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated()) router.replace("/login")
@@ -159,17 +210,74 @@ export default function PipelinePage() {
     updateMut.mutate({ id: entry.id, status: newStatus })
   }
 
+  const filtered = entries.filter((e) => {
+    if (!deferredSearch) return true
+    const q = deferredSearch.toLowerCase()
+    return (
+      e.tender_title.toLowerCase().includes(q) ||
+      e.tender_number.toLowerCase().includes(q) ||
+      e.tender_customer_name.toLowerCase().includes(q)
+    )
+  })
+
   const grouped = COLUMNS.map((col) => ({
     ...col,
-    entries: entries.filter((e) => e.status === col.status),
+    entries: filtered.filter((e) => e.status === col.status),
   }))
 
   const selectedCompany = companies.find((c) => c.id === selectedProfileId)
 
+  const handleCardOpen = (entry: TenderPipelineEntry) => {
+    setSelectedEntry({ entryId: entry.id, tenderId: entry.tender })
+  }
+
   return (
-    <div className="p-8 max-w-[1400px] mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[#111827]">Мои тендеры</h1>
+    <div className="p-8 max-w-[1600px] mx-auto">
+      {/* Topbar */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <h1 className="text-2xl font-bold text-[#111827] mr-auto">Мои тендеры</h1>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск..."
+            className="pl-9 pr-4 h-9 w-56 text-sm border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
+          />
+        </div>
+
+        {/* View toggle */}
+        <div className="flex border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setView("board")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
+              view === "board" ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Доска
+          </button>
+          <button
+            onClick={() => setView("list")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
+              view === "list" ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <List className="w-4 h-4" />
+            Список
+          </button>
+        </div>
+
+        {/* Add tender */}
+        <Link
+          href="/tenders"
+          className="inline-flex items-center gap-2 h-9 px-4 text-sm font-medium bg-[#111827] text-white hover:bg-gray-800 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Добавить тендер
+        </Link>
 
         {/* Profile selector */}
         {companies.length > 1 && (
@@ -217,20 +325,21 @@ export default function PipelinePage() {
             Откройте тендер и выберите статус участия
           </p>
         </div>
-      ) : (
+      ) : view === "board" ? (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-6 gap-4">
             {grouped.map((col) => (
               <div key={col.status}>
-                <div
-                  className={`border-t-2 ${col.color} bg-gray-50 px-3 py-2 mb-3`}
-                >
+                <div className={`border-t-2 ${col.color} bg-gray-50 px-3 py-2 mb-3`}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-[#111827]">
                       {col.label}
                     </span>
                     <span className="text-xs text-gray-400">
                       {col.entries.length}
+                      {fmtSum(col.entries) && (
+                        <span className="ml-1 text-gray-300">{fmtSum(col.entries)}</span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -244,7 +353,7 @@ export default function PipelinePage() {
                       }`}
                     >
                       {col.entries.map((entry, i) => (
-                        <PipelineCard key={entry.id} entry={entry} index={i} />
+                        <PipelineCard key={entry.id} entry={entry} index={i} onOpen={handleCardOpen} />
                       ))}
                       {provided.placeholder}
                     </div>
@@ -254,6 +363,21 @@ export default function PipelinePage() {
             ))}
           </div>
         </DragDropContext>
+      ) : (
+        <PipelineListView entries={filtered} onOpen={handleCardOpen} />
+      )}
+
+      {/* Side Panel */}
+      {selectedEntry && (
+        <PipelineSidePanel
+          entryId={selectedEntry.entryId}
+          tenderId={selectedEntry.tenderId}
+          onClose={() => setSelectedEntry(null)}
+          onStatusChange={() => {
+            qc.invalidateQueries({ queryKey: ["pipeline-list", selectedProfileId] })
+            qc.invalidateQueries({ queryKey: ["pipeline-summary", selectedProfileId] })
+          }}
+        />
       )}
     </div>
   )

@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { pipelineApi, profileApi, type PipelineStatus } from "@/lib/api"
-import { Eye, FileEdit, Send, Trophy, XCircle } from "lucide-react"
+import { Inbox, Eye, FileEdit, Send, Trophy, XCircle } from "lucide-react"
 import { useState } from "react"
 
 const STATUSES: { value: PipelineStatus; label: string; icon: typeof Eye }[] = [
+  { value: "new", label: "Новый", icon: Inbox },
   { value: "studying", label: "Изучаю", icon: Eye },
   { value: "preparing", label: "Готовлю", icon: FileEdit },
   { value: "submitted", label: "Подал", icon: Send },

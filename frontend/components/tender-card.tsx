@@ -89,6 +89,7 @@ function daysUntilDeadline(s: string | null): { text: string; urgent: boolean } 
 }
 
 const PIPELINE_OPTIONS: { value: PipelineStatus; label: string }[] = [
+  { value: "new", label: "Новый" },
   { value: "studying", label: "Изучаю" },
   { value: "preparing", label: "Готовлю" },
   { value: "submitted", label: "Подал" },

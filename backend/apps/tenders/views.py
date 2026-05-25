@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 import django_filters
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, permissions
@@ -10,8 +10,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from .models import Customer, Experiment, SummaryExperiment, Tender, TenderPipeline
-from .serializers import TenderListSerializer, TenderDetailSerializer, TenderPipelineSerializer
+from .models import Customer, Experiment, PipelineActivity, SummaryExperiment, Tender, TenderPipeline
+from .serializers import (
+    PipelineCommentSerializer,
+    TenderListSerializer,
+    TenderDetailSerializer,
+    TenderPipelineSerializer,
+)
 from .services import get_or_create_summary_v2
 from apps.documents.services import answer_question
 
@@ -227,6 +232,16 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         needs_generation = is_refresh or not has_v2
 
         if needs_generation:
+            from apps.documents.models import TenderDocument
+            has_docs = TenderDocument.objects.filter(
+                tender=tender,
+                parse_status="done",
+            ).exists()
+            if not has_docs:
+                return Response(
+                    {"data": None, "error": "Загрузите документы тендера, чтобы сгенерировать AI-резюме"},
+                    status=400,
+                )
             try:
                 check_and_increment(user, "ai_summary")
             except QuotaExceeded as e:
@@ -580,14 +595,68 @@ class TenderPipelineViewSet(viewsets.ModelViewSet):
             qs = qs.filter(profile_id=profile_id)
         return qs
 
+    def list(self, request, *args, **kwargs):
+        entries = list(self.get_queryset())
+        tender_ids = [e.tender_id for e in entries]
+
+        risk_map: dict[int, str | None] = {}
+        if tender_ids:
+            from .models import TenderSummaryV2
+            for s in TenderSummaryV2.objects.filter(tender_id__in=tender_ids).values("tender_id", "summary"):
+                risks = (s["summary"] or {}).get("risks") or {}
+                risk_map[s["tender_id"]] = risks.get("overall_risk")
+
+            from apps.documents.models import TenderDocument
+            # Count docs the same way the docs API lists them:
+            # top-level without children + non-skipped children (archives expand)
+            parents_with_children = set(
+                TenderDocument.objects.filter(
+                    tender_id__in=tender_ids,
+                    parent_document__isnull=False,
+                ).values_list("parent_document_id", flat=True)
+            )
+            doc_qs = TenderDocument.objects.filter(tender_id__in=tender_ids).exclude(
+                id__in=parents_with_children
+            ).exclude(
+                parent_document__isnull=False, parse_status="skipped"
+            )
+            doc_stats = doc_qs.values("tender_id").annotate(
+                total=Count("id"),
+                done=Count("id", filter=Q(parse_status="done"))
+            )
+            doc_map = {d["tender_id"]: (d["total"], d["done"]) for d in doc_stats}
+        else:
+            doc_map = {}
+
+        for e in entries:
+            e._summary_risk = risk_map.get(e.tender_id)
+            e.tender_docs_total = doc_map.get(e.tender_id, (0, 0))[0]
+            e.tender_docs_done = doc_map.get(e.tender_id, (0, 0))[1]
+
+        serializer = self.get_serializer(entries, many=True)
+        return Response({"data": serializer.data, "error": None})
+
     def perform_create(self, serializer: TenderPipelineSerializer) -> None:
         profile_id = self.request.data.get("profile")
-        serializer.save(user=self.request.user, profile_id=profile_id or None)
+        entry = serializer.save(user=self.request.user, profile_id=profile_id or None)
+        PipelineActivity.objects.create(
+            pipeline_entry=entry, user=self.request.user,
+            action_type="created", new_value=entry.status,
+        )
+
+    def perform_update(self, serializer: TenderPipelineSerializer) -> None:
+        old_status = serializer.instance.status
+        entry = serializer.save()
+        if entry.status != old_status:
+            PipelineActivity.objects.create(
+                pipeline_entry=entry, user=self.request.user,
+                action_type="status_changed", old_value=old_status, new_value=entry.status,
+            )
 
     @action(detail=False, methods=["get"])
     def summary(self, request):
         qs = self.get_queryset()
-        in_work = qs.filter(status__in=["studying", "preparing", "submitted"])
+        in_work = qs.filter(status__in=["new", "studying", "preparing", "submitted"])
         won = qs.filter(status="won")
         lost = qs.filter(status="lost")
         return Response({"data": {
@@ -605,6 +674,42 @@ class TenderPipelineViewSet(viewsets.ModelViewSet):
         if not entry:
             return Response({"data": None, "error": None})
         return Response({"data": TenderPipelineSerializer(entry).data, "error": None})
+
+    @action(detail=True, methods=["get", "post"], url_path="comments")
+    def comments(self, request, pk=None):
+        entry = self.get_object()
+        if request.method == "GET":
+            qs = entry.comments.select_related("user").all()
+            serializer = PipelineCommentSerializer(qs, many=True)
+            return Response({"data": serializer.data, "error": None})
+        serializer = PipelineCommentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        comment = serializer.save(pipeline_entry=entry, user=request.user)
+        PipelineActivity.objects.create(
+            pipeline_entry=entry, user=request.user,
+            action_type="comment_added", new_value=comment.text[:100],
+        )
+        return Response(
+            {"data": PipelineCommentSerializer(comment).data, "error": None},
+            status=201,
+        )
+
+    @action(detail=True, methods=["get"], url_path="activity")
+    def activity(self, request, pk=None):
+        entry = self.get_object()
+        activities = entry.activities.select_related("user").all()[:50]
+        data = [
+            {
+                "id": a.id,
+                "action_type": a.action_type,
+                "old_value": a.old_value,
+                "new_value": a.new_value,
+                "user_name": a.user.get_full_name() or a.user.email,
+                "created_at": a.created_at.isoformat(),
+            }
+            for a in activities
+        ]
+        return Response({"data": data, "error": None})
 
 
 class ExperimentViewSet(viewsets.ReadOnlyModelViewSet):

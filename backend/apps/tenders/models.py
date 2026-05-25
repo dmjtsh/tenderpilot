@@ -112,6 +112,7 @@ class Tender(models.Model):
 
 class TenderPipeline(models.Model):
     class PipelineStatus(models.TextChoices):
+        NEW = "new", "Новый"
         STUDYING = "studying", "Изучаю"
         PREPARING = "preparing", "Готовлю заявку"
         SUBMITTED = "submitted", "Подал"
@@ -143,6 +144,47 @@ class TenderPipeline(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} → {self.tender.number} [{self.status}]"
+
+
+class PipelineComment(models.Model):
+    pipeline_entry = models.ForeignKey(
+        TenderPipeline, on_delete=models.CASCADE, related_name="comments"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="pipeline_comments"
+    )
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self) -> str:
+        return f"Comment by {self.user} on pipeline #{self.pipeline_entry_id}"
+
+
+class PipelineActivity(models.Model):
+    class ActionType(models.TextChoices):
+        CREATED = "created", "Создано"
+        STATUS_CHANGED = "status_changed", "Статус изменён"
+        COMMENT_ADDED = "comment_added", "Комментарий"
+
+    pipeline_entry = models.ForeignKey(
+        TenderPipeline, on_delete=models.CASCADE, related_name="activities"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="pipeline_activities"
+    )
+    action_type = models.CharField(max_length=30, choices=ActionType.choices)
+    old_value = models.CharField(max_length=100, blank=True)
+    new_value = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.action_type} on pipeline #{self.pipeline_entry_id}"
 
 
 class PromptTemplate(models.Model):
