@@ -307,7 +307,35 @@ def answer_question(tender_id: int, question: str) -> dict:
     ).exists()
 
     if not has_any_docs:
-        return {"answer": None, "has_docs": False, "sources": []}
+        from apps.tenders.models import Tender
+        from apps.tenders.summary_v2.context import _get_info_html
+        tender = Tender.objects.filter(id=tender_id).first()
+        info_html = _get_info_html(tender) if tender else ""
+        if not info_html:
+            return {"answer": None, "has_docs": False, "sources": []}
+        context = f"[info_html]\n{info_html}"
+        prompt = QA_PROMPT.format(context=context, question=question)
+        model_name = "deepseek-chat"
+        try:
+            llm = get_llm_client(model_name)
+            response = llm.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=600,
+                temperature=0.2,
+            )
+            answer = response.choices[0].message.content.strip()
+        except Exception:
+            model_name = "gpt-4o-mini"
+            llm = get_llm_client(model_name)
+            response = llm.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=600,
+                temperature=0.2,
+            )
+            answer = response.choices[0].message.content.strip()
+        return {"answer": answer, "has_docs": True, "sources": [], "needs_reindex": False}
 
     embedder = Embedder()
     vector = embedder.embed_query(question)

@@ -110,6 +110,10 @@ def _get_docs_text(tender: Tender) -> str:
         entries.append({"filename": d.filename, "text": text, "tokens": count_tokens(text), "priority": d.content_priority})
 
     if not entries:
+        from apps.tenders.summary_v2.context import _get_info_html
+        info_html = _get_info_html(tender)
+        if info_html:
+            return f"[info_html]\n{info_html}"
         return ""
 
     # Deduplicate versioned files (keep latest)
