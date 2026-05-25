@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { client, tendersApi, isV2Summary, type TenderSummaryV2, type TenderDoc, type AnySummary } from "@/lib/api"
+import { client, tendersApi, isV2Summary, type Tender, type TenderSummaryV2, type TenderDoc, type AnySummary } from "@/lib/api"
 import { Sparkles, Loader2, Download, RefreshCw, AlertTriangle, ChevronDown } from "lucide-react"
 
 type Phase = "idle" | "downloading" | "analyzing"
@@ -220,6 +220,12 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
   const [error, setError] = useState<string | null>(null)
 
 
+  const { data: tender } = useQuery<Tender>({
+    queryKey: ["tender", tenderId],
+    queryFn: () => tendersApi.get(tenderId),
+    staleTime: 5 * 60 * 1000,
+  })
+
   const { data: docs = [] } = useQuery<TenderDoc[]>({
     queryKey: ["tender-docs", tenderId],
     queryFn: () => tendersApi.getDocs(tenderId),
@@ -340,7 +346,7 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
             Попробовать снова
           </button>
         </div>
-      ) : !docsAreReady(docs) ? (
+      ) : !docsAreReady(docs) && !tender?.has_info_html ? (
         <p className="text-[15px] text-gray-400 py-3">
           {docs.length === 0
             ? "Сначала загрузите документы на вкладке «Документы»"

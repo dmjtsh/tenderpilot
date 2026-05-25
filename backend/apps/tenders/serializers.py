@@ -26,6 +26,7 @@ class TenderListSerializer(serializers.ModelSerializer):
 
 class TenderDetailSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
+    has_info_html = serializers.SerializerMethodField()
 
     class Meta:
         model = Tender
@@ -37,7 +38,14 @@ class TenderDetailSerializer(serializers.ModelSerializer):
             "bid_security_amount", "bid_security_required",
             "contract_security_amount", "contract_security_percent",
             "source_url", "ai_summary", "source", "created_at", "updated_at",
+            "has_info_html",
         ]
+
+    def get_has_info_html(self, obj) -> bool:
+        rj = obj.raw_json or {}
+        nested = rj.get("raw_json", {})
+        raw = (nested.get("info_html", "") if isinstance(nested, dict) else "") or rj.get("info_html", "")
+        return bool(raw and len(raw) > 50)
 
 
 class TenderPipelineSerializer(serializers.ModelSerializer):

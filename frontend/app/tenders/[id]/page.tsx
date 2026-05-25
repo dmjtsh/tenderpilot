@@ -1221,6 +1221,10 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
     const docsEmpty = !currentDocs || currentDocs.length === 0
 
     if (docsEmpty && !autoStarted) {
+      if (tender.has_info_html) {
+        await generateSummary(refresh)
+        return
+      }
       setAutoStarted(true)
       setPhase("downloading")
       setDownloading(true)
@@ -1233,8 +1237,12 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
         if (res?.no_docs) {
           clearTimeout(timeoutId)
           setDownloading(false)
-          setNoDocs(true)
-          setPhase("idle")
+          if (tender.has_info_html) {
+            await generateSummary(refresh)
+          } else {
+            setNoDocs(true)
+            setPhase("idle")
+          }
           return
         }
         setTimeout(() => {

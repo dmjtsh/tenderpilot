@@ -52,6 +52,17 @@ def get_step_context(tender: "Tender", step: str) -> dict:
         })
 
     if not entries:
+        info_html = _get_info_html(tender)
+        if info_html:
+            tokens = count_tokens(info_html)
+            return {
+                "context": f"[info_html]\n{info_html}",
+                "source": "info_html",
+                "total_tokens": tokens,
+                "original_total_tokens": tokens,
+                "was_truncated": False,
+                "truncated_reason": "",
+            }
         return {"context": "", "source": "none", "total_tokens": 0,
                 "original_total_tokens": 0, "was_truncated": False, "truncated_reason": ""}
 
@@ -114,6 +125,28 @@ def get_step_context(tender: "Tender", step: str) -> dict:
         "was_truncated": was_truncated,
         "truncated_reason": truncated_reason,
     }
+
+
+def _get_info_html(tender: "Tender") -> str:
+    """Extract and clean info_html from TenderGuru raw_json."""
+    import html
+    import re
+
+    rj = tender.raw_json or {}
+    nested = rj.get("raw_json", {})
+    raw = (nested.get("info_html", "") if isinstance(nested, dict) else "") or rj.get("info_html", "")
+    if not raw or len(raw) < 50:
+        return ""
+
+    text = html.unescape(raw)
+    text = text.replace("![CDATA[", "").rstrip("]")
+    text = re.sub(r"<[^>]+>", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    text = re.sub(r"[ \t]+", " ", text)
+
+    if len(text) < 30:
+        return ""
+    return text
 
 
 def get_customer_profile(tender: "Tender") -> "CustomerProfile | None":

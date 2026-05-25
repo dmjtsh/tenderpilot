@@ -49,7 +49,8 @@ def enrich_customer(inn: str) -> CustomerProfile | None:
         logger.warning("DaData failed for %s: %s", inn, e)
 
     # 2. RusProfile
-    if not _rusprofile_fresh(profile) and not _rusprofile_cooldown(profile):
+    skip = _rusprofile_fresh(profile) or _rusprofile_cooldown(profile)
+    if not skip:
         try:
             parser = RusProfileParser()
             rp = parser.get_company_info(inn)

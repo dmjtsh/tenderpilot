@@ -224,6 +224,7 @@ export interface Tender {
   contract_security_percent: number | null
   source_url: string
   source?: "eis" | "other"
+  has_info_html?: boolean
   ai_summary?: string
   score?: number
   score_label?: string
