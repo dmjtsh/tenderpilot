@@ -33,7 +33,7 @@ export function Solution() {
         <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
           <div className={`flex-1 scroll-hidden ${isVisible ? "scroll-visible" : ""}`}>
             <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
-              <span className="font-serif italic">ТендерПилот делает это за вас</span>
+              <span className="font-serif italic">TendeRoll делает это за вас</span>
             </h2>
             <p className="mt-6 text-lg leading-relaxed text-gray-300">
               ИИ читает 200 страниц ТЗ за 10 секунд, находит подводные камни,

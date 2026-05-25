@@ -22,8 +22,8 @@ function Sidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center px-5 border-b border-gray-200 shrink-0">
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="ТендерПилот" />
-          <span className="text-lg font-bold text-[#111827]">ТендерПилот</span>
+          <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="TendeRoll" />
+          <span className="text-lg font-bold text-[#111827]">TendeRoll</span>
         </Link>
       </div>
 
@@ -55,7 +55,7 @@ function Sidebar() {
         <div className="border-t border-gray-200 pt-3 space-y-0.5">
           <p className="px-3 text-sm font-medium text-gray-400 uppercase tracking-wide mb-1.5">Поддержка</p>
           <a
-            href="https://t.me/tender_pilot"
+            href="https://t.me/tenderoll_support"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2.5 px-3 py-2 text-[15px] text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-colors"
@@ -64,7 +64,7 @@ function Sidebar() {
             <span>Telegram</span>
           </a>
           <a
-            href="mailto:support@tenderpilot.ru"
+            href="mailto:support@tenderoll.ru"
             className="flex items-center gap-2.5 px-3 py-2 text-[15px] text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-colors"
           >
             <Mail className="w-[18px] h-[18px]" />

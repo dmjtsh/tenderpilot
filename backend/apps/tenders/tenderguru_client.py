@@ -21,7 +21,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.tenderguru.ru/api2.3/export"
-USER_AGENT = "TenderPilot/1.0 (tender aggregator; contact@tenderpilot.ru)"
+USER_AGENT = "Tenderoll/1.0 (tender aggregator; support@tenderoll.ru)"
 
 PROCEDURE_KEYWORDS: dict[str, str] = {
     "электронный аукцион": "auction",

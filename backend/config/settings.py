@@ -126,7 +126,7 @@ CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:
 # CSRF
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
-    default="https://pilot-tender.ru,https://www.pilot-tender.ru",
+    default="https://tenderoll.ru,https://www.tenderoll.ru",
     cast=Csv(),
 )
 
@@ -140,7 +140,7 @@ SIMPLE_JWT = {
 
 # DRF Spectacular
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Tender Pilot API",
+    "TITLE": "Tenderoll API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }

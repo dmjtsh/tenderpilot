@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/login", "/tenders", "/profile", "/pipeline", "/api/"],
       },
     ],
-    sitemap: "https://pilot-tender.ru/sitemap.xml",
-    host: "https://pilot-tender.ru",
+    sitemap: "https://tenderoll.ru/sitemap.xml",
+    host: "https://tenderoll.ru",
   }
 }

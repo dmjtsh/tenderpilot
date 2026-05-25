@@ -46,7 +46,7 @@ export function Hero() {
           <div className="shrink-0 animate-hero" style={{ animationDelay: "0.6s" }}>
             <Image
               src="/sculptures/themis.png"
-              alt="ТендерПилот"
+              alt="TendeRoll"
               width={500}
               height={500}
               className="w-[300px] sm:w-[360px] lg:w-[450px]"

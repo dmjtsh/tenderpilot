@@ -53,9 +53,11 @@ class Command(BaseCommand):
         self.stdout.write(f"Existing TenderGuru tenders: {len(existing_numbers)}")
 
         session = req.Session()
-        session.headers["User-Agent"] = "TenderPilot/1.0 (tender aggregator; contact@tenderpilot.ru)"
+        session.headers["User-Agent"] = "Tenderoll/1.0 (tender aggregator; support@tenderoll.ru)"
 
         stats = {"pages": 0, "fetched": 0, "new": 0, "skipped": 0, "errors": 0, "enriched": 0}
+        consecutive_skip_pages = 0
+        SKIP_STOP = 3
 
         for page in range(start_page, 5000):
             try:

@@ -21,7 +21,7 @@ export function Nav() {
     <nav className="border-b bg-white sticky top-0 z-10">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link href="/tenders" className="font-semibold text-lg">
-          Tender Pilot
+          TendeRoll
         </Link>
         <div className="flex items-center gap-2">
           <Link href="/tenders">

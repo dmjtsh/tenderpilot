@@ -368,7 +368,7 @@ def sync_komtender() -> dict:
     )
 
     session = req.Session()
-    session.headers["User-Agent"] = "TenderPilot/1.0 (tender aggregator; contact@tenderpilot.ru)"
+    session.headers["User-Agent"] = "Tenderoll/1.0 (tender aggregator; support@tenderoll.ru)"
 
     for item in new_items[:KOMTENDER_MAX_PER_RUN]:
         try:
@@ -534,7 +534,7 @@ def sync_tenderguru() -> dict:
     try:
         import requests as req
         session = req.Session()
-        session.headers["User-Agent"] = "TenderPilot/1.0 (tender aggregator; contact@tenderpilot.ru)"
+        session.headers["User-Agent"] = "Tenderoll/1.0 (tender aggregator; support@tenderoll.ru)"
     except Exception:
         pass
 

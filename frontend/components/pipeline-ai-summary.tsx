@@ -218,7 +218,7 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
   const qc = useQueryClient()
   const [phase, setPhase] = useState<Phase>("idle")
   const [error, setError] = useState<string | null>(null)
-  const [noDocs, setNoDocs] = useState(false)
+
 
   const { data: docs = [] } = useQuery<TenderDoc[]>({
     queryKey: ["tender-docs", tenderId],

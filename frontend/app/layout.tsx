@@ -8,16 +8,16 @@ const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" })
 const playfair = Playfair_Display({ subsets: ["latin", "cyrillic"], variable: "--font-serif", style: ["normal", "italic"] })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://pilot-tender.ru"),
+  metadataBase: new URL("https://tenderoll.ru"),
   title: {
-    default: "ТендерПилот — ИИ-поиск тендеров и госзакупок | 44-ФЗ, 223-ФЗ бесплатно",
-    template: "%s | ТендерПилот",
+    default: "TendeRoll — ИИ-поиск тендеров и госзакупок | 44-ФЗ, 223-ФЗ бесплатно",
+    template: "%s | TendeRoll",
   },
   description:
     "Агрегатор тендеров с ИИ — автоматический поиск госзакупок по 44-ФЗ, 223-ФЗ и 615-ПП под профиль компании. Нейросеть анализирует документацию за 10 секунд, подбирает тендеры по ОКВЭД и региону, находит риски. Для тендеристов, подрядчиков, поставщиков. Бесплатный тариф.",
   keywords: [
     // Бренд
-    "ТендерПилот", "тендер пилот", "пилот тендер", "tender pilot", "tenderpilot",
+    "TendeRoll", "тендерол", "tenderoll",
     // Основные
     "поиск тендеров", "автоматизация тендеров", "помощь в поиске тендеров",
     "простой поиск тендеров", "приложение для тендериста", "тендерный помощник",
@@ -74,15 +74,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ru_RU",
-    url: "https://pilot-tender.ru",
-    siteName: "ТендерПилот",
-    title: "ТендерПилот — ИИ-поиск тендеров и госзакупок",
+    url: "https://tenderoll.ru",
+    siteName: "TendeRoll",
+    title: "TendeRoll — ИИ-поиск тендеров и госзакупок",
     description: "Агрегатор тендеров с ИИ. Автоматический подбор госзакупок по 44-ФЗ и 223-ФЗ, анализ документации нейросетью за 10 секунд. Бесплатно.",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "ТендерПилот" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "TendeRoll" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ТендерПилот — ИИ-агрегатор тендеров",
+    title: "TendeRoll — ИИ-агрегатор тендеров",
     description: "ИИ-агрегатор тендеров. Автоматический подбор госзакупок, анализ документации, помощник тендериста.",
     images: ["/og-image.png"],
   },

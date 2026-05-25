@@ -35,8 +35,8 @@ export function Footer() {
           {/* Logo Column */}
           <div className="col-span-2 md:col-span-4 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="ТендерПилот" />
-              <span className="text-lg font-bold text-[#111827]">ТендерПилот</span>
+              <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="TendeRoll" />
+              <span className="text-lg font-bold text-[#111827]">TendeRoll</span>
             </Link>
             <p className="mt-4 text-sm text-[#6B7280]">
               ИИ-платформа для поиска и анализа государственных закупок
@@ -66,7 +66,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-[#D1D5DB] pt-8 sm:flex-row">
           <p className="text-sm text-[#6B7280]">
-            {new Date().getFullYear()} ТендерПилот. Все права защищены.
+            {new Date().getFullYear()} TendeRoll. Все права защищены.
           </p>
           <p className="text-sm text-[#9CA3AF]">
             Сделано в России
