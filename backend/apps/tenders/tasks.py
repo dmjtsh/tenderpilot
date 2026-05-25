@@ -22,7 +22,23 @@ def enrich_tender(self, tender_id: int) -> None:
         logger.warning("Tender %d not found", tender_id)
         return
 
-    if tender.source in (Tender.Source.KOMTENDER, Tender.Source.TENDERGURU):
+    if tender.source == Tender.Source.KOMTENDER:
+        if not tender.enriched_at:
+            Tender.objects.filter(pk=tender_id).update(enriched_at=timezone.now())
+        from apps.search.tasks import embed_tender
+        embed_tender.delay(tender_id)
+        return
+
+    if tender.source == Tender.Source.TENDERGURU:
+        from .tenderguru_client import fetch_tender_detail as tg_fetch, enrich_from_detail, parse_list_item
+        from .services import upsert_tender as upsert_fn
+        tg_id = tender.number.replace("tg-", "")
+        detail = tg_fetch(tg_id)
+        if detail:
+            base = parse_list_item(detail)
+            if base:
+                enriched = enrich_from_detail(base, detail)
+                upsert_fn(enriched)
         if not tender.enriched_at:
             Tender.objects.filter(pk=tender_id).update(enriched_at=timezone.now())
         from apps.search.tasks import embed_tender
