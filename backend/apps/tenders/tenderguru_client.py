@@ -216,6 +216,8 @@ def enrich_from_detail(base: dict, detail: dict) -> dict:
         base["okpd_codes"] = okpd_codes
 
     docs = _parse_docs(detail.get("docsXML"))
+    if not docs:
+        docs = _parse_links_tender_xml(detail.get("linksTenderXML"))
 
     source_url = detail.get("TenderLink", "").strip()
     if source_url:
@@ -370,6 +372,39 @@ def _parse_docs(docs_xml) -> list[dict]:
                 "link": link,
                 "extension": _guess_extension(name),
             })
+    return result
+
+
+def _parse_links_tender_xml(links_xml) -> list[dict]:
+    """Parse linksTenderXML into a list of document dicts (Bidzaar, B2B-Center, Portal)."""
+    if not links_xml:
+        return []
+
+    items = links_xml.get("item") if isinstance(links_xml, dict) else None
+    if not items:
+        return []
+
+    if isinstance(items, dict):
+        items = [items]
+
+    if not isinstance(items, list):
+        return []
+
+    result = []
+    for d in items:
+        if not isinstance(d, dict):
+            continue
+        name = d.get("linkName", "").strip().strip('"')
+        download = d.get("download", "") or d.get("linkURL", "")
+        if not download or not name:
+            continue
+        if name.lower() in ("источник",):
+            continue
+        result.append({
+            "title": name,
+            "link": download,
+            "extension": _guess_extension(name),
+        })
     return result
 
 
