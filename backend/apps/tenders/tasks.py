@@ -498,12 +498,12 @@ def cleanup_finished_tenders() -> dict:
 # TenderGuru sync
 # ---------------------------------------------------------------------------
 
-TENDERGURU_MAX_PER_RUN = 500
+TENDERGURU_MAX_PER_RUN = 5000
 TENDERGURU_DELAY = 0.3
 TENDERGURU_STOP_AFTER = 3
 
 
-@shared_task(name="apps.tenders.tasks.sync_tenderguru", time_limit=3600)
+@shared_task(name="apps.tenders.tasks.sync_tenderguru", time_limit=7200)
 def sync_tenderguru() -> dict:
     """Hourly sync of commercial tenders from TenderGuru API."""
     from .models import Tender

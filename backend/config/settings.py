@@ -195,7 +195,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-tenderguru": {
         "task": "apps.tenders.tasks.sync_tenderguru",
-        "schedule": crontab(minute=15),
+        "schedule": crontab(minute=15, hour="*/2"),
     },
 }
 
