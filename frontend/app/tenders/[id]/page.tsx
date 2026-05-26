@@ -945,11 +945,13 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
       const t = setTimeout(() => setDownloading(false), 2000)
       return () => clearTimeout(t)
     }
-    const elapsed = downloadStartRef.current ? Date.now() - downloadStartRef.current : 0
-    if (elapsed > 30_000 && docs.length === 0) {
-      setDownloading(false)
-      setNoDocs(true)
-    }
+    const t = setTimeout(() => {
+      if (docs.length === 0) {
+        setDownloading(false)
+        setNoDocs(true)
+      }
+    }, 30_000)
+    return () => clearTimeout(t)
   }, [downloading, docs.length, isProcessing])
 
   return (
