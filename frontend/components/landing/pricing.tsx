@@ -170,14 +170,12 @@ export function Pricing() {
                     ) : (
                       <>
                         <span className="text-4xl font-bold text-[#111827] tabular-nums">
-                          {formatPrice(price)}
+                          {formatPrice(Math.round(price / months))}
                         </span>
-                        <span className="ml-1 text-[#6B7280]">
-                          ₽/{INTERVAL_LABEL[interval]}
-                        </span>
+                        <span className="ml-1 text-[#6B7280]">₽/мес</span>
                         {months > 1 && (
-                          <p className="mt-1 text-sm text-[#6B7280]">
-                            {formatPrice(Math.round(price / months))} ₽/мес
+                          <p className="mt-1 text-sm text-gray-400">
+                            {formatPrice(price)} ₽/{INTERVAL_LABEL[interval]}
                           </p>
                         )}
                       </>
