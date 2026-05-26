@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
@@ -31,25 +31,12 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
 }
 
 function CurrentPlanBlock({ plan }: { plan: UserPlan }) {
-  const [cancelLoading, setCancelLoading] = useState(false)
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const resetDate = new Date(plan.reset_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })
   const sub = plan.subscription
 
   const periodEnd = sub?.current_period_end
     ? new Date(sub.current_period_end).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
     : null
-
-  async function handleCancel() {
-    setCancelLoading(true)
-    try {
-      await billingApi.cancel()
-      window.location.reload()
-    } catch {
-      setCancelLoading(false)
-      setShowCancelConfirm(false)
-    }
-  }
 
   return (
     <div className="border border-gray-200 bg-white">
@@ -73,48 +60,22 @@ function CurrentPlanBlock({ plan }: { plan: UserPlan }) {
         {sub && sub.status === "active" && periodEnd && (
           <div className="pt-2 border-t border-gray-100">
             <p className="text-sm text-gray-500">
-              Следующее списание: <span className="font-medium text-[#111827]">{periodEnd}</span>
-            </p>
-            {!showCancelConfirm ? (
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="mt-2 text-sm text-red-500 hover:text-red-600 transition-colors"
-              >
-                Отменить подписку
-              </button>
-            ) : (
-              <div className="mt-2 flex items-center gap-3">
-                <button
-                  onClick={handleCancel}
-                  disabled={cancelLoading}
-                  className="text-sm text-red-600 font-medium hover:text-red-700"
-                >
-                  {cancelLoading ? "Отмена..." : "Подтвердить отмену"}
-                </button>
-                <button
-                  onClick={() => setShowCancelConfirm(false)}
-                  className="text-sm text-gray-500 hover:text-gray-700"
-                >
-                  Назад
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {sub && sub.status === "canceled" && periodEnd && (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-sm text-amber-600">
-              Подписка отменена. Действует до <span className="font-medium">{periodEnd}</span>
+              Действует до <span className="font-medium text-[#111827]">{periodEnd}</span>
             </p>
           </div>
         )}
 
-        {sub && sub.status === "payment_failed" && (
+        {sub && sub.status === "expired" && (
           <div className="pt-2 border-t border-gray-100">
-            <p className="text-sm text-red-600">
-              Проблема с оплатой. Обновите способ оплаты.
+            <p className="text-sm text-gray-500">
+              Подписка истекла.
             </p>
+            <a
+              href="#pricing"
+              className="mt-2 inline-block text-sm font-medium text-[#111827] hover:underline"
+            >
+              Продлить подписку →
+            </a>
           </div>
         )}
       </div>

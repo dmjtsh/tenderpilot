@@ -12,7 +12,7 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
     /search       — embedding, Qdrant, HyDE, матчинг
     /documents    — PDF парсинг, RAG, очистка (см. DOCUMENTS_ARCHITECTURE.md)
     /users        — авторизация, CompanyProfile, CompanyDirection
-    /billing      — тарифы, ЮКасса (не реализовано)
+    /billing      — тарифы, ЮКасса, подписки
     /alerts       — мониторинг пайплайна, Telegram алерты, PipelineRun
   /config         — settings, urls, celery
 /frontend
@@ -169,6 +169,27 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
   - Одноразовая загрузка за N дней с разбивкой по ценам
   - `python manage.py bulk_load_tenders --days=90 --delay=0.5`
 
+- **Биллинг и подписки** (`apps/billing/`)
+  - Модели: `UserPlan`, `Subscription`, `Payment`
+  - ЮКасса интеграция (`yookassa_client.py`): `create_first_payment()`, `fetch_payment()`
+  - Тарифы: free (0₽), standard (2990/14950/26910₽), premium (6990/34950/62910₽)
+  - Интервалы: monthly, halfyearly (-1 мес), yearly (-3 мес)
+  - Цены в `settings.PLAN_PRICES` dict
+  - Лимиты в `services.PLAN_LIMITS`: max_companies, ai_summaries, rag_questions
+  - **Checkout flow**: `create_checkout()` → ЮКасса платёж → redirect → verify
+  - **Webhook**: `POST /api/v1/billing/webhook/` — ЮКасса notification (URL настроить в ЮКасса dashboard)
+  - **Verify endpoint**: `POST /api/v1/billing/verify/` — fallback когда webhook не доходит (poll ЮКасса API)
+  - **Lifecycle**: active → canceled (user) → expired (Celery) → free (downgrade UserPlan)
+  - `process_renewals()` — 03:00 daily, автопродление (требует `save_payment_method`)
+  - `expire_canceled_subscriptions()` — 03:30 daily, downgrade отменённых подписок
+  - **Рекуррентные платежи**: ОТКЛЮЧЕНЫ (ЮКасса требует согласование с менеджером для `save_payment_method`). При необходимости: написать менеджеру ЮКасса, показать скриншот cancel flow, указать ожидаемый оборот
+  - API: `GET /api/v1/billing/info/`, `POST /api/v1/billing/checkout/`, `POST /api/v1/billing/cancel/`, `POST /api/v1/billing/verify/`
+  - Фронт: `/plan` — отдельная страница "Мой тариф" (usage bars, subscription status, pricing cards)
+  - `frontend/lib/plans.ts` — shared plan data (prices, intervals, labels)
+  - `frontend/components/profile-pricing.tsx` — pricing cards для /plan
+  - **Return URL**: `YOOKASSA_RETURN_URL` в settings (прод: `https://tenderoll.ru/plan?payment=success`)
+  - **Важно**: env переменные `YOOKASSA_SHOP_ID` и `YOOKASSA_SECRET_KEY` (не YUKASSA_)
+
 ### Фронтенд
 
 #### Дизайн-система
@@ -323,6 +344,8 @@ http://localhost:6333
 | `recover_failed_tenders` | 04:00 MSK | Ночной подбор упавших enrich/embed |
 | `send_morning_digest` | 09:00 MSK | Telegram сводка за 24ч |
 | `cleanup_old_documents` | воскресенье 03:00 | Удаление документов старше 730 дней |
+| `process_renewals` | 03:00 MSK | Автопродление подписок (ОТКЛЮЧЕНО — нет save_payment_method) |
+| `expire_canceled_subscriptions` | 03:30 MSK | Downgrade отменённых подписок → free |
 
 Автоматическая цепочка: sync → enrich_tender (countdown=5) → embed_tender
 
@@ -514,7 +537,20 @@ PipelineRun: id, task_name, status (ok/partial/failed),
              #   cleanup_old_documents, recover_failed_tenders
 
 TenderMatch: id, profile, tender, score, notified_at
-Subscription: id, user, plan (free/solo/team), expires_at
+
+UserPlan: id, user (OneToOne), plan (free/standard/premium),
+          ai_summaries_used, rag_questions_used, reset_at, expires_at
+          # reset_at — когда сбрасываются счётчики (каждые 30 дней)
+          # expires_at — когда заканчивается подписка (null = free)
+
+Subscription: id, user (OneToOne), plan, interval (monthly/halfyearly/yearly),
+              status (active/canceled/expired/payment_failed),
+              payment_method_id, current_period_start, current_period_end,
+              canceled_at
+
+Payment: id, user, subscription (nullable FK), yookassa_payment_id,
+         amount, status (pending/succeeded/failed/canceled),
+         is_recurring, metadata (JSONField: plan, interval)
 ```
 
 ---
@@ -563,8 +599,9 @@ TELEGRAM_BOT_TOKEN=...         # Telegram bot для алертов
 TELEGRAM_ADMIN_CHAT_ID=...     # chat_id для Telegram алертов
 RUSPROFILE_PROXY_URL=...       # прокси для RusProfile (http://user:pass@host:port)
 TENDERGURU_API_KEY=...         # TenderGuru API (без ключа: 10 записей/страница)
-YUKASSA_SHOP_ID=...
-YUKASSA_SECRET_KEY=...
+YOOKASSA_SHOP_ID=...              # ЮКасса shop ID
+YOOKASSA_SECRET_KEY=...            # ЮКасса secret key
+YOOKASSA_RETURN_URL=...            # URL после оплаты (прод: https://tenderoll.ru/plan?payment=success)
 ```
 
 ---
@@ -695,7 +732,8 @@ for d in CompanyDirection.objects.filter(profile_vector__isnull=True):
 - [x] ОКВЭД фильтр убран из UI (бесполезен: 0% покрытие для 223-ФЗ и b2b)
 - [x] No-docs handling: AiSummaryBlock и TenderChat показывают сообщение вместо спиннера
 - [ ] Интеграция ЗаЧестныйБизнес API (замена RusProfile) — ресерч готов, API ключ не куплен
-- [ ] Монетизация (ЮКасса) — free/solo/team
+- [x] Монетизация (ЮКасса) — free/standard/premium, checkout, verify, /plan страница
+- [ ] Рекуррентные платежи ЮКасса — требует согласование с менеджером
 - [ ] **Анализ рынка** — фича "Есть ли у меня шансы?": оценка конкурентности ниши, топ-победители, ценовая зона, соответствие профиля. Мокап: market_analysis_mockup (1).html
 
 ### Приоритет 2 — после первых платящих

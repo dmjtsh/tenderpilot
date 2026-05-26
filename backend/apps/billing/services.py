@@ -316,43 +316,19 @@ def process_renewals() -> int:
         current_period_end__lte=now,
     ).select_related("user")
 
-    if not settings.YOOKASSA_SHOP_ID:
-        logger.warning("YooKassa not configured, skipping renewals")
-        return 0
-
-    from .yookassa_client import create_recurring_payment
-
     count = 0
     for sub in expired_subs:
-        if not sub.payment_method_id:
-            logger.warning("No payment method for subscription %s", sub.id)
-            sub.status = Subscription.Status.PAYMENT_FAILED
+        with transaction.atomic():
+            sub.status = Subscription.Status.EXPIRED
             sub.save(update_fields=["status", "updated_at"])
-            continue
 
-        try:
-            amount = get_price(sub.plan, sub.interval)
-            yoo_payment = create_recurring_payment(
-                amount=amount,
-                payment_method_id=sub.payment_method_id,
-                plan=sub.plan,
-                interval=sub.interval,
-                user_id=sub.user_id,
-            )
-            Payment.objects.create(
-                user=sub.user,
-                subscription=sub,
-                yookassa_payment_id=yoo_payment.id,
-                amount=Decimal(str(amount)),
-                status=Payment.Status.PENDING,
-                is_recurring=True,
-                metadata={"plan": sub.plan, "interval": sub.interval},
-            )
+            user_plan = get_user_plan(sub.user)
+            user_plan.plan = UserPlan.Plan.FREE
+            user_plan.expires_at = None
+            user_plan.save(update_fields=["plan", "expires_at", "updated_at"])
             count += 1
-        except Exception:
-            logger.exception("Renewal failed for subscription %s", sub.id)
-            sub.status = Subscription.Status.PAYMENT_FAILED
-            sub.save(update_fields=["status", "updated_at"])
+
+        logger.info("Subscription expired: user=%s plan=%s", sub.user_id, sub.plan)
 
     return count
 

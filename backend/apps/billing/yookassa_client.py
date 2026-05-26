@@ -25,7 +25,6 @@ def create_first_payment(
         "amount": {"value": str(amount), "currency": "RUB"},
         "confirmation": {"type": "redirect", "return_url": return_url},
         "capture": True,
-        "save_payment_method": True,
         "description": f"TendeRoll {plan} ({interval})",
         "metadata": {
             "user_id": str(user_id),

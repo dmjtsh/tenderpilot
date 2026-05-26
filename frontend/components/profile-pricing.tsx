@@ -30,7 +30,7 @@ export function ProfilePricing({ currentPlan }: { currentPlan: UserPlan }) {
     currentPlan.plan === planKey && currentPlan.plan !== "free"
 
   return (
-    <div id="upgrade-plans" className="border border-gray-200 bg-white">
+    <div id="pricing" className="border border-gray-200 bg-white">
       <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <p className="text-base font-semibold text-[#111827]">Тарифы</p>
         <div className="inline-flex items-center gap-1 rounded-full bg-white p-1 border border-[#D1D5DB]">
