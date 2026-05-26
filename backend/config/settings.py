@@ -197,6 +197,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.tenders.tasks.sync_tenderguru",
         "schedule": crontab(minute=15, hour="*/2"),
     },
+    "process-renewals": {
+        "task": "apps.billing.tasks.process_renewals",
+        "schedule": crontab(hour=3, minute=0),
+    },
+    "expire-canceled-subscriptions": {
+        "task": "apps.billing.tasks.expire_canceled_subscriptions",
+        "schedule": crontab(hour=3, minute=30),
+    },
 }
 
 # Qdrant
@@ -231,6 +239,16 @@ TENDERGURU_API_KEY = config("TENDERGURU_API_KEY", default="")
 
 # DaData
 DADATA_TOKEN = config("DADATA_TOKEN", default="")
+
+# YooKassa
+YOOKASSA_SHOP_ID = config("YOOKASSA_SHOP_ID", default="")
+YOOKASSA_SECRET_KEY = config("YOOKASSA_SECRET_KEY", default="")
+YOOKASSA_RETURN_URL = config("YOOKASSA_RETURN_URL", default="https://tenderoll.ru/profile")
+
+PLAN_PRICES = {
+    "standard": {"monthly": 2990, "yearly": 29900},
+    "premium": {"monthly": 6990, "yearly": 69900},
+}
 
 
 if DEBUG:

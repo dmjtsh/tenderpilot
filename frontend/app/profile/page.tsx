@@ -832,7 +832,26 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
 }
 
 function PlanBlock({ plan }: { plan: UserPlan }) {
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const resetDate = new Date(plan.reset_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })
+  const sub = plan.subscription
+
+  const periodEnd = sub?.current_period_end
+    ? new Date(sub.current_period_end).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+    : null
+
+  async function handleCancel() {
+    setCancelLoading(true)
+    try {
+      await billingApi.cancel()
+      window.location.reload()
+    } catch {
+      setCancelLoading(false)
+      setShowCancelConfirm(false)
+    }
+  }
+
   return (
     <div className="border border-gray-200 bg-white">
       <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -841,13 +860,25 @@ function PlanBlock({ plan }: { plan: UserPlan }) {
           <span className={`text-sm px-2.5 py-0.5 font-medium ${PLAN_COLOR[plan.plan] ?? PLAN_COLOR.free}`}>
             {PLAN_LABEL[plan.plan] ?? plan.plan}
           </span>
+          {sub && (
+            <span className="text-xs text-gray-500">
+              {sub.interval === "yearly" ? "годовой" : "месячный"}
+            </span>
+          )}
         </div>
-        {plan.plan === "free" && (
+        {plan.plan === "free" ? (
           <a
             href="/#pricing"
             className="text-sm text-violet-600 hover:text-violet-700 font-medium transition-colors"
           >
             Улучшить тариф
+          </a>
+        ) : (
+          <a
+            href="/#pricing"
+            className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
+          >
+            Сменить тариф
           </a>
         )}
       </div>
@@ -856,6 +887,54 @@ function PlanBlock({ plan }: { plan: UserPlan }) {
         <UsageBar used={plan.rag_questions.used} limit={plan.rag_questions.limit} label="Вопросы по тендеру" />
         <UsageBar used={plan.companies.used} limit={plan.companies.limit} label="Компании" />
         <p className="text-sm text-[#111827]">Счётчики сбрасываются <span className="font-semibold">{resetDate}</span></p>
+
+        {sub && sub.status === "active" && periodEnd && (
+          <div className="pt-2 border-t border-gray-100">
+            <p className="text-sm text-gray-600">
+              Следующее списание: <span className="font-medium text-[#111827]">{periodEnd}</span>
+            </p>
+            {!showCancelConfirm ? (
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="mt-2 text-sm text-red-500 hover:text-red-600 transition-colors"
+              >
+                Отменить подписку
+              </button>
+            ) : (
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelLoading}
+                  className="text-sm text-red-600 font-medium hover:text-red-700"
+                >
+                  {cancelLoading ? "Отмена..." : "Подтвердить отмену"}
+                </button>
+                <button
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Назад
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {sub && sub.status === "canceled" && periodEnd && (
+          <div className="pt-2 border-t border-gray-100">
+            <p className="text-sm text-amber-600">
+              Подписка отменена. Действует до <span className="font-medium">{periodEnd}</span>
+            </p>
+          </div>
+        )}
+
+        {sub && sub.status === "payment_failed" && (
+          <div className="pt-2 border-t border-gray-100">
+            <p className="text-sm text-red-600">
+              Проблема с оплатой. <a href="/#pricing" className="underline">Обновите способ оплаты</a>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

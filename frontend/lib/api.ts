@@ -491,9 +491,17 @@ export const directionsApi = {
 }
 
 // Billing
+export interface SubscriptionInfo {
+  status: "active" | "canceled" | "expired" | "payment_failed"
+  interval: "monthly" | "yearly"
+  current_period_end: string
+  canceled_at: string | null
+}
+
 export interface UserPlan {
   plan: "free" | "standard" | "premium"
   expires_at: string | null
+  subscription: SubscriptionInfo | null
   ai_summaries: { used: number; limit: number }
   rag_questions: { used: number; limit: number }
   companies: { used: number; limit: number }
@@ -503,6 +511,10 @@ export interface UserPlan {
 export const billingApi = {
   getInfo: () =>
     client.get("/billing/me/").then((r) => r.data.data as UserPlan),
+  checkout: (plan: string, interval: string) =>
+    client.post("/billing/checkout/", { plan, interval }).then((r) => r.data.data as { confirmation_url: string }),
+  cancel: () =>
+    client.post("/billing/cancel/").then((r) => r.data.data as { status: string; active_until: string }),
 }
 
 // Experiments

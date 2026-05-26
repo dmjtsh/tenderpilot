@@ -1,22 +1,37 @@
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
+from decimal import Decimal
 from typing import TYPE_CHECKING, Literal
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from .exceptions import QuotaExceeded
-from .models import UserPlan
+from .models import Payment, Subscription, UserPlan
 
 if TYPE_CHECKING:
     from apps.users.models import User
+
+logger = logging.getLogger(__name__)
 
 PLAN_LIMITS: dict[str, dict[str, int]] = {
     "free":     {"max_companies": 1, "ai_summaries": 2,   "rag_questions": 10},
     "standard": {"max_companies": 1, "ai_summaries": 60,  "rag_questions": 120},
     "premium":  {"max_companies": 10, "ai_summaries": 500, "rag_questions": 1000},
 }
+
+
+def get_price(plan: str, interval: str) -> int:
+    prices = settings.PLAN_PRICES.get(plan)
+    if not prices:
+        raise ValueError(f"Unknown plan: {plan}")
+    price = prices.get(interval)
+    if price is None:
+        raise ValueError(f"Unknown interval: {interval}")
+    return price
 
 
 def get_user_plan(user: "User") -> UserPlan:
@@ -94,9 +109,20 @@ def get_billing_info(user: "User") -> dict:
     limits = PLAN_LIMITS.get(plan.plan, PLAN_LIMITS["free"])
     companies_used = CompanyProfile.objects.filter(user=user).count()
 
+    sub = Subscription.objects.filter(user=user).first()
+    subscription_data = None
+    if sub:
+        subscription_data = {
+            "status": sub.status,
+            "interval": sub.interval,
+            "current_period_end": sub.current_period_end.isoformat(),
+            "canceled_at": sub.canceled_at.isoformat() if sub.canceled_at else None,
+        }
+
     return {
         "plan": plan.plan,
         "expires_at": plan.expires_at.isoformat() if plan.expires_at else None,
+        "subscription": subscription_data,
         "ai_summaries": {
             "used": plan.ai_summaries_used,
             "limit": limits["ai_summaries"],
@@ -111,3 +137,216 @@ def get_billing_info(user: "User") -> dict:
         },
         "reset_at": plan.reset_at.isoformat(),
     }
+
+
+# ─── Checkout & Payment Handling ──────────────────────────────────────────────
+
+
+def create_checkout(user: "User", plan: str, interval: str) -> dict:
+    if plan not in ("standard", "premium"):
+        raise ValueError("Invalid plan")
+    if interval not in ("monthly", "yearly"):
+        raise ValueError("Invalid interval")
+
+    if not settings.YOOKASSA_SHOP_ID:
+        raise RuntimeError("YooKassa is not configured")
+
+    from .yookassa_client import create_first_payment
+
+    amount = get_price(plan, interval)
+    return_url = settings.YOOKASSA_RETURN_URL
+
+    yoo_payment = create_first_payment(
+        amount=amount,
+        plan=plan,
+        interval=interval,
+        user_id=user.id,
+        return_url=return_url,
+    )
+
+    Payment.objects.create(
+        user=user,
+        yookassa_payment_id=yoo_payment.id,
+        amount=Decimal(str(amount)),
+        status=Payment.Status.PENDING,
+        metadata={"plan": plan, "interval": interval},
+    )
+
+    confirmation_url = yoo_payment.confirmation.confirmation_url
+    return {"confirmation_url": confirmation_url}
+
+
+def _period_end(start, interval: str):
+    if interval == "yearly":
+        return start + timedelta(days=365)
+    return start + timedelta(days=30)
+
+
+def handle_payment_succeeded(yookassa_payment_id: str, yoo_data: dict) -> None:
+    with transaction.atomic():
+        payment = Payment.objects.select_for_update().filter(
+            yookassa_payment_id=yookassa_payment_id,
+        ).first()
+        if not payment:
+            logger.warning("Payment not found: %s", yookassa_payment_id)
+            return
+        if payment.status == Payment.Status.SUCCEEDED:
+            return
+
+        payment.status = Payment.Status.SUCCEEDED
+        payment.save(update_fields=["status", "updated_at"])
+
+        user = payment.user
+        meta = payment.metadata
+        plan = meta.get("plan", "standard")
+        interval = meta.get("interval", "monthly")
+        now = timezone.now()
+
+        payment_method = yoo_data.get("payment_method", {})
+        payment_method_id = payment_method.get("id", "")
+
+        sub, created = Subscription.objects.select_for_update().get_or_create(
+            user=user,
+            defaults={
+                "plan": plan,
+                "interval": interval,
+                "status": Subscription.Status.ACTIVE,
+                "payment_method_id": payment_method_id,
+                "current_period_start": now,
+                "current_period_end": _period_end(now, interval),
+            },
+        )
+
+        if not created:
+            sub.plan = plan
+            sub.interval = interval
+            sub.status = Subscription.Status.ACTIVE
+            sub.canceled_at = None
+            if payment_method_id:
+                sub.payment_method_id = payment_method_id
+            if payment.is_recurring:
+                sub.current_period_start = sub.current_period_end
+                sub.current_period_end = _period_end(sub.current_period_end, interval)
+            else:
+                sub.current_period_start = now
+                sub.current_period_end = _period_end(now, interval)
+            sub.save()
+
+        payment.subscription = sub
+        payment.save(update_fields=["subscription", "updated_at"])
+
+        user_plan = get_user_plan(user)
+        user_plan.plan = plan
+        user_plan.expires_at = sub.current_period_end
+        user_plan.save(update_fields=["plan", "expires_at", "updated_at"])
+
+        logger.info("Payment succeeded: user=%s plan=%s interval=%s", user.id, plan, interval)
+
+
+def handle_payment_failed(yookassa_payment_id: str) -> None:
+    with transaction.atomic():
+        payment = Payment.objects.select_for_update().filter(
+            yookassa_payment_id=yookassa_payment_id,
+        ).first()
+        if not payment:
+            return
+        if payment.status in (Payment.Status.FAILED, Payment.Status.CANCELED):
+            return
+
+        payment.status = Payment.Status.FAILED
+        payment.save(update_fields=["status", "updated_at"])
+
+        sub = Subscription.objects.filter(user=payment.user, status=Subscription.Status.ACTIVE).first()
+        if sub and payment.is_recurring:
+            sub.status = Subscription.Status.PAYMENT_FAILED
+            sub.save(update_fields=["status", "updated_at"])
+
+        logger.warning("Payment failed: %s user=%s", yookassa_payment_id, payment.user_id)
+
+
+def cancel_subscription(user: "User") -> dict:
+    sub = Subscription.objects.filter(user=user).exclude(
+        status__in=[Subscription.Status.EXPIRED],
+    ).first()
+    if not sub:
+        raise ValueError("No active subscription")
+
+    sub.status = Subscription.Status.CANCELED
+    sub.canceled_at = timezone.now()
+    sub.save(update_fields=["status", "canceled_at", "updated_at"])
+
+    logger.info("Subscription canceled: user=%s active_until=%s", user.id, sub.current_period_end)
+    return {
+        "status": "canceled",
+        "active_until": sub.current_period_end.isoformat(),
+    }
+
+
+def process_renewals() -> int:
+    now = timezone.now()
+    expired_subs = Subscription.objects.filter(
+        status=Subscription.Status.ACTIVE,
+        current_period_end__lte=now,
+    ).select_related("user")
+
+    if not settings.YOOKASSA_SHOP_ID:
+        logger.warning("YooKassa not configured, skipping renewals")
+        return 0
+
+    from .yookassa_client import create_recurring_payment
+
+    count = 0
+    for sub in expired_subs:
+        if not sub.payment_method_id:
+            logger.warning("No payment method for subscription %s", sub.id)
+            sub.status = Subscription.Status.PAYMENT_FAILED
+            sub.save(update_fields=["status", "updated_at"])
+            continue
+
+        try:
+            amount = get_price(sub.plan, sub.interval)
+            yoo_payment = create_recurring_payment(
+                amount=amount,
+                payment_method_id=sub.payment_method_id,
+                plan=sub.plan,
+                interval=sub.interval,
+                user_id=sub.user_id,
+            )
+            Payment.objects.create(
+                user=sub.user,
+                subscription=sub,
+                yookassa_payment_id=yoo_payment.id,
+                amount=Decimal(str(amount)),
+                status=Payment.Status.PENDING,
+                is_recurring=True,
+                metadata={"plan": sub.plan, "interval": sub.interval},
+            )
+            count += 1
+        except Exception:
+            logger.exception("Renewal failed for subscription %s", sub.id)
+            sub.status = Subscription.Status.PAYMENT_FAILED
+            sub.save(update_fields=["status", "updated_at"])
+
+    return count
+
+
+def expire_canceled_subscriptions() -> int:
+    now = timezone.now()
+    expired = Subscription.objects.filter(
+        status=Subscription.Status.CANCELED,
+        current_period_end__lte=now,
+    ).select_related("user")
+
+    count = 0
+    for sub in expired:
+        with transaction.atomic():
+            sub.status = Subscription.Status.EXPIRED
+            sub.save(update_fields=["status", "updated_at"])
+
+            user_plan = get_user_plan(sub.user)
+            user_plan.plan = UserPlan.Plan.FREE
+            user_plan.expires_at = None
+            user_plan.save(update_fields=["plan", "expires_at", "updated_at"])
+            count += 1
+
+    return count

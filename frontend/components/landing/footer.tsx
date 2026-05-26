@@ -20,9 +20,8 @@ const footerLinks = {
   legal: {
     title: "Юридическая информация",
     links: [
-      { label: "Политика конфиденциальности", href: "#" },
-      { label: "Условия использования", href: "#" },
-      { label: "Оферта", href: "#" },
+      { label: "Политика конфиденциальности", href: "/privacy" },
+      { label: "Оферта", href: "/oferta" },
     ],
   },
 }
@@ -65,9 +64,14 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-[#D1D5DB] pt-8 sm:flex-row">
-          <p className="text-sm text-[#6B7280]">
-            {new Date().getFullYear()} TendeRoll. Все права защищены.
-          </p>
+          <div>
+            <p className="text-sm text-[#6B7280]">
+              {new Date().getFullYear()} TendeRoll. Все права защищены.
+            </p>
+            <p className="mt-1 text-xs text-[#9CA3AF]">
+              Самозанятый Шутов Дмитрий Сергеевич ИНН 632136373344
+            </p>
+          </div>
           <p className="text-sm text-[#9CA3AF]">
             Сделано в России
           </p>
