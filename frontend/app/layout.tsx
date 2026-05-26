@@ -78,13 +78,13 @@ export const metadata: Metadata = {
     siteName: "TendeRoll",
     title: "TendeRoll — ИИ-поиск тендеров и госзакупок",
     description: "Агрегатор тендеров с ИИ. Автоматический подбор госзакупок по 44-ФЗ и 223-ФЗ, анализ документации нейросетью за 10 секунд. Бесплатно.",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "TendeRoll" }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "TendeRoll" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "TendeRoll — ИИ-агрегатор тендеров",
     description: "ИИ-агрегатор тендеров. Автоматический подбор госзакупок, анализ документации, помощник тендериста.",
-    images: ["/og-image.png"],
+    images: ["/opengraph-image"],
   },
 }
 
