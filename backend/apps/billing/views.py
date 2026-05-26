@@ -36,9 +36,9 @@ class CheckoutView(APIView):
                 {"data": None, "error": "Выберите тариф: standard или premium"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if interval not in ("monthly", "yearly"):
+        if interval not in ("monthly", "halfyearly", "yearly"):
             return Response(
-                {"data": None, "error": "Выберите период: monthly или yearly"},
+                {"data": None, "error": "Выберите период: monthly, halfyearly или yearly"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

@@ -40,6 +40,7 @@ class Subscription(models.Model):
 
     class Interval(models.TextChoices):
         MONTHLY = "monthly", "Monthly"
+        HALFYEARLY = "halfyearly", "Half-Yearly"
         YEARLY = "yearly", "Yearly"
 
     user = models.OneToOneField(

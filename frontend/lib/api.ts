@@ -493,7 +493,7 @@ export const directionsApi = {
 // Billing
 export interface SubscriptionInfo {
   status: "active" | "canceled" | "expired" | "payment_failed"
-  interval: "monthly" | "yearly"
+  interval: "monthly" | "halfyearly" | "yearly"
   current_period_end: string
   canceled_at: string | null
 }

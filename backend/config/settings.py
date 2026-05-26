@@ -246,8 +246,8 @@ YOOKASSA_SECRET_KEY = config("YOOKASSA_SECRET_KEY", default="")
 YOOKASSA_RETURN_URL = config("YOOKASSA_RETURN_URL", default="https://tenderoll.ru/profile")
 
 PLAN_PRICES = {
-    "standard": {"monthly": 2990, "yearly": 29900},
-    "premium": {"monthly": 6990, "yearly": 69900},
+    "standard": {"monthly": 2990, "halfyearly": 14950, "yearly": 29900},
+    "premium": {"monthly": 6990, "halfyearly": 34950, "yearly": 69900},
 }
 
 

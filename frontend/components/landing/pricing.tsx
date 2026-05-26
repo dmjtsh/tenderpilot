@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button"
 import { billingApi } from "@/lib/api"
 import { isAuthenticated } from "@/lib/auth"
 
+type Interval = "monthly" | "halfyearly" | "yearly"
+
 const plans = [
   {
     key: "free",
     name: "Бесплатный",
     subtitle: "Попробовать",
     monthly: 0,
+    halfyearly: 0,
     yearly: 0,
     features: [
       "1 компания",
@@ -25,6 +28,7 @@ const plans = [
     name: "Standard",
     subtitle: "Для специалиста",
     monthly: 2990,
+    halfyearly: 14950,
     yearly: 29900,
     features: [
       "1 компания",
@@ -38,6 +42,7 @@ const plans = [
     name: "Premium",
     subtitle: "Для команды",
     monthly: 6990,
+    halfyearly: 34950,
     yearly: 69900,
     popular: true,
     features: [
@@ -52,6 +57,7 @@ const plans = [
     name: "Enterprise",
     subtitle: "Для крупных команд",
     monthly: -1,
+    halfyearly: -1,
     yearly: -1,
     features: [
       "Условия договорные",
@@ -61,12 +67,24 @@ const plans = [
   },
 ]
 
+const INTERVAL_MONTHS: Record<Interval, number> = {
+  monthly: 1,
+  halfyearly: 6,
+  yearly: 12,
+}
+
+const INTERVAL_LABEL: Record<Interval, string> = {
+  monthly: "мес",
+  halfyearly: "полгода",
+  yearly: "год",
+}
+
 function formatPrice(price: number) {
   return price.toLocaleString("ru-RU")
 }
 
 export function Pricing() {
-  const [interval, setInterval] = useState<"monthly" | "yearly">("monthly")
+  const [interval, setInterval] = useState<Interval>("monthly")
   const [loading, setLoading] = useState<string | null>(null)
 
   async function handleCheckout(planKey: string) {
@@ -95,7 +113,7 @@ export function Pricing() {
           <div className="mt-6 inline-flex items-center gap-1 rounded-full bg-white p-1 border border-[#D1D5DB]">
             <button
               onClick={() => setInterval("monthly")}
-              className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                 interval === "monthly"
                   ? "bg-[#111827] text-white"
                   : "text-[#6B7280] hover:text-[#111827]"
@@ -104,22 +122,34 @@ export function Pricing() {
               Месяц
             </button>
             <button
+              onClick={() => setInterval("halfyearly")}
+              className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                interval === "halfyearly"
+                  ? "bg-[#111827] text-white"
+                  : "text-[#6B7280] hover:text-[#111827]"
+              }`}
+            >
+              Полгода
+              <span className="ml-1 text-xs text-emerald-600 font-semibold">-1 мес</span>
+            </button>
+            <button
               onClick={() => setInterval("yearly")}
-              className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                 interval === "yearly"
                   ? "bg-[#111827] text-white"
                   : "text-[#6B7280] hover:text-[#111827]"
               }`}
             >
               Год
-              <span className="ml-1.5 text-xs text-emerald-600 font-semibold">-2 мес</span>
+              <span className="ml-1 text-xs text-emerald-600 font-semibold">-2 мес</span>
             </button>
           </div>
         </div>
 
         <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => {
-            const price = interval === "monthly" ? plan.monthly : plan.yearly
+            const price = plan[interval]
+            const months = INTERVAL_MONTHS[interval]
             const isEnterprise = plan.key === "enterprise"
             const isFree = plan.key === "free"
 
@@ -152,11 +182,11 @@ export function Pricing() {
                           {formatPrice(price)}
                         </span>
                         <span className="ml-1 text-[#6B7280]">
-                          ₽/{interval === "monthly" ? "мес" : "год"}
+                          ₽/{INTERVAL_LABEL[interval]}
                         </span>
-                        {interval === "yearly" && (
+                        {months > 1 && (
                           <p className="mt-1 text-sm text-[#6B7280]">
-                            {formatPrice(Math.round(price / 12))} ₽/мес
+                            {formatPrice(Math.round(price / months))} ₽/мес
                           </p>
                         )}
                       </>

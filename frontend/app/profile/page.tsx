@@ -862,7 +862,7 @@ function PlanBlock({ plan }: { plan: UserPlan }) {
           </span>
           {sub && (
             <span className="text-xs text-gray-500">
-              {sub.interval === "yearly" ? "годовой" : "месячный"}
+              {sub.interval === "yearly" ? "годовой" : sub.interval === "halfyearly" ? "полугодовой" : "месячный"}
             </span>
           )}
         </div>

@@ -145,7 +145,7 @@ def get_billing_info(user: "User") -> dict:
 def create_checkout(user: "User", plan: str, interval: str) -> dict:
     if plan not in ("standard", "premium"):
         raise ValueError("Invalid plan")
-    if interval not in ("monthly", "yearly"):
+    if interval not in ("monthly", "halfyearly", "yearly"):
         raise ValueError("Invalid interval")
 
     if not settings.YOOKASSA_SHOP_ID:
@@ -179,6 +179,8 @@ def create_checkout(user: "User", plan: str, interval: str) -> dict:
 def _period_end(start, interval: str):
     if interval == "yearly":
         return start + timedelta(days=365)
+    if interval == "halfyearly":
+        return start + timedelta(days=182)
     return start + timedelta(days=30)
 
 
