@@ -50,12 +50,38 @@ def _komtender_doc_links(tender: Tender) -> list[dict[str, str]]:
 
 
 def _tenderguru_doc_links(tender: Tender) -> list[dict[str, str]]:
-    """Extract document links from TenderGuru raw_json.doc_files."""
+    """Fetch fresh document links from TenderGuru API, fallback to raw_json."""
+    tg_id = tender.number.replace("tg-", "") if tender.number.startswith("tg-") else ""
+    if tg_id:
+        try:
+            from apps.tenders.tenderguru_client import (
+                fetch_tender_detail, enrich_from_detail, parse_list_item,
+            )
+            detail = fetch_tender_detail(tg_id)
+            if detail:
+                base = parse_list_item(detail)
+                if base:
+                    data = enrich_from_detail(base, detail)
+                    fresh_docs = data.get("raw_json", {}).get("doc_files", [])
+                    if fresh_docs:
+                        nested = tender.raw_json.get("raw_json", {})
+                        if isinstance(nested, dict):
+                            nested["doc_files"] = fresh_docs
+                            tender.raw_json["raw_json"] = nested
+                            tender.save(update_fields=["raw_json"])
+                        return _doc_files_to_links(fresh_docs)
+        except Exception:
+            logger.warning("TenderGuru API fetch failed for %s, using cached links", tg_id)
+
     doc_files = tender.raw_json.get("doc_files", [])
     if not doc_files:
         nested = tender.raw_json.get("raw_json", {})
         if isinstance(nested, dict):
             doc_files = nested.get("doc_files", [])
+    return _doc_files_to_links(doc_files)
+
+
+def _doc_files_to_links(doc_files: list[dict]) -> list[dict[str, str]]:
     links = []
     for f in doc_files:
         link = f.get("link", "")
