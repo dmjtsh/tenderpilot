@@ -915,6 +915,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
   const queryClient = useQueryClient()
   const [downloading, setDownloading] = useState(false)
   const [noDocs, setNoDocs] = useState(false)
+  const downloadStartRef = useRef<number | null>(null)
   const { data: docs = [], isLoading } = useDocsQuery(tenderId, downloading && !noDocs)
 
   const isProcessing = docsAreProcessing(docs)
@@ -922,6 +923,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
   async function handleDownload() {
     setDownloading(true)
     setNoDocs(false)
+    downloadStartRef.current = Date.now()
     try {
       const res = await tendersApi.downloadDocs(tenderId)
       if (res?.no_docs) {
@@ -938,9 +940,15 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
   }
 
   useEffect(() => {
-    if (downloading && docs.length > 0 && !isProcessing) {
+    if (!downloading) return
+    if (docs.length > 0 && !isProcessing) {
       const t = setTimeout(() => setDownloading(false), 2000)
       return () => clearTimeout(t)
+    }
+    const elapsed = downloadStartRef.current ? Date.now() - downloadStartRef.current : 0
+    if (elapsed > 30_000 && docs.length === 0) {
+      setDownloading(false)
+      setNoDocs(true)
     }
   }, [downloading, docs.length, isProcessing])
 
