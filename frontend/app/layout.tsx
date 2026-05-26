@@ -68,7 +68,7 @@ export const metadata: Metadata = {
   ],
   verification: {
     yandex: "5add52fb05b48e67",
-    google: "Ub-1GN0fdXMpOFL-sv2WM1c2nwH-G10smThlJFeaFL0",
+    google: "Cfbzno7gzU9uZmmLAEjCwzd_u6SDfAMPWYBL6pO3tvY",
   },
   alternates: { canonical: "/" },
   openGraph: {
