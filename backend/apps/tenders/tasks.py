@@ -581,6 +581,8 @@ def sync_tenderguru() -> dict:
                 parsed = parse_list_item(item)
                 if not parsed:
                     continue
+                if parsed.get("law_type") != "b2b":
+                    continue
 
                 stats["fetched"] += 1
                 is_new = parsed["number"] not in existing_numbers

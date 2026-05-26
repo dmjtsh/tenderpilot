@@ -85,6 +85,10 @@ class Command(BaseCommand):
 
                 stats["fetched"] += 1
 
+                if law == "kom" and parsed.get("law_type") != "b2b":
+                    stats["skipped"] += 1
+                    continue
+
                 if parsed["number"] in existing_numbers:
                     stats["skipped"] += 1
                     continue
