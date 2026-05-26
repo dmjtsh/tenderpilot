@@ -29,7 +29,7 @@ const plans = [
     subtitle: "Для специалиста",
     monthly: 2990,
     halfyearly: 14950,
-    yearly: 29900,
+    yearly: 26910,
     features: [
       "1 компания",
       "До 60 AI-резюме",
@@ -43,7 +43,7 @@ const plans = [
     subtitle: "Для команды",
     monthly: 6990,
     halfyearly: 34950,
-    yearly: 69900,
+    yearly: 62910,
     popular: true,
     features: [
       "До 10 компаний",
@@ -141,7 +141,7 @@ export function Pricing() {
               }`}
             >
               Год
-              <span className="ml-1 text-xs text-emerald-600 font-semibold">-2 мес</span>
+              <span className="ml-1 text-xs text-emerald-600 font-semibold">-3 мес</span>
             </button>
           </div>
         </div>
