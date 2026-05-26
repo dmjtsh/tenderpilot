@@ -4,7 +4,6 @@ import { PainPoints } from "@/components/landing/pain-points"
 import { Agitation } from "@/components/landing/agitation"
 import { Solution } from "@/components/landing/solution"
 import { HowItWorks } from "@/components/landing/how-it-works"
-import { DemoVideo } from "@/components/landing/demo-video"
 import { Pricing } from "@/components/landing/pricing"
 import { FAQ } from "@/components/landing/faq"
 import { CTA } from "@/components/landing/cta"
@@ -180,7 +179,6 @@ export default function Home() {
       <Agitation />
       <Solution />
       <HowItWorks />
-      <DemoVideo />
       <Pricing />
       <FAQ />
       <CTA />

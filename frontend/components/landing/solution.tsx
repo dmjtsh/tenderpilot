@@ -4,6 +4,7 @@ import { ArrowRight, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useScrollAnimation } from "@/hooks/use-scroll-animation"
+import { useRef, useState } from "react"
 
 const facts = [
   {
@@ -26,6 +27,19 @@ const facts = [
 
 export function Solution() {
   const { ref, isVisible } = useScrollAnimation()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [playing, setPlaying] = useState(false)
+
+  function handlePlay() {
+    videoRef.current?.play()
+    setPlaying(true)
+  }
+
+  function handleVideoClick() {
+    const v = videoRef.current
+    if (!v) return
+    v.paused ? v.play() : v.pause()
+  }
 
   return (
     <section id="solution" className="bg-zinc-900 py-16 sm:py-24" ref={ref}>
@@ -51,11 +65,29 @@ export function Solution() {
           </div>
 
           <div className={`flex-1 scroll-hidden ${isVisible ? "scroll-visible" : ""}`}>
-            <div className="aspect-video rounded-2xl border border-zinc-600 bg-gradient-to-br from-zinc-800 to-zinc-700 flex flex-col items-center justify-center gap-3">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
-                <Play className="h-7 w-7 text-white fill-white" />
-              </div>
-              <span className="text-sm font-medium text-gray-400">Демо скоро</span>
+            <div className="relative overflow-hidden rounded-2xl border border-zinc-600">
+              <video
+                ref={videoRef}
+                src="/demo.mp4"
+                preload="none"
+                poster="/demo-poster.jpg"
+                controls={playing}
+                playsInline
+                onClick={handleVideoClick}
+                onEnded={() => setPlaying(false)}
+                className="w-full aspect-video bg-zinc-900 cursor-pointer"
+              />
+              {!playing && (
+                <button
+                  onClick={handlePlay}
+                  aria-label="Смотреть демо"
+                  className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/50 transition-colors group"
+                >
+                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm transition-transform group-hover:scale-110 border border-white/30">
+                    <Play className="h-7 w-7 translate-x-0.5 text-white fill-white" />
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
