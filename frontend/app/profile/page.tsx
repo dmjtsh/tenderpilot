@@ -820,6 +820,12 @@ export default function ProfilePage() {
     if (!isAuthenticated()) router.replace("/login")
   }, [router])
 
+  const { data: me } = useQuery<{ email: string; first_name: string; last_name: string }>({
+    queryKey: ["me"],
+    queryFn: () => profileApi.getMe(),
+    staleTime: 300_000,
+  })
+
   const { data: companies = [], isLoading: companiesLoading } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
@@ -937,7 +943,7 @@ export default function ProfilePage() {
     <div className="flex flex-col h-screen animate-fade-in">
       {/* Header */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 shrink-0">
-        <h1 className="text-lg font-bold text-[#111827]">Профиль компании</h1>
+        <h1 className="text-lg font-bold text-[#111827]">Профиль</h1>
         {selectedCompany && (
           <button
             onClick={handleSubmit((data) => saveMutation.mutateAsync(data))}
@@ -951,6 +957,19 @@ export default function ProfilePage() {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+
+          {/* Account info */}
+          {me && (
+            <div className="border border-gray-200 bg-white">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <p className="text-base font-semibold text-[#111827]">Аккаунт</p>
+              </div>
+              <div className="px-6 py-4">
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="text-base text-[#111827]">{me.email}</p>
+              </div>
+            </div>
+          )}
 
           {/* Onboarding banner — only when no directions */}
           {showOnboarding && directionsForCompleteness.length === 0 && selectedCompany && (

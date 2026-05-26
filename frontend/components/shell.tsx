@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
+import { profileApi } from "@/lib/api"
 import Image from "next/image"
 import { FileText, Columns3, Settings, LogOut, Send, Mail, CreditCard } from "lucide-react"
 
@@ -19,6 +20,11 @@ function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const qc = useQueryClient()
+  const { data: me } = useQuery<{ email: string }>({
+    queryKey: ["me"],
+    queryFn: () => profileApi.getMe(),
+    staleTime: 300_000,
+  })
 
   return (
     <aside className="w-[260px] shrink-0 border-r border-gray-200 bg-white flex flex-col h-screen sticky top-0">
@@ -93,8 +99,11 @@ function Sidebar() {
         </div>
       </div>
 
-      {/* Bottom: logout */}
+      {/* Bottom: user + logout */}
       <div className="px-3 py-3 border-t border-gray-200 shrink-0">
+        {me?.email && (
+          <p className="pl-[19px] pr-4 pb-2 text-sm text-gray-400 truncate">{me.email}</p>
+        )}
         <button
           onClick={() => { clearTokens(); qc.clear(); router.push("/login") }}
           className="flex items-center gap-3 pl-[19px] pr-4 py-3 text-base text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-all duration-200 w-full"

@@ -70,12 +70,12 @@ function CurrentPlanBlock({ plan }: { plan: UserPlan }) {
             <p className="text-sm text-gray-500">
               Подписка истекла.
             </p>
-            <a
-              href="#pricing"
-              className="mt-2 inline-block text-sm font-medium text-[#111827] hover:underline"
+            <button
+              onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
+              className="mt-2 text-sm font-medium text-[#111827] hover:underline"
             >
               Продлить подписку →
-            </a>
+            </button>
           </div>
         )}
       </div>

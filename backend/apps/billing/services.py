@@ -240,7 +240,10 @@ def handle_payment_succeeded(yookassa_payment_id: str, yoo_data: dict) -> None:
         user_plan = get_user_plan(user)
         user_plan.plan = plan
         user_plan.expires_at = sub.current_period_end
-        user_plan.save(update_fields=["plan", "expires_at", "updated_at"])
+        user_plan.ai_summaries_used = 0
+        user_plan.rag_questions_used = 0
+        user_plan.reset_at = timezone.now() + timedelta(days=30)
+        user_plan.save(update_fields=["plan", "expires_at", "ai_summaries_used", "rag_questions_used", "reset_at", "updated_at"])
 
         logger.info("Payment succeeded: user=%s plan=%s interval=%s", user.id, plan, interval)
 
