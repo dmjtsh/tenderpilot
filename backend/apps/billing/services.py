@@ -266,6 +266,31 @@ def handle_payment_failed(yookassa_payment_id: str) -> None:
         logger.warning("Payment failed: %s user=%s", yookassa_payment_id, payment.user_id)
 
 
+def verify_pending_payment(user: "User") -> bool:
+    payment = Payment.objects.filter(
+        user=user, status=Payment.Status.PENDING,
+    ).order_by("-created_at").first()
+    if not payment:
+        return False
+
+    from .yookassa_client import fetch_payment
+    try:
+        yoo = fetch_payment(payment.yookassa_payment_id)
+    except Exception:
+        logger.exception("Failed to fetch payment %s", payment.yookassa_payment_id)
+        return False
+
+    if yoo.status == "succeeded":
+        yoo_data = {}
+        if hasattr(yoo, "payment_method") and yoo.payment_method:
+            yoo_data["payment_method"] = {"id": getattr(yoo.payment_method, "id", "")}
+        handle_payment_succeeded(payment.yookassa_payment_id, yoo_data)
+        return True
+    if yoo.status == "canceled":
+        handle_payment_failed(payment.yookassa_payment_id)
+    return False
+
+
 def cancel_subscription(user: "User") -> dict:
     sub = Subscription.objects.filter(user=user).exclude(
         status__in=[Subscription.Status.EXPIRED],

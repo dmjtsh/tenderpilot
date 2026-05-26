@@ -243,7 +243,7 @@ DADATA_TOKEN = config("DADATA_TOKEN", default="")
 # YooKassa
 YOOKASSA_SHOP_ID = config("YOOKASSA_SHOP_ID", default="")
 YOOKASSA_SECRET_KEY = config("YOOKASSA_SECRET_KEY", default="")
-YOOKASSA_RETURN_URL = config("YOOKASSA_RETURN_URL", default="https://tenderoll.ru/profile")
+YOOKASSA_RETURN_URL = config("YOOKASSA_RETURN_URL", default="https://tenderoll.ru/plan?payment=success")
 
 PLAN_PRICES = {
     "standard": {"monthly": 2990, "halfyearly": 14950, "yearly": 26910},

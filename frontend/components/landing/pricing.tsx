@@ -5,90 +5,18 @@ import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { billingApi } from "@/lib/api"
 import { isAuthenticated } from "@/lib/auth"
-
-type Interval = "monthly" | "halfyearly" | "yearly"
-
-const plans = [
-  {
-    key: "free",
-    name: "Бесплатный",
-    subtitle: "Попробовать",
-    monthly: 0,
-    halfyearly: 0,
-    yearly: 0,
-    features: [
-      "1 компания",
-      "До 2 AI-резюме",
-      "До 10 RAG-вопросов",
-      "Для вас: 10 тендеров",
-    ],
-  },
-  {
-    key: "standard",
-    name: "Standard",
-    subtitle: "Для специалиста",
-    monthly: 2990,
-    halfyearly: 14950,
-    yearly: 26910,
-    features: [
-      "1 компания",
-      "До 60 AI-резюме",
-      "До 120 RAG-вопросов",
-      "Для вас: без ограничений",
-    ],
-  },
-  {
-    key: "premium",
-    name: "Premium",
-    subtitle: "Для команды",
-    monthly: 6990,
-    halfyearly: 34950,
-    yearly: 62910,
-    features: [
-      "До 10 компаний",
-      "До 500 AI-резюме",
-      "До 1 000 RAG-вопросов",
-      "Для вас: без ограничений",
-    ],
-  },
-  {
-    key: "enterprise",
-    name: "Enterprise",
-    subtitle: "Для крупных команд",
-    monthly: -1,
-    halfyearly: -1,
-    yearly: -1,
-    features: [
-      "Условия договорные",
-      "Персональный менеджер",
-      "API доступ",
-    ],
-  },
-]
-
-const INTERVAL_MONTHS: Record<Interval, number> = {
-  monthly: 1,
-  halfyearly: 6,
-  yearly: 12,
-}
-
-const INTERVAL_LABEL: Record<Interval, string> = {
-  monthly: "мес",
-  halfyearly: "полгода",
-  yearly: "год",
-}
-
-function formatPrice(price: number) {
-  return price.toLocaleString("ru-RU")
-}
+import { plans, INTERVAL_MONTHS, INTERVAL_LABEL, formatPrice, type Interval } from "@/lib/plans"
 
 export function Pricing() {
   const [interval, setInterval] = useState<Interval>("monthly")
   const [loading, setLoading] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleCheckout(planKey: string) {
+    setError(null)
+
     if (!isAuthenticated()) {
-      window.location.href = `/login?redirect=/profile&plan=${planKey}&interval=${interval}`
+      window.location.href = `/login?redirect=/plan&plan=${planKey}&interval=${interval}`
       return
     }
 
@@ -96,7 +24,10 @@ export function Pricing() {
     try {
       const result = await billingApi.checkout(planKey, interval)
       window.location.href = result.confirmation_url
-    } catch {
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+        ?? "Ошибка оплаты. Попробуйте позже."
+      setError(msg)
       setLoading(null)
     }
   }
@@ -155,11 +86,9 @@ export function Pricing() {
             return (
               <div
                 key={plan.key}
-                className={`flex flex-col border-2 bg-white p-8 ${
-                  "border-[#D1D5DB]"
-                }`}
+                className="flex flex-col border-2 bg-white p-8 border-[#D1D5DB]"
               >
-<div className="text-center">
+                <div className="text-center">
                   <h3 className="text-lg font-semibold text-[#111827]">{plan.name}</h3>
                   <p className="mt-1 text-sm text-[#6B7280]">{plan.subtitle}</p>
                   <div className="mt-6">
@@ -195,7 +124,9 @@ export function Pricing() {
                 <div className="mt-auto pt-8">
                   {isEnterprise ? (
                     <a
-                      href="mailto:shutov.ds@phystech.edu"
+                      href="https://t.me/tenderoll_support"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center justify-center w-full rounded-none border-2 border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6] h-12 text-base font-semibold transition-colors"
                     >
                       Связаться
@@ -222,6 +153,10 @@ export function Pricing() {
             )
           })}
         </div>
+
+        {error && (
+          <p className="mt-6 text-center text-sm text-red-600">{error}</p>
+        )}
       </div>
     </section>
   )

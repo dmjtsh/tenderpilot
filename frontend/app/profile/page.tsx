@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { isAuthenticated } from "@/lib/auth"
-import { profileApi, directionsApi, tendersApi, billingApi, type CompanyProfile, type CompanyDirection, type WonTenderRef, type InnLookupResult, type UserPlan } from "@/lib/api"
+import { profileApi, directionsApi, tendersApi, type CompanyProfile, type CompanyDirection, type WonTenderRef, type InnLookupResult } from "@/lib/api"
 import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles, Building2 } from "lucide-react"
 import { OkvedCombobox } from "@/components/okved-combobox"
 
@@ -801,144 +801,6 @@ function InnSuggestPanel({
   )
 }
 
-// ─── PlanBlock ────────────────────────────────────────────────────────────────
-
-const PLAN_LABEL: Record<string, string> = { free: "Free", standard: "Standard", premium: "Premium" }
-const PLAN_COLOR: Record<string, string> = {
-  free: "bg-gray-100 text-gray-600",
-  standard: "bg-violet-100 text-violet-700",
-  premium: "bg-amber-100 text-amber-700",
-}
-
-function UsageBar({ used, limit, label }: { used: number; limit: number; label: string }) {
-  const pct = Math.min(100, Math.round((used / limit) * 100))
-  const nearLimit = pct >= 80
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-[15px]">
-        <span className="text-gray-600">{label}</span>
-        <span className={`font-medium tabular-nums ${nearLimit ? "text-amber-600" : "text-gray-700"}`}>
-          {used} / {limit}
-        </span>
-      </div>
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${nearLimit ? "bg-amber-500" : "bg-violet-500"}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function PlanBlock({ plan }: { plan: UserPlan }) {
-  const [cancelLoading, setCancelLoading] = useState(false)
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
-  const resetDate = new Date(plan.reset_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })
-  const sub = plan.subscription
-
-  const periodEnd = sub?.current_period_end
-    ? new Date(sub.current_period_end).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
-    : null
-
-  async function handleCancel() {
-    setCancelLoading(true)
-    try {
-      await billingApi.cancel()
-      window.location.reload()
-    } catch {
-      setCancelLoading(false)
-      setShowCancelConfirm(false)
-    }
-  }
-
-  return (
-    <div className="border border-gray-200 bg-white">
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <p className="text-base font-semibold text-[#111827]">Тариф</p>
-          <span className={`text-sm px-2.5 py-0.5 font-medium ${PLAN_COLOR[plan.plan] ?? PLAN_COLOR.free}`}>
-            {PLAN_LABEL[plan.plan] ?? plan.plan}
-          </span>
-          {sub && (
-            <span className="text-xs text-gray-500">
-              {sub.interval === "yearly" ? "годовой" : sub.interval === "halfyearly" ? "полугодовой" : "месячный"}
-            </span>
-          )}
-        </div>
-        {plan.plan === "free" ? (
-          <a
-            href="/#pricing"
-            className="text-sm text-violet-600 hover:text-violet-700 font-medium transition-colors"
-          >
-            Улучшить тариф
-          </a>
-        ) : (
-          <a
-            href="/#pricing"
-            className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
-          >
-            Сменить тариф
-          </a>
-        )}
-      </div>
-      <div className="px-6 py-5 space-y-4">
-        <UsageBar used={plan.ai_summaries.used} limit={plan.ai_summaries.limit} label="AI-резюме" />
-        <UsageBar used={plan.rag_questions.used} limit={plan.rag_questions.limit} label="Вопросы по тендеру" />
-        <UsageBar used={plan.companies.used} limit={plan.companies.limit} label="Компании" />
-        <p className="text-sm text-[#111827]">Счётчики сбрасываются <span className="font-semibold">{resetDate}</span></p>
-
-        {sub && sub.status === "active" && periodEnd && (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-sm text-gray-600">
-              Следующее списание: <span className="font-medium text-[#111827]">{periodEnd}</span>
-            </p>
-            {!showCancelConfirm ? (
-              <button
-                onClick={() => setShowCancelConfirm(true)}
-                className="mt-2 text-sm text-red-500 hover:text-red-600 transition-colors"
-              >
-                Отменить подписку
-              </button>
-            ) : (
-              <div className="mt-2 flex items-center gap-3">
-                <button
-                  onClick={handleCancel}
-                  disabled={cancelLoading}
-                  className="text-sm text-red-600 font-medium hover:text-red-700"
-                >
-                  {cancelLoading ? "Отмена..." : "Подтвердить отмену"}
-                </button>
-                <button
-                  onClick={() => setShowCancelConfirm(false)}
-                  className="text-sm text-gray-500 hover:text-gray-700"
-                >
-                  Назад
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {sub && sub.status === "canceled" && periodEnd && (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-sm text-amber-600">
-              Подписка отменена. Действует до <span className="font-medium">{periodEnd}</span>
-            </p>
-          </div>
-        )}
-
-        {sub && sub.status === "payment_failed" && (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-sm text-red-600">
-              Проблема с оплатой. <a href="/#pricing" className="underline">Обновите способ оплаты</a>
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -961,12 +823,6 @@ export default function ProfilePage() {
   const { data: companies = [], isLoading: companiesLoading } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
-  })
-
-  const { data: billingInfo } = useQuery<UserPlan>({
-    queryKey: ["billing"],
-    queryFn: () => billingApi.getInfo(),
-    staleTime: 60_000,
   })
 
   const { data: regionOptions = [] } = useQuery<string[]>({
@@ -1114,9 +970,6 @@ export default function ProfilePage() {
               </button>
             </div>
           )}
-
-          {/* Plan */}
-          {billingInfo && <PlanBlock plan={billingInfo} />}
 
           {/* Company selector */}
           <div className="border border-gray-200 bg-white">

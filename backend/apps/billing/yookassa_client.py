@@ -35,6 +35,12 @@ def create_first_payment(
     })
 
 
+def fetch_payment(payment_id: str) -> Any:
+    from yookassa import Payment as YooPayment
+    _configure()
+    return YooPayment.find_one(payment_id)
+
+
 def create_recurring_payment(
     amount: int,
     payment_method_id: str,

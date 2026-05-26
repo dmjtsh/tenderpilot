@@ -6,13 +6,14 @@ import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
 import Image from "next/image"
-import { FileText, Columns3, Settings, LogOut, Send, Mail } from "lucide-react"
+import { FileText, Columns3, Settings, LogOut, Send, Mail, CreditCard } from "lucide-react"
 
 const NAV = [
   { href: "/tenders", icon: FileText, label: "Тендеры" },
   { href: "/pipeline", icon: Columns3, label: "Мои тендеры" },
   { href: "/profile", icon: Settings, label: "Профиль" },
 ]
+
 
 function Sidebar() {
   const pathname = usePathname()
@@ -52,24 +53,41 @@ function Sidebar() {
         })}
       </nav>
 
+      {/* Plan link */}
+      <nav className="px-3 py-1 shrink-0 border-t border-gray-200">
+        <Link
+          href="/plan"
+          className={`
+            flex items-center gap-3 px-4 py-3 text-base transition-all duration-200 border-l-[3px]
+            ${pathname.startsWith("/plan")
+              ? "bg-gray-50 text-[#111827] font-medium border-l-[#111827]"
+              : "text-gray-500 hover:text-[#111827] hover:bg-gray-50 border-l-transparent"
+            }
+          `}
+        >
+          <CreditCard className="w-5 h-5 shrink-0" />
+          Мой тариф
+        </Link>
+      </nav>
+
       {/* Support block */}
       <div className="px-3 pb-2 shrink-0">
         <div className="border-t border-gray-200 pt-3 space-y-0.5">
-          <p className="px-3 text-sm font-medium text-gray-400 uppercase tracking-wide mb-1.5">Поддержка</p>
+          <p className="pl-[19px] text-sm font-medium text-gray-400 uppercase tracking-wide mb-1.5">Поддержка</p>
           <a
             href="https://t.me/tenderoll_support"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2.5 px-3 py-2 text-[15px] text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-3 pl-[19px] pr-4 py-2 text-[15px] text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-colors"
           >
-            <Send className="w-[18px] h-[18px]" />
+            <Send className="w-5 h-5 shrink-0" />
             <span>Telegram</span>
           </a>
           <a
             href="mailto:support@tenderoll.ru"
-            className="flex items-center gap-2.5 px-3 py-2 text-[15px] text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-3 pl-[19px] pr-4 py-2 text-[15px] text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-colors"
           >
-            <Mail className="w-[18px] h-[18px]" />
+            <Mail className="w-5 h-5 shrink-0" />
             <span>Email</span>
           </a>
         </div>
@@ -79,7 +97,7 @@ function Sidebar() {
       <div className="px-3 py-3 border-t border-gray-200 shrink-0">
         <button
           onClick={() => { clearTokens(); qc.clear(); router.push("/login") }}
-          className="flex items-center gap-3 px-4 py-3 text-base text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-all duration-200 w-full"
+          className="flex items-center gap-3 pl-[19px] pr-4 py-3 text-base text-gray-500 hover:text-[#111827] hover:bg-gray-50 transition-all duration-200 w-full"
         >
           <LogOut className="w-5 h-5" />
           Выйти

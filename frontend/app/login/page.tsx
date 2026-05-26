@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { authApi } from "@/lib/api"
 import { setTokens, isAuthenticated } from "@/lib/auth"
 import Image from "next/image"
+import { ArrowLeft } from "lucide-react"
 
 const loginSchema = z.object({
   email: z.string().email("Некорректный email"),
@@ -138,20 +139,32 @@ export default function LoginPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<"login" | "register">("login")
 
-  useEffect(() => {
-    if (isAuthenticated()) router.replace("/tenders")
-  }, [router])
+  const [redirectTo] = useState(() => {
+    if (typeof window === "undefined") return "/tenders"
+    return new URLSearchParams(window.location.search).get("redirect") || "/tenders"
+  })
 
-  const handleSuccess = () => { qc.clear(); localStorage.removeItem("onboarding_dismissed"); router.push("/tenders") }
+  useEffect(() => {
+    if (isAuthenticated()) router.replace(redirectTo)
+  }, [router, redirectTo])
+
+  const handleSuccess = () => { qc.clear(); localStorage.removeItem("onboarding_dismissed"); router.push(redirectTo) }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 relative">
+      <a
+        href="/"
+        className="absolute top-6 left-6 flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#111827] transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        На главную
+      </a>
       <div className="w-full max-w-[360px]">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-8">
+        <a href="/" className="flex items-center justify-center gap-2.5 mb-8">
           <Image src="/new_logo.jpg" width={26} height={26} className="rounded-xl" alt="TendeRoll" />
           <span className="text-lg font-semibold tracking-tight">TendeRoll</span>
-        </div>
+        </a>
 
         {/* Tab switcher */}
         <div className="flex rounded-lg bg-secondary p-0.5 mb-5">

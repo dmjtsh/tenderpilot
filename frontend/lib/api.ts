@@ -515,6 +515,8 @@ export const billingApi = {
     client.post("/billing/checkout/", { plan, interval }).then((r) => r.data.data as { confirmation_url: string }),
   cancel: () =>
     client.post("/billing/cancel/").then((r) => r.data.data as { status: string; active_until: string }),
+  verify: () =>
+    client.post("/billing/verify/").then((r) => r.data.data as UserPlan & { updated: boolean }),
 }
 
 // Experiments

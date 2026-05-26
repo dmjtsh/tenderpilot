@@ -11,6 +11,7 @@ from .services import (
     get_billing_info,
     handle_payment_failed,
     handle_payment_succeeded,
+    verify_pending_payment,
 )
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,15 @@ class WebhookView(APIView):
             logger.info("Unhandled webhook event: %s", event_type)
 
         return Response(status=status.HTTP_200_OK)
+
+
+class VerifyPaymentView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        updated = verify_pending_payment(request.user)
+        data = get_billing_info(request.user)
+        return Response({"data": {**data, "updated": updated}, "error": None})
 
 
 class CancelSubscriptionView(APIView):
