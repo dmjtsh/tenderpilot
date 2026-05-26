@@ -244,11 +244,7 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 tender=tender,
                 parse_status="done",
             ).exists()
-            has_info_html = bool(
-                (tender.raw_json or {}).get("raw_json", {}).get("info_html")
-                or (tender.raw_json or {}).get("info_html")
-            )
-            if not has_docs and not has_info_html:
+            if not has_docs:
                 return Response(
                     {"data": None, "error": "Загрузите документы тендера, чтобы сгенерировать AI-резюме"},
                     status=400,

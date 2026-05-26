@@ -149,3 +149,37 @@
     animation: none !important;
   }
 }
+
+/* Info HTML from trading platforms */
+.info-html-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+.info-html-content th,
+.info-html-content td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.info-html-content th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+.info-html-content a {
+  color: #7c3aed;
+  text-decoration: underline;
+}
+.info-html-content strong,
+.info-html-content b {
+  font-weight: 600;
+}
+.info-html-content div + div {
+  margin-top: 0.25rem;
+}
+.info-html-content hr {
+  border-color: #e5e7eb;
+  margin: 0.75rem 0;
+}

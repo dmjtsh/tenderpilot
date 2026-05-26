@@ -365,6 +365,15 @@ def answer_question(tender_id: int, question: str) -> dict:
         })
 
     context = "\n\n---\n\n".join(context_parts)
+
+    from apps.tenders.models import Tender
+    from apps.tenders.summary_v2.context import _get_info_html
+    tender_obj = Tender.objects.filter(id=tender_id).first()
+    if tender_obj:
+        info_html = _get_info_html(tender_obj)
+        if info_html:
+            context += f"\n\n---\n\n[info_html - описание с площадки]\n{info_html}"
+
     prompt = QA_PROMPT.format(context=context, question=question)
 
     model_name = "deepseek-chat"

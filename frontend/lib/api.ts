@@ -225,6 +225,7 @@ export interface Tender {
   source_url: string
   source?: "eis" | "other"
   has_info_html?: boolean
+  info_html_text?: string | null
   ai_summary?: string
   score?: number
   score_label?: string

@@ -149,7 +149,19 @@ def _get_docs_text(tender: Tender) -> str:
             total += remaining
             break
 
-    return "\n\n---\n\n".join(f"[{e['filename']}]\n{e['text']}" for e in selected)
+    result = "\n\n---\n\n".join(f"[{e['filename']}]\n{e['text']}" for e in selected)
+
+    from apps.tenders.summary_v2.context import _get_info_html
+    info_html = _get_info_html(tender)
+    if info_html:
+        info_tokens = count_tokens(info_html)
+        remaining = CHAT_MAX_TOKENS - total
+        if remaining > 500:
+            if info_tokens > remaining:
+                info_html = truncate_to_tokens(info_html, remaining)
+            result += f"\n\n---\n\n[info_html - описание с площадки]\n{info_html}"
+
+    return result
 
 
 def _build_system_prompt(tender: Tender) -> str:

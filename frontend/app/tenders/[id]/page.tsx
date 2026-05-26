@@ -1231,10 +1231,6 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
     const docsEmpty = !currentDocs || currentDocs.length === 0
 
     if (docsEmpty && !autoStarted) {
-      if (tender.has_info_html) {
-        await generateSummary(refresh)
-        return
-      }
       setAutoStarted(true)
       setPhase("downloading")
       setDownloading(true)
@@ -1247,12 +1243,8 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
         if (res?.no_docs) {
           clearTimeout(timeoutId)
           setDownloading(false)
-          if (tender.has_info_html) {
-            await generateSummary(refresh)
-          } else {
-            setNoDocs(true)
-            setPhase("idle")
-          }
+          setNoDocs(true)
+          setPhase("idle")
           return
         }
         setTimeout(() => {
@@ -1905,6 +1897,18 @@ function TenderDetailPageInner() {
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Info HTML from trading platform */}
+          {tender.info_html_text && (
+            <div className="mb-8">
+              <Disclosure title="Описание с площадки" icon={FileText} defaultOpen={false}>
+                <div
+                  className="info-html-content text-sm text-gray-700 leading-relaxed max-h-[600px] overflow-y-auto"
+                  dangerouslySetInnerHTML={{ __html: tender.info_html_text }}
+                />
+              </Disclosure>
             </div>
           )}
 

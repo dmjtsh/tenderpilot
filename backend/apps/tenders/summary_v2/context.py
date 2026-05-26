@@ -52,17 +52,6 @@ def get_step_context(tender: "Tender", step: str) -> dict:
         })
 
     if not entries:
-        info_html = _get_info_html(tender)
-        if info_html:
-            tokens = count_tokens(info_html)
-            return {
-                "context": f"[info_html]\n{info_html}",
-                "source": "info_html",
-                "total_tokens": tokens,
-                "original_total_tokens": tokens,
-                "was_truncated": False,
-                "truncated_reason": "",
-            }
         return {"context": "", "source": "none", "total_tokens": 0,
                 "original_total_tokens": 0, "was_truncated": False, "truncated_reason": ""}
 
@@ -116,11 +105,23 @@ def get_step_context(tender: "Tender", step: str) -> dict:
             truncated_reason = f"dropped_{e['doc'].filename}"
 
     parts = [f"[{e['doc'].filename}]\n{e['text']}" for e in selected]
+    total = sum(e["tokens"] for e in selected)
+
+    info_html = _get_info_html(tender)
+    if info_html:
+        info_tokens = count_tokens(info_html)
+        remaining = MAX_TOKENS_PER_STEP - total
+        if remaining > 500:
+            if info_tokens > remaining:
+                info_html = truncate_to_tokens(info_html, remaining)
+                info_tokens = remaining
+            parts.append(f"[info_html - описание с площадки]\n{info_html}")
+            total += info_tokens
 
     return {
         "context": "\n\n---\n\n".join(parts),
         "source": "full",
-        "total_tokens": sum(e["tokens"] for e in selected),
+        "total_tokens": total,
         "original_total_tokens": original_total,
         "was_truncated": was_truncated,
         "truncated_reason": truncated_reason,
@@ -143,6 +144,57 @@ def _get_info_html(tender: "Tender") -> str:
     text = re.sub(r"<[^>]+>", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
     text = re.sub(r"[ \t]+", " ", text)
+
+    if len(text) < 30:
+        return ""
+    return text
+
+
+def _get_raw_info_html(tender: "Tender") -> str:
+    """Get raw info_html string before any processing."""
+    rj = tender.raw_json or {}
+    nested = rj.get("raw_json", {})
+    return (nested.get("info_html", "") if isinstance(nested, dict) else "") or rj.get("info_html", "")
+
+
+def _get_info_html_sanitized(tender: "Tender") -> str:
+    """Sanitize info_html for safe frontend rendering: keep structure, strip scripts."""
+    import html as html_mod
+    import re
+
+    raw = _get_raw_info_html(tender)
+    if not raw or len(raw) < 50:
+        return ""
+
+    text = html_mod.unescape(raw)
+    text = text.replace("![CDATA[", "").rstrip("]")
+
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\s+on\w+\s*=\s*[\"'][^\"']*[\"']", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+on\w+\s*=\s*\S+", "", text, flags=re.IGNORECASE)
+
+    ALLOWED_TAGS = {
+        "div", "span", "p", "br", "hr",
+        "table", "thead", "tbody", "tr", "th", "td",
+        "ul", "ol", "li",
+        "strong", "b", "em", "i", "u",
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "a", "img",
+    }
+
+    def _filter_tag(m: re.Match) -> str:
+        tag_content = m.group(0)
+        tag_match = re.match(r"</?(\w+)", tag_content)
+        if not tag_match:
+            return ""
+        tag_name = tag_match.group(1).lower()
+        if tag_name in ALLOWED_TAGS:
+            return tag_content
+        return ""
+
+    text = re.sub(r"</?[a-zA-Z][^>]*>", _filter_tag, text)
+    text = text.strip()
 
     if len(text) < 30:
         return ""
