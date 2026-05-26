@@ -50,35 +50,39 @@ def _komtender_doc_links(tender: Tender) -> list[dict[str, str]]:
 
 
 def _tenderguru_doc_links(tender: Tender) -> list[dict[str, str]]:
-    """Fetch fresh document links from TenderGuru API, fallback to raw_json."""
-    tg_id = tender.number.replace("tg-", "") if tender.number.startswith("tg-") else ""
-    if tg_id:
-        try:
-            from apps.tenders.tenderguru_client import (
-                fetch_tender_detail, enrich_from_detail, parse_list_item,
-            )
-            detail = fetch_tender_detail(tg_id)
-            if detail:
-                base = parse_list_item(detail)
-                if base:
-                    data = enrich_from_detail(base, detail)
-                    fresh_docs = data.get("raw_json", {}).get("doc_files", [])
-                    if fresh_docs:
-                        nested = tender.raw_json.get("raw_json", {})
-                        if isinstance(nested, dict):
-                            nested["doc_files"] = fresh_docs
-                            tender.raw_json["raw_json"] = nested
-                            tender.save(update_fields=["raw_json"])
-                        return _doc_files_to_links(fresh_docs)
-        except Exception:
-            logger.warning("TenderGuru API fetch failed for %s, using cached links", tg_id)
-
+    """Get document links: cached first, fetch from API only if empty."""
     doc_files = tender.raw_json.get("doc_files", [])
     if not doc_files:
         nested = tender.raw_json.get("raw_json", {})
         if isinstance(nested, dict):
             doc_files = nested.get("doc_files", [])
-    return _doc_files_to_links(doc_files)
+
+    if doc_files:
+        return _doc_files_to_links(doc_files)
+
+    tg_id = tender.number.replace("tg-", "") if tender.number.startswith("tg-") else ""
+    if not tg_id:
+        return []
+    try:
+        from apps.tenders.tenderguru_client import (
+            fetch_tender_detail, enrich_from_detail, parse_list_item,
+        )
+        detail = fetch_tender_detail(tg_id)
+        if detail:
+            base = parse_list_item(detail)
+            if base:
+                data = enrich_from_detail(base, detail)
+                fresh_docs = data.get("raw_json", {}).get("doc_files", [])
+                if fresh_docs:
+                    nested = tender.raw_json.get("raw_json", {})
+                    if isinstance(nested, dict):
+                        nested["doc_files"] = fresh_docs
+                        tender.raw_json["raw_json"] = nested
+                        tender.save(update_fields=["raw_json"])
+                    return _doc_files_to_links(fresh_docs)
+    except Exception:
+        logger.warning("TenderGuru API fetch failed for %s", tg_id)
+    return []
 
 
 def _doc_files_to_links(doc_files: list[dict]) -> list[dict[str, str]]:
