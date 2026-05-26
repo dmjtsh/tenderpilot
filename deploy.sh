@@ -17,7 +17,7 @@ COMMIT=$(git log --oneline -1)
 ok "$COMMIT"
 
 step "pip install"
-$VENV/pip install -q -r backend/requirements/base.txt 2>/dev/null
+$VENV/pip install -q -r backend/requirements.txt 2>/dev/null
 ok "зависимости"
 
 step "Миграции"
