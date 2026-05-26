@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     "тендеры проектирование", "тендеры капремонт", "тендеры благоустройство",
   ],
   verification: {
-    yandex: "7dd7cde4fe5f6a4e",
+    yandex: "5add52fb05b48e67",
     google: "Ub-1GN0fdXMpOFL-sv2WM1c2nwH-G10smThlJFeaFL0",
   },
   alternates: { canonical: "/" },
