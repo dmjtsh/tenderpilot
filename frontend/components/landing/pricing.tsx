@@ -44,7 +44,6 @@ const plans = [
     monthly: 6990,
     halfyearly: 34950,
     yearly: 62910,
-    popular: true,
     features: [
       "До 10 компаний",
       "До 500 AI-резюме",
@@ -157,18 +156,10 @@ export function Pricing() {
               <div
                 key={plan.key}
                 className={`flex flex-col border-2 bg-white p-8 ${
-                  plan.popular ? "border-[#111827]" : "border-[#D1D5DB]"
+                  "border-[#D1D5DB]"
                 }`}
               >
-                {plan.popular && (
-                  <div className="mb-4 -mt-4 text-center">
-                    <span className="inline-block bg-[#111827] text-white text-xs font-semibold px-3 py-1">
-                      Популярный
-                    </span>
-                  </div>
-                )}
-
-                <div className="text-center">
+<div className="text-center">
                   <h3 className="text-lg font-semibold text-[#111827]">{plan.name}</h3>
                   <p className="mt-1 text-sm text-[#6B7280]">{plan.subtitle}</p>
                   <div className="mt-6">
@@ -222,12 +213,8 @@ export function Pricing() {
                     <Button
                       onClick={() => handleCheckout(plan.key)}
                       disabled={loading === plan.key}
-                      className={`w-full rounded-none h-12 text-base font-semibold ${
-                        plan.popular
-                          ? "bg-[#111827] text-white hover:bg-[#1f2937]"
-                          : "bg-white text-[#374151] border-[#D1D5DB] hover:bg-[#F3F4F6]"
-                      }`}
-                      variant={plan.popular ? "default" : "outline"}
+                      className="w-full rounded-none h-12 text-base font-semibold bg-white text-[#374151] border-[#D1D5DB] hover:bg-[#F3F4F6]"
+                      variant="outline"
                     >
                       {loading === plan.key ? "Перенаправление..." : "Подключить"}
                     </Button>
