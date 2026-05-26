@@ -30,7 +30,7 @@ export function Hero() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <a href="#solution">
+              <a href="#demo">
                 <Button
                   size="lg"
                   variant="outline"
