@@ -867,6 +867,24 @@ def _nonempty(value: Any) -> bool:
     return True
 
 
+def compute_content_quality(data: dict, source: str) -> int:
+    if source != Tender.Source.TENDERGURU:
+        return 0
+    rj = data.get("raw_json", {})
+    if not isinstance(rj, dict):
+        return -1
+    has_docs = bool(rj.get("doc_files"))
+    has_products = bool(rj.get("products"))
+    has_info = bool((rj.get("info_html") or "").strip())
+    if has_docs:
+        return 2
+    if has_products:
+        return 1
+    if has_info:
+        return 0
+    return -1
+
+
 def upsert_tender(data: dict[str, Any]) -> Tender:
     """Создать или обновить тендер из сырых данных парсера."""
     customer = None
@@ -922,6 +940,7 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
         "procedure_type": procedure_type,
         "source_url": source_url,
         "raw_json": data,
+        "content_quality": compute_content_quality(data, source),
     }
 
     enrichment_fields = {

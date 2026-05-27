@@ -92,6 +92,7 @@ class Tender(models.Model):
     embedding_id = models.UUIDField(null=True, blank=True)
     docs_indexed_at = models.DateTimeField(null=True, blank=True)
     enriched_at = models.DateTimeField(null=True, blank=True)
+    content_quality = models.SmallIntegerField(default=0, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
