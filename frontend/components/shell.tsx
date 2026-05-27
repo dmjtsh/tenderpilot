@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
 import { profileApi } from "@/lib/api"
-import { FileText, Columns3, Settings, LogOut, Send, Mail, CreditCard } from "lucide-react"
+import { FileText, Columns3, Settings, LogOut, Send, Mail, CreditCard, Menu, X } from "lucide-react"
 
 const NAV = [
   { href: "/tenders", icon: FileText, label: "Тендеры" },
@@ -14,8 +14,7 @@ const NAV = [
   { href: "/profile", icon: Settings, label: "Профиль" },
 ]
 
-
-function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const qc = useQueryClient()
@@ -26,10 +25,10 @@ function Sidebar() {
   })
 
   return (
-    <aside className="w-[260px] shrink-0 border-r border-gray-200 bg-white flex flex-col h-screen sticky top-0">
+    <>
       {/* Logo */}
       <div className="h-16 flex items-center px-5 border-b border-gray-200 shrink-0">
-        <Link href="/" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3" onClick={onNavigate}>
           <img src="/logo.svg" width={28} height={28} alt="TendeRoll" />
           <span className="text-lg font-bold text-[#111827]">TendeRoll</span>
         </Link>
@@ -43,6 +42,7 @@ function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onNavigate}
               className={`
                 flex items-center gap-3 px-4 py-3 text-base transition-all duration-200 border-l-[3px]
                 ${active
@@ -62,6 +62,7 @@ function Sidebar() {
       <nav className="px-3 py-1 shrink-0 border-t border-gray-200">
         <Link
           href="/plan"
+          onClick={onNavigate}
           className={`
             flex items-center gap-3 px-4 py-3 text-base transition-all duration-200 border-l-[3px]
             ${pathname.startsWith("/plan")
@@ -111,27 +112,66 @@ function Sidebar() {
           Выйти
         </button>
       </div>
-    </aside>
+    </>
   )
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // До гидрации рендерим без сайдбара — совпадает с SSR-выводом
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [pathname])
+
   if (!mounted || pathname === "/" || pathname === "/login" || !isAuthenticated()) {
     return <>{children}</>
   }
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 min-w-0 overflow-auto">
+      {/* Mobile header */}
+      <div className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-4 gap-3 z-40 md:hidden">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-1 text-gray-500 hover:text-[#111827] transition-colors"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+        <Link href="/" className="flex items-center gap-2">
+          <img src="/logo.svg" width={24} height={24} alt="TendeRoll" />
+          <span className="text-base font-bold text-[#111827]">TendeRoll</span>
+        </Link>
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
+          <aside className="relative w-[280px] bg-white h-full flex flex-col overflow-y-auto">
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="absolute top-4 right-3 p-1 text-gray-400 hover:text-gray-600 z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <SidebarContent onNavigate={() => setSidebarOpen(false)} />
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-[260px] shrink-0 border-r border-gray-200 bg-white flex-col h-screen sticky top-0">
+        <SidebarContent />
+      </aside>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0 overflow-auto pt-14 md:pt-0">
         {children}
       </div>
     </div>

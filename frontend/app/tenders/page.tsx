@@ -141,7 +141,7 @@ function AllTab({ filters }: { filters: TenderFilters }) {
           />
         )}
         <form onSubmit={handleSearch} className="flex items-center gap-3 flex-1">
-          <div className="relative flex-1 max-w-lg">
+          <div className="relative flex-1 max-w-full sm:max-w-lg">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             <input
               className="h-11 w-full pl-11 pr-4 text-base bg-gray-50 border border-gray-200 focus:border-gray-300 focus:outline-none text-gray-900 placeholder:text-gray-400 transition-all duration-200"

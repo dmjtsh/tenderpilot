@@ -232,7 +232,7 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto flex flex-col min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto flex flex-col min-h-screen">
       {/* Topbar */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <h1 className="text-2xl font-bold text-[#111827] mr-auto">Мои тендеры</h1>

@@ -112,10 +112,10 @@ export default function PlanPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
-      <div className="flex items-center justify-between px-8 h-16 border-b border-gray-200 bg-white">
+      <div className="flex items-center justify-between px-4 sm:px-8 h-16 border-b border-gray-200 bg-white">
         <h1 className="text-xl font-bold text-[#111827]">Мой тариф</h1>
       </div>
-      <div className="px-8 py-8 max-w-4xl space-y-6">
+      <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-4xl space-y-6">
         {billingInfo && <CurrentPlanBlock plan={billingInfo} />}
         {billingInfo && <ProfilePricing currentPlan={billingInfo} />}
       </div>

@@ -708,7 +708,7 @@ const inputCls = "w-full h-11 bg-gray-50 border border-gray-200 px-4 text-base t
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[200px_1fr] gap-5 items-start mb-4 last:mb-0">
+    <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-2 sm:gap-5 items-start mb-4 last:mb-0">
       <div className="pt-2.5">
         <p className="text-[15px] text-[#111827]">{label}</p>
         {hint && <p className="text-sm text-gray-500 mt-0.5">{hint}</p>}
@@ -956,7 +956,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8">
 
           {/* Account info */}
           {me && (

@@ -271,7 +271,7 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
               )}
             </LabeledValue>
 
-            <div className="flex items-baseline gap-x-5 flex-wrap gap-y-2 ml-16">
+            <div className="flex items-baseline gap-x-5 flex-wrap gap-y-2 ml-4 sm:ml-16">
               {deadlineInfo && (
                 <LabeledValue label="Подача заявок">
                   <span className={`text-sm font-medium ${deadlineInfo.urgent ? "text-red-600" : "text-gray-900"}`}>
