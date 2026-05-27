@@ -173,11 +173,27 @@ def _extract_links(html_text: str) -> list[dict[str, str]]:
     return results
 
 
-def download_file_from_url(url: str, timeout: int = 30) -> bytes | None:
+def _parse_content_disposition(cd: str) -> str | None:
+    if not cd or "filename" not in cd:
+        return None
+    match = re.search(r"filename\*=(?:UTF-8''|utf-8'')(.+?)(?:;|$)", cd, re.IGNORECASE)
+    if match:
+        from urllib.parse import unquote
+        return unquote(match.group(1)).strip().strip('"')
+    match = re.search(r'filename="?([^";]+)"?', cd, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def download_file_from_url(url: str, timeout: int = 30) -> tuple[bytes, str | None] | None:
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=timeout, stream=True)
+        resp = requests.get(url, headers=HEADERS, timeout=timeout)
         resp.raise_for_status()
-        return resp.content
+        cd_filename = _parse_content_disposition(
+            resp.headers.get("content-disposition", "")
+        )
+        return resp.content, cd_filename
     except Exception as exc:
         logger.error("Failed to download %s: %s", url, exc)
         return None

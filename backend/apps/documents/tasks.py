@@ -1,5 +1,7 @@
 import hashlib
 import logging
+import os
+import re
 from datetime import timedelta
 
 from celery import shared_task
@@ -100,6 +102,10 @@ def _doc_files_to_links(doc_files: list[dict]) -> list[dict[str, str]]:
     return links
 
 
+def _is_generic_filename(name: str) -> bool:
+    return bool(re.match(r"^Файл\s*\d*$", name)) or not name or name.startswith("doc.")
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
 def download_and_parse_documents(self, tender_id: int) -> str:
     try:
@@ -121,11 +127,18 @@ def download_and_parse_documents(self, tender_id: int) -> str:
     for link in links:
         url = link["url"]
         filename = link["filename"]
-        data = download_file_from_url(url)
-        if not data:
+        result = download_file_from_url(url)
+        if not result:
             continue
+        data, server_filename = result
+
+        if server_filename and _is_generic_filename(filename):
+            filename = server_filename
 
         file_type = detect_file_type(filename) or detect_file_type_by_content(data)
+
+        if not os.path.splitext(filename)[1] and file_type:
+            filename = f"{filename}.{file_type}"
 
         file_hash = hashlib.md5(data).hexdigest()
 
