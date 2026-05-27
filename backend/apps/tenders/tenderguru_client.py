@@ -218,6 +218,8 @@ def enrich_from_detail(base: dict, detail: dict) -> dict:
     docs = _parse_docs(detail.get("docsXML"))
     if not docs:
         docs = _parse_links_tender_xml(detail.get("linksTenderXML"))
+    if not docs:
+        docs = _parse_docs_from_html(info_html)
 
     source_url = detail.get("TenderLink", "").strip()
     if source_url:
@@ -304,6 +306,43 @@ def _parse_info_html(raw: str) -> dict:
     if proc_m:
         result["procedure_type"] = _map_procedure_type_from_api(proc_m.group(1))
 
+    return result
+
+
+def _parse_docs_from_html(raw: str) -> list[dict]:
+    """Extract document download links embedded in Info HTML."""
+    if not raw:
+        return []
+    text = html.unescape(raw).replace("![CDATA[", "").rstrip("]")
+    result = []
+    seen: set[str] = set()
+    for m in re.finditer(
+        r'href="([^"]+)"[^>]*>\s*(?:<[^>]*>\s*)*([^<]+)', text, re.I,
+    ):
+        link, name = m.group(1).strip(), m.group(2).strip()
+        if not link or link in seen:
+            continue
+        if link.startswith("mailto:"):
+            continue
+        lnk = link.lower()
+        name_l = name.lower()
+        is_doc = (
+            "open-api/documents/" in lnk
+            or "filestore" in lnk and "download" in lnk
+            or re.search(r"\.(pdf|docx?|xlsx?|zip|rar|rtf|csv|pptx?)(\?|$)", lnk)
+        )
+        if not is_doc:
+            is_doc = re.search(r"\.(pdf|docx?|xlsx?|zip|rar|rtf|csv|pptx?)$", name_l)
+        if not is_doc:
+            continue
+        if "подать" in name_l and "предложение" in name_l:
+            continue
+        seen.add(link)
+        result.append({
+            "title": name,
+            "link": link,
+            "extension": _guess_extension(name),
+        })
     return result
 
 
@@ -401,6 +440,10 @@ def _parse_links_tender_xml(links_xml) -> list[dict]:
         if not download or not name:
             continue
         if name.lower() in ("источник",):
+            continue
+        if download.startswith("mailto:"):
+            continue
+        if "подать" in name.lower() and "предложение" in name.lower():
             continue
         result.append({
             "title": name,
