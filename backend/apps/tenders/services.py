@@ -873,8 +873,7 @@ def compute_content_quality(data: dict, source: str) -> int:
     rj = data.get("raw_json", {})
     if not isinstance(rj, dict):
         return -1
-    has_any = bool(rj.get("doc_files") or rj.get("products") or (rj.get("info_html") or "").strip())
-    return 0 if has_any else -1
+    return 0 if rj.get("doc_files") else -1
 
 
 def upsert_tender(data: dict[str, Any]) -> Tender:
