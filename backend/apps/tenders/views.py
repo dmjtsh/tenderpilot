@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import django_filters
 from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Q, Sum, Value, When
+from django.db.models.expressions import RawSQL
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, permissions
@@ -173,6 +174,12 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 content_score=Case(
                     When(_has_docs=True, then=Value(2)),
                     default=Value(0),
+                    output_field=IntegerField(),
+                ) + RawSQL(
+                    "CASE WHEN jsonb_array_length("
+                    "COALESCE(raw_json->'raw_json'->'products', '[]'::jsonb)"
+                    ") > 0 THEN 1 ELSE 0 END",
+                    [],
                     output_field=IntegerField(),
                 ),
             )
