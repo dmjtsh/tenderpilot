@@ -338,7 +338,7 @@ function Disclosure({ title, icon: Icon, defaultOpen = false, count, children }:
         <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       <div className={`grid transition-all duration-200 ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-        <div className="overflow-hidden">
+        <div className={open ? "min-w-0" : "overflow-hidden"}>
           <div className="pb-6">{children}</div>
         </div>
       </div>
@@ -1908,6 +1908,54 @@ function TenderDetailPageInner() {
                   className="info-html-content text-sm text-gray-700 leading-relaxed max-h-[600px] overflow-y-auto"
                   dangerouslySetInnerHTML={{ __html: tender.info_html_text }}
                 />
+              </Disclosure>
+            </div>
+          )}
+
+          {/* Products (purchase line items) */}
+          {tender.products && tender.products.length > 0 && (
+            <div className="mb-8">
+              <Disclosure title="Позиции закупки" icon={ClipboardList} defaultOpen count={tender.products.length}>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px] text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                        <th className="py-2 pr-4 font-medium">Название</th>
+                        <th className="py-2 pr-4 font-medium">ОКПД2</th>
+                        <th className="py-2 pr-4 font-medium text-right">Цена</th>
+                        <th className="py-2 pr-4 font-medium text-right">Кол-во</th>
+                        <th className="py-2 pr-4 font-medium">Ед.</th>
+                        <th className="py-2 font-medium text-right">Сумма</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tender.products.map((p, i) => (
+                        <tr key={i} className="border-b border-gray-50">
+                          <td className="py-2.5 pr-4 text-gray-900 max-w-[300px]">{p.name}</td>
+                          <td className="py-2.5 pr-4 text-gray-500 font-mono text-xs whitespace-nowrap">{p.code || "\u2014"}</td>
+                          <td className="py-2.5 pr-4 text-right text-gray-700 whitespace-nowrap">
+                            {p.unit_price ? fmtVolume(p.unit_price) : "\u2014"}
+                          </td>
+                          <td className="py-2.5 pr-4 text-right text-gray-700 whitespace-nowrap">{p.quantity || "\u2014"}</td>
+                          <td className="py-2.5 pr-4 text-gray-500 whitespace-nowrap">{p.unit || "\u2014"}</td>
+                          <td className="py-2.5 text-right text-gray-900 font-medium whitespace-nowrap">
+                            {p.total_price ? fmtVolume(p.total_price) : "\u2014"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-gray-200">
+                        <td colSpan={5} className="py-3 text-right text-sm font-medium text-gray-500 pr-4">Итого</td>
+                        <td className="py-3 text-right text-sm font-semibold text-gray-900 whitespace-nowrap">
+                          {fmtVolume(
+                            tender.products.reduce((sum, p) => sum + (parseFloat(p.total_price) || 0), 0)
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </Disclosure>
             </div>
           )}
