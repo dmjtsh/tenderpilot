@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 import django_filters
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Q, Sum, Value, When
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, permissions
@@ -153,10 +153,30 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["-published_at"]
 
     def get_queryset(self):
+        from apps.documents.models import TenderDocument
+
         now = timezone.now()
-        return Tender.objects.select_related("customer").filter(
-            Q(deadline_at__gt=now) | Q(deadline_at__isnull=True),
-            status=Tender.Status.ACTIVE,
+        has_docs = Exists(
+            TenderDocument.objects.filter(
+                tender=OuterRef("pk"),
+                parse_status=TenderDocument.ParseStatus.DONE,
+            )
+        )
+        return (
+            Tender.objects.select_related("customer")
+            .filter(
+                Q(deadline_at__gt=now) | Q(deadline_at__isnull=True),
+                status=Tender.Status.ACTIVE,
+            )
+            .annotate(
+                _has_docs=has_docs,
+                content_score=Case(
+                    When(_has_docs=True, then=Value(2)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                ),
+            )
+            .order_by("-content_score", "-published_at")
         )
 
     def get_serializer_class(self):
