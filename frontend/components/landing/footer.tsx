@@ -1,4 +1,3 @@
-import Image from "next/image"
 import Link from "next/link"
 
 const footerLinks = {
@@ -34,7 +33,7 @@ export function Footer() {
           {/* Logo Column */}
           <div className="col-span-2 md:col-span-4 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="TendeRoll" />
+              <img src="/logo.svg" width={28} height={28} alt="TendeRoll" />
               <span className="text-lg font-bold text-[#111827]">TendeRoll</span>
             </Link>
             <p className="mt-4 text-sm text-[#6B7280]">

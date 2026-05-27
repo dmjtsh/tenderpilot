@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { Menu, X } from "lucide-react"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { isAuthenticated } from "@/lib/auth"
 import Link from "next/link"
@@ -27,7 +26,7 @@ export function Navbar() {
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="TendeRoll" />
+          <img src="/logo.svg" width={28} height={28} alt="TendeRoll" />
           <span className="text-lg font-bold text-[#111827]">TendeRoll</span>
         </Link>
 

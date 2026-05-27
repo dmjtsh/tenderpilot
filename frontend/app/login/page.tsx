@@ -8,7 +8,6 @@ import { z } from "zod"
 import { useQueryClient } from "@tanstack/react-query"
 import { authApi } from "@/lib/api"
 import { setTokens, isAuthenticated } from "@/lib/auth"
-import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 
 const loginSchema = z.object({
@@ -162,7 +161,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[360px]">
         {/* Logo */}
         <a href="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <Image src="/new_logo.jpg" width={26} height={26} className="rounded-xl" alt="TendeRoll" />
+          <img src="/logo.svg" width={26} height={26} alt="TendeRoll" />
           <span className="text-lg font-semibold tracking-tight">TendeRoll</span>
         </a>
 

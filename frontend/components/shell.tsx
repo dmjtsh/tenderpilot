@@ -6,7 +6,6 @@ import Link from "next/link"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
 import { profileApi } from "@/lib/api"
-import Image from "next/image"
 import { FileText, Columns3, Settings, LogOut, Send, Mail, CreditCard } from "lucide-react"
 
 const NAV = [
@@ -31,7 +30,7 @@ function Sidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center px-5 border-b border-gray-200 shrink-0">
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/new_logo.jpg" width={28} height={28} className="rounded-xl" alt="TendeRoll" />
+          <img src="/logo.svg" width={28} height={28} alt="TendeRoll" />
           <span className="text-lg font-bold text-[#111827]">TendeRoll</span>
         </Link>
       </div>

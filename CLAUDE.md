@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Tender SaaS — Claude Code Instructions
 
 ## Project overview
@@ -196,8 +200,8 @@ Stack: Django 5 + DRF · Next.js 14 · Postgres · Qdrant · MinIO · Celery + R
 - **Лендинг** (`/frontend/components/landing/`): белая тема, Stripe/Minerva стиль
 - **Приложение** (`/app`): светлая тема, Linear.app стиль
 - Tailwind v3 (не v4 — shadcn генерирует v4-синтаксис)
-- **Логотип**: `pilot_logo.png` → `/frontend/public/logo.png` + `/frontend/app/icon.png` (favicon с закруглёнными углами через PIL)
-- Все логотипы используют `<Image src="/logo.png" className="rounded-xl">` (28x28 основные, 26x26 логин)
+- **Логотип**: `лого 2.svg` → `/frontend/public/logo.svg` (SVG) + `/frontend/app/icon.png` (favicon PNG из SVG)
+- Все логотипы используют `<img src="/logo.svg">` (28x28 основные, 26x26 логин)
 
 #### Цветовая схема приложения
 ```
