@@ -15,6 +15,23 @@ class CompanyInfo(TypedDict):
     okved_list: list[str]  # все ОКВЭД коды
 
 
+def find_inn_by_name(name: str) -> str | None:
+    token = settings.DADATA_TOKEN
+    if not token or not name:
+        return None
+    try:
+        from dadata import Dadata
+        with Dadata(token) as client:
+            results = client.suggest("party", name, count=1)
+    except Exception as exc:
+        logger.error("DaData suggest error for %r: %s", name, exc)
+        return None
+    if not results:
+        return None
+    inn = results[0].get("data", {}).get("inn", "")
+    return inn if inn else None
+
+
 def enrich_company_by_inn(inn: str) -> CompanyInfo | None:
     token = settings.DADATA_TOKEN
     if not token:

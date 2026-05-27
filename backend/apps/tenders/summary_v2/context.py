@@ -202,11 +202,23 @@ def _get_info_html_sanitized(tender: "Tender") -> str:
 
 
 def get_customer_profile(tender: "Tender") -> "CustomerProfile | None":
-    if not tender.customer or not tender.customer.inn:
+    if not tender.customer:
+        return None
+
+    inn = tender.customer.inn
+    if not inn and tender.customer.name:
+        from apps.users.dadata import find_inn_by_name
+        found = find_inn_by_name(tender.customer.name)
+        if found:
+            tender.customer.inn = found
+            tender.customer.save(update_fields=["inn"])
+            inn = found
+
+    if not inn:
         return None
     from apps.customers.services.enrichment import enrich_customer
     try:
-        return enrich_customer(tender.customer.inn)
+        return enrich_customer(inn)
     except Exception as e:
-        logger.warning("Customer enrichment failed for %s: %s", tender.customer.inn, e)
+        logger.warning("Customer enrichment failed for %s: %s", inn, e)
         return None
