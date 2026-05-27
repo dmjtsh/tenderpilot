@@ -106,10 +106,21 @@ def get_billing_info(user: "User") -> dict:
     from apps.users.models import CompanyProfile
 
     plan = get_user_plan(user)
+    sub = Subscription.objects.filter(user=user).first()
+
+    if (
+        sub
+        and sub.status == Subscription.Status.ACTIVE
+        and sub.current_period_end > timezone.now()
+        and plan.plan == UserPlan.Plan.FREE
+    ):
+        plan.plan = sub.plan
+        plan.expires_at = sub.current_period_end
+        plan.save(update_fields=["plan", "expires_at", "updated_at"])
+        logger.warning("Auto-fixed UserPlan desync: user=%s plan=%s", user.id, sub.plan)
+
     limits = PLAN_LIMITS.get(plan.plan, PLAN_LIMITS["free"])
     companies_used = CompanyProfile.objects.filter(user=user).count()
-
-    sub = Subscription.objects.filter(user=user).first()
     subscription_data = None
     if sub:
         subscription_data = {
