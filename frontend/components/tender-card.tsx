@@ -55,11 +55,11 @@ const LAW_BADGE: Record<string, { label: string; cls: string }> = {
 }
 
 
-function scoreColor(score: number): string {
-  if (score >= 90) return "text-gray-900"
-  if (score >= 70) return "text-gray-700"
-  if (score >= 50) return "text-gray-500"
-  return "text-gray-400"
+function scoreColor(pct: number): string {
+  if (pct >= 80) return "text-violet-700"
+  if (pct >= 65) return "text-violet-600"
+  if (pct >= 50) return "text-violet-500"
+  return "text-violet-400"
 }
 
 function fmtNmck(n: number | string | null): string | null {
@@ -215,45 +215,47 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
   return (
     <Link href={tenderHref} className="block">
       <div className="p-5 bg-white rounded-xl border border-gray-200 hover:shadow-sm transition-all duration-200">
-        {/* Row 1: Title + badges */}
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0 text-base font-medium text-gray-900 line-clamp-2">
-            {tender.title}
+        <div className="flex gap-3">
+          {/* Left: title + region + customer */}
+          <div className="flex-1 min-w-0">
+            <div className="text-base font-medium text-gray-900 line-clamp-2">
+              {tender.title}
+            </div>
+            {tender.region && (
+              <div className="text-sm text-gray-500 mt-1">{tender.region}</div>
+            )}
+            {tender.customer_name && (
+              <div className="text-sm text-gray-700 line-clamp-2 mt-1">{tender.customer_name}</div>
+            )}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {lawBadge && (
-              <span className={`text-xs px-2 py-0.5 rounded font-medium ${lawBadge.cls}`}>
-                {lawBadge.label}
-              </span>
-            )}
-            {procBadge && (
-              <span className={`text-xs px-2 py-0.5 rounded font-medium ${procBadge.cls}`}>
-                {procBadge.label}
-              </span>
-            )}
-            {tender.score != null && (
-              <div className="flex items-center gap-1.5">
-                <Star className={`w-4 h-4 ${scoreColor(tender.score)}`} />
-                <span className={`text-sm font-semibold ${scoreColor(tender.score)}`}>
-                  {tender.score}
+
+          {/* Right: badges top, score middle */}
+          <div className="flex flex-col items-end shrink-0 self-stretch">
+            <div className="flex items-center gap-1.5">
+              {lawBadge && (
+                <span className={`text-xs px-2 py-0.5 rounded font-medium ${lawBadge.cls}`}>
+                  {lawBadge.label}
                 </span>
-                {tender.score_label && (
-                  <span className="text-xs text-gray-500">{tender.score_label}</span>
-                )}
-              </div>
-            )}
+              )}
+              {procBadge && (
+                <span className={`text-xs px-2 py-0.5 rounded font-medium ${procBadge.cls}`}>
+                  {procBadge.label}
+                </span>
+              )}
+            </div>
+            {tender.score != null && (() => {
+              const pct = Math.round(tender.score <= 1 ? tender.score * 100 : tender.score)
+              return (
+                <div className="flex items-center gap-1 mt-auto mb-auto">
+                  <Star className={`w-5 h-5 ${scoreColor(pct)}`} />
+                  <span className={`text-base font-bold ${scoreColor(pct)}`}>
+                    {pct}%
+                  </span>
+                </div>
+              )
+            })()}
           </div>
         </div>
-
-        {/* Row 2: Region */}
-        {tender.region && (
-          <div className="text-sm text-gray-500 mt-1">{tender.region}</div>
-        )}
-
-        {/* Row 3: Customer */}
-        {tender.customer_name && (
-          <div className="text-sm text-gray-700 line-clamp-2 mt-1">{tender.customer_name}</div>
-        )}
 
         {/* Divider */}
         <div className="border-t border-gray-100 my-3" />
