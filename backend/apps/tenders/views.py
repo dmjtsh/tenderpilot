@@ -150,7 +150,7 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = TenderFilterSet
     search_fields = ["title", "number"]
     ordering_fields = ["published_at", "deadline_at", "nmck"]
-    ordering = ["-published_at"]
+    ordering = ["-content_quality", "-published_at"]
 
     def get_queryset(self):
         now = timezone.now()
