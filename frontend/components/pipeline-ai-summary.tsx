@@ -248,6 +248,11 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
       setPhase("idle")
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 409) {
+        setError("docs_processing")
+        setPhase("idle")
+        return
+      }
       if (status === 402) {
         setError("quota_exceeded")
       } else {
@@ -325,6 +330,10 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
           <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
           <span className="text-[15px] text-gray-400">Загрузка...</span>
         </div>
+      ) : error === "docs_processing" ? (
+        <p className="text-[15px] text-gray-400 py-3">
+          Документы ещё обрабатываются, подождите...
+        </p>
       ) : error === "quota_exceeded" ? (
         <div className="py-3">
           <p className="text-[15px] text-amber-600">Лимит AI-резюме исчерпан</p>

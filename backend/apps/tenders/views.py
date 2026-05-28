@@ -249,6 +249,15 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 parse_status="done",
             ).exists()
             if not has_docs:
+                still_processing = TenderDocument.objects.filter(
+                    tender=tender,
+                    parse_status__in=["pending", "processing"],
+                ).exists()
+                if still_processing:
+                    return Response(
+                        {"data": None, "error": "docs_processing"},
+                        status=409,
+                    )
                 return Response(
                     {"data": None, "error": "Загрузите документы тендера, чтобы сгенерировать AI-резюме"},
                     status=400,

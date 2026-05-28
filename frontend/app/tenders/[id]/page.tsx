@@ -1201,6 +1201,12 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
       setPhase("idle")
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 409) {
+        setPhase("downloading")
+        setDownloading(true)
+        downloadStartRef.current = Date.now()
+        return
+      }
       if (status === 402) {
         setError("quota_exceeded")
       } else {
@@ -1256,6 +1262,13 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
         setPhase("idle")
         setDownloading(false)
       }
+      return
+    }
+
+    if (!docsEmpty && docsAreProcessing(currentDocs!)) {
+      setPhase("downloading")
+      setDownloading(true)
+      downloadStartRef.current = Date.now()
       return
     }
 
