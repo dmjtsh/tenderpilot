@@ -11,7 +11,9 @@ class Command(BaseCommand):
     help = "Парсинг тендеров из ЕИС (zakupki.gov.ru)"
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument("--days", type=int, default=7, help="За сколько дней парсить")
+        parser.add_argument("--days", type=int, default=7, help="За сколько дней парсить (игнорируется если указан --date-from)")
+        parser.add_argument("--date-from", type=str, default="", help="Начало диапазона YYYY-MM-DD (включительно)")
+        parser.add_argument("--date-to", type=str, default="", help="Конец диапазона YYYY-MM-DD (включительно, по умолчанию сегодня)")
         parser.add_argument("--fz", choices=["44", "223", "all"], default="all")
         parser.add_argument("--max-pages", type=int, default=50, help="Лимит страниц пагинации")
         parser.add_argument("--delay", type=float, default=0.5, help="Пауза между страницами (сек)")
@@ -37,8 +39,11 @@ class Command(BaseCommand):
         fz44 = fz in ("44", "all")
         fz223 = fz in ("223", "all")
 
-        date_to = date.today()
-        date_from = date_to - timedelta(days=days)
+        date_to = date.fromisoformat(options["date_to"]) if options["date_to"] else date.today()
+        if options["date_from"]:
+            date_from = date.fromisoformat(options["date_from"])
+        else:
+            date_from = date_to - timedelta(days=days)
 
         # Разбираем коды регионов
         region_codes: list[str] = []

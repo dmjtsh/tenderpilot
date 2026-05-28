@@ -37,7 +37,16 @@ class Command(BaseCommand):
         delay: float = options["delay"]
         limit: int | None = options["limit"]
 
-        qs = Tender.objects.filter(law_type="223-ФЗ").only("id", "number", "source_url", "region", "law_type")
+        # Только тендеры с кривым регионом:
+        # - capital буква в Область/Край/Округ/Республика (Московская Область)
+        # - префикс Г. (Г.Москва, Г.. Тюмень)
+        # - пусто
+        from django.db.models import Q
+        qs = Tender.objects.filter(law_type="223-ФЗ").filter(
+            Q(region="") |
+            Q(region__iregex=r"\b(Область|Край|Округ|Республика)\b") |
+            Q(region__startswith="Г.")
+        ).only("id", "number", "source_url", "region", "law_type")
         if limit:
             qs = qs[:limit]
 
