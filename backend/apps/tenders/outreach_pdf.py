@@ -101,8 +101,22 @@ def _cover_page(story, styles, company_name, company_inn, company_emails, tender
         logo = Image(LOGO_PATH, width=2.2 * cm, height=2.2 * cm)
         logo_cell = logo
 
+    brand_cell = Table(
+        [[Paragraph("TendeRoll", styles["OA_Brand"]),
+          Paragraph('<link href="https://tenderoll.ru" color="#6366F1">tenderoll.ru</link>',
+                    styles["OA_Tagline"])]],
+        colWidths=[None, 4 * cm],
+    )
+    brand_cell.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+    ]))
+
     header_table = Table(
-        [[logo_cell, Paragraph("TendeRoll", styles["OA_Brand"])]],
+        [[logo_cell, brand_cell]],
         colWidths=[2.8 * cm, None],
     )
     header_table.setStyle(TableStyle([
