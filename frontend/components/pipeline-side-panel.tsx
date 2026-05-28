@@ -281,7 +281,7 @@ export function PipelineSidePanel({
                             a.href = url
                             a.download = d.filename
                             a.click()
-                            window.URL.revokeObjectURL(url)
+                            setTimeout(() => window.URL.revokeObjectURL(url), 5000)
                           } catch { /* ignore */ }
                         }}
                         className="p-2 rounded hover:bg-gray-200 transition-colors text-gray-400 hover:text-gray-600 shrink-0"

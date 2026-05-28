@@ -858,7 +858,7 @@ function DocRow({ doc, tenderId }: { doc: TenderDoc; tenderId: number }) {
       a.href = url
       a.download = doc.filename
       a.click()
-      window.URL.revokeObjectURL(url)
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000)
     } catch { /* ignore */ }
   }
 
@@ -1288,9 +1288,12 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={async () => {
-                const res = await client.get(`/tenders/${tenderId}/summary/export/`, { params: { type: "pdf" }, responseType: "blob" })
-                const url = URL.createObjectURL(res.data)
-                const a = document.createElement("a"); a.href = url; a.download = `summary_${tenderId}.pdf`; a.click(); URL.revokeObjectURL(url)
+                try {
+                  const res = await client.get(`/tenders/${tenderId}/summary/export/`, { params: { type: "pdf" }, responseType: "blob" })
+                  const url = URL.createObjectURL(res.data)
+                  const a = document.createElement("a"); a.href = url; a.download = `summary_${tenderId}.pdf`; a.click()
+                  setTimeout(() => URL.revokeObjectURL(url), 5000)
+                } catch { /* button is only visible when summary exists */ }
               }}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 transition-colors"
             >
@@ -1299,9 +1302,12 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
             </button>
             <button
               onClick={async () => {
-                const res = await client.get(`/tenders/${tenderId}/summary/export/`, { params: { type: "docx" }, responseType: "blob" })
-                const url = URL.createObjectURL(res.data)
-                const a = document.createElement("a"); a.href = url; a.download = `summary_${tenderId}.docx`; a.click(); URL.revokeObjectURL(url)
+                try {
+                  const res = await client.get(`/tenders/${tenderId}/summary/export/`, { params: { type: "docx" }, responseType: "blob" })
+                  const url = URL.createObjectURL(res.data)
+                  const a = document.createElement("a"); a.href = url; a.download = `summary_${tenderId}.docx`; a.click()
+                  setTimeout(() => URL.revokeObjectURL(url), 5000)
+                } catch { /* button is only visible when summary exists */ }
               }}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
             >
