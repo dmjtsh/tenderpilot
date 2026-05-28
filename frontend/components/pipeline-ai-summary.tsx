@@ -256,7 +256,8 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
       if (status === 402) {
         setError("quota_exceeded")
       } else {
-        setError(e instanceof Error ? e.message : "Ошибка генерации")
+        const serverMsg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+        setError(serverMsg || (e instanceof Error ? e.message : "Ошибка генерации"))
       }
       setPhase("idle")
     }

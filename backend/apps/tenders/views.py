@@ -258,10 +258,12 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                         {"data": None, "error": "docs_processing"},
                         status=409,
                     )
-                return Response(
-                    {"data": None, "error": "Загрузите документы тендера, чтобы сгенерировать AI-резюме"},
-                    status=400,
-                )
+                any_docs = TenderDocument.objects.filter(tender=tender).exists()
+                if any_docs:
+                    msg = "Документы не содержат извлекаемого текста (сканы или пустые файлы)"
+                else:
+                    msg = "Загрузите документы тендера, чтобы сгенерировать AI-резюме"
+                return Response({"data": None, "error": msg}, status=400)
             try:
                 check_and_increment(user, "ai_summary")
             except QuotaExceeded as e:
