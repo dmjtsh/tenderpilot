@@ -24,13 +24,17 @@ HEADERS = {
     "Accept-Language": "ru-RU,ru;q=0.9",
 }
 
-# Шаблоны для 44-ФЗ: ea44, ea20, zk44, ok44 + прочие
 DOCUMENTS_URL_TEMPLATES_44 = [
     "/epz/order/notice/ea44/view/documents.html?regNumber={number}",
     "/epz/order/notice/ea20/view/documents.html?regNumber={number}",
     "/epz/order/notice/zk44/view/documents.html?regNumber={number}",
+    "/epz/order/notice/zk20/view/documents.html?regNumber={number}",
     "/epz/order/notice/ok44/view/documents.html?regNumber={number}",
+    "/epz/order/notice/ok20/view/documents.html?regNumber={number}",
+    "/epz/order/notice/ezt20/view/documents.html?regNumber={number}",
 ]
+
+_NOTICE_TYPE_RE = re.compile(r"/notice/([a-z]+\d+)/view/")
 
 
 def fetch_document_links(purchase_number: str, source_url: str = "") -> list[dict[str, str]]:
@@ -46,8 +50,17 @@ def fetch_document_links(purchase_number: str, source_url: str = "") -> list[dic
         logger.info("No documents found for 223-FZ tender %s", purchase_number)
         return []
 
-    # 44-ФЗ и остальные форматы
-    for template in DOCUMENTS_URL_TEMPLATES_44:
+    # Try source_url-derived pattern first, then fall back to all templates
+    templates = list(DOCUMENTS_URL_TEMPLATES_44)
+    if source_url:
+        m = _NOTICE_TYPE_RE.search(source_url)
+        if m:
+            preferred = f"/epz/order/notice/{m.group(1)}/view/documents.html?regNumber={{number}}"
+            if preferred in templates:
+                templates.remove(preferred)
+            templates.insert(0, preferred)
+
+    for template in templates:
         url = BASE_URL + template.format(number=purchase_number)
         try:
             resp = requests.get(url, headers=HEADERS, timeout=20, allow_redirects=True)
