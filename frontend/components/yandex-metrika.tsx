@@ -11,9 +11,9 @@ function YandexMetrikaHit() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (typeof window !== "undefined" && (window as any).ym) {
-      ;(window as any).ym(COUNTER_ID, "hit", window.location.href)
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ym = (window as Window & { ym?: (...args: unknown[]) => void }).ym
+    if (ym) ym(COUNTER_ID, "hit", window.location.href)
   }, [pathname, searchParams])
 
   return null
@@ -43,6 +43,7 @@ export function YandexMetrika() {
       </Script>
       <noscript>
         <div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`https://mc.yandex.ru/watch/${COUNTER_ID}`}
             style={{ position: "absolute", left: -9999 }}
