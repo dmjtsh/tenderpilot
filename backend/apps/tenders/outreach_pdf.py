@@ -26,7 +26,7 @@ from apps.tenders.summary_export import (
 )
 
 FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
-LOGO_PATH = os.path.join(FONT_DIR, "logo.jpg")
+LOGO_PATH = os.path.join(FONT_DIR, "logo.png")
 
 PAGE_W, PAGE_H = A4
 
