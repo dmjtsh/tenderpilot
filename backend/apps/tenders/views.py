@@ -154,6 +154,7 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 Q(deadline_at__gt=now) | Q(deadline_at__isnull=True),
                 status=Tender.Status.ACTIVE,
             )
+            .exclude(title="")
             .order_by("-content_quality", "-published_at")
         )
 

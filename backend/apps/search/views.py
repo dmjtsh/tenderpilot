@@ -91,7 +91,7 @@ class TenderSearchView(APIView):
             _build_title_q(terms),
             status="active",
             deadline_at__gt=now,
-        ).select_related("customer")
+        ).exclude(title="").select_related("customer")
 
         regions = params.get("regions") or []
         if not regions and params.get("region"):
@@ -209,7 +209,7 @@ class TenderMatchView(APIView):
         ).values_list("tender_id", flat=True))
 
         now = timezone.now()
-        qs = Tender.objects.filter(pk__in=hit_ids, deadline_at__gt=now).select_related("customer")
+        qs = Tender.objects.filter(pk__in=hit_ids, deadline_at__gt=now).exclude(title="").select_related("customer")
 
         db_filters = {
             "deadline_days": request.query_params.get("deadline_days"),
