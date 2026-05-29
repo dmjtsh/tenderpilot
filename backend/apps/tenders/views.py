@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Customer, Experiment, PipelineActivity, SummaryExperiment, Tender, TenderPipeline
+from .region_aliases import CANONICAL_REGIONS, expand_regions
 from .serializers import (
     PipelineCommentSerializer,
     TenderListSerializer,
@@ -54,7 +55,8 @@ class TenderFilterSet(django_filters.FilterSet):
 
     def filter_region(self, queryset, name, value):
         vals = [v.strip() for v in value.split(",") if v.strip()]
-        return queryset.filter(region__in=vals) if vals else queryset
+        expanded = expand_regions(vals)
+        return queryset.filter(region__in=expanded) if expanded else queryset
 
     def filter_deadline_days(self, queryset, name, value):
         if value is None:
@@ -99,15 +101,7 @@ class RegionsListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        regions = (
-            Tender.objects.exclude(region="")
-            .exclude(region__regex=r"^\d+$")   # убираем почтовые индексы и числа
-            .exclude(region__startswith="#")   # убираем #empty# и подобное
-            .values_list("region", flat=True)
-            .distinct()
-            .order_by("region")
-        )
-        return Response({"data": list(regions), "error": None})
+        return Response({"data": CANONICAL_REGIONS, "error": None})
 
 
 class OkvedSearchView(APIView):

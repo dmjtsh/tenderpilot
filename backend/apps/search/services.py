@@ -1,6 +1,7 @@
 import time
 from typing import Any
 from django.conf import settings
+from apps.tenders.region_aliases import expand_regions
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance, VectorParams, PointStruct,
@@ -139,7 +140,7 @@ class QdrantService:
                 FieldCondition(key="deadline_at_ts", range=Range(gt=int(time.time()))),
             ]
 
-            regions = extra_regions or direction.regions
+            regions = expand_regions(extra_regions or direction.regions or [])
             if regions:
                 conditions.append(
                     FieldCondition(key="region", match=MatchAny(any=regions))

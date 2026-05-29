@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework import permissions, status
 
 from apps.tenders.models import Tender
+from apps.tenders.region_aliases import expand_regions
 from apps.users.models import CompanyProfile
 from .services import qdrant
 from .serializers import SearchQuerySerializer, SearchResultItemSerializer
@@ -96,7 +97,7 @@ class TenderSearchView(APIView):
         if not regions and params.get("region"):
             regions = [params["region"]]
         if regions:
-            qs = qs.filter(region__in=regions)
+            qs = qs.filter(region__in=expand_regions(regions))
 
         if params.get("status"):
             qs = qs.filter(status=params["status"])
@@ -175,7 +176,8 @@ class TenderMatchView(APIView):
                 return Response({"data": [], "error": "Направления индексируются, подождите ~30 секунд"})
             return Response({"data": [], "error": "Добавьте направления поиска в профиле"})
 
-        extra_regions = self._csv_param(request, "region") or None
+        raw_regions = self._csv_param(request, "region")
+        extra_regions = expand_regions(raw_regions) or None
         extra_law_types = self._csv_param(request, "law_type") or None
         extra_proc_types = self._csv_param(request, "procedure_type") or None
         extra_nmck_min_raw = request.query_params.get("nmck_min")
