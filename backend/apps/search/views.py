@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import timedelta
 
 from django.db.models import Q
@@ -10,11 +11,32 @@ from rest_framework import permissions, status
 
 from apps.tenders.models import Tender
 from apps.users.models import CompanyProfile
-from .embedder import embedder
 from .services import qdrant
 from .serializers import SearchQuerySerializer, SearchResultItemSerializer
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_terms(query: str) -> list[str]:
+    return [t for t in re.split(r'[\s,;.!?()\[\]]+', query.strip()) if len(t) >= 2]
+
+
+def _build_title_q(terms: list[str]) -> Q:
+    q = Q()
+    for term in terms:
+        # \m / \M = word boundaries in PostgreSQL POSIX regex
+        q |= Q(title__iregex=rf'\m{re.escape(term)}\M')
+    return q
+
+
+def _score_terms(title: str, terms: list[str]) -> float:
+    if not terms:
+        return 0.0
+    matched = sum(
+        1 for t in terms
+        if re.search(rf'\b{re.escape(t)}\b', title, re.IGNORECASE)
+    )
+    return round(matched / len(terms), 4)
 
 
 def _apply_db_filters(qs, params: dict):
@@ -60,40 +82,50 @@ class TenderSearchView(APIView):
         serializer.is_valid(raise_exception=True)
         params = serializer.validated_data
 
-        query_vector = embedder.embed_query(params["query"])
-
-        qdrant_regions = params.get("regions") or []
-        if not qdrant_regions and params.get("region"):
-            qdrant_regions = [params["region"]]
-
-        want = params["limit"]
-        hits = qdrant.search_tenders(
-            vector=query_vector,
-            limit=want * 5,
-            regions=qdrant_regions or None,
-            status=params.get("status"),
-            nmck_min=params.get("nmck_min"),
-            nmck_max=params.get("nmck_max"),
-            law_types=params.get("law_type") or None,
-            procedure_types=params.get("procedure_type") or None,
-        )
-
-        if not hits:
+        terms = _parse_terms(params["query"])[:10]
+        if not terms:
             return Response({"data": [], "error": None})
 
-        hit_ids = [h["id"] for h in hits]
-        score_map = {h["id"]: h["score"] for h in hits}
-
+        want = params["limit"]
         now = timezone.now()
-        qs = Tender.objects.filter(pk__in=hit_ids, deadline_at__gt=now).select_related("customer")
+
+        qs = Tender.objects.filter(
+            _build_title_q(terms),
+            status="active",
+            deadline_at__gt=now,
+        ).select_related("customer")
+
+        regions = params.get("regions") or []
+        if not regions and params.get("region"):
+            regions = [params["region"]]
+        if regions:
+            qs = qs.filter(region__in=regions)
+
+        if params.get("status"):
+            qs = qs.filter(status=params["status"])
+        if params.get("nmck_min") is not None:
+            qs = qs.filter(nmck__gte=params["nmck_min"])
+        if params.get("nmck_max") is not None:
+            qs = qs.filter(nmck__lte=params["nmck_max"])
+        if params.get("law_type"):
+            qs = qs.filter(law_type__in=params["law_type"])
+        if params.get("procedure_type"):
+            qs = qs.filter(procedure_type__in=params["procedure_type"])
+
         qs = _apply_db_filters(qs, params)
-        tenders = {t.pk: t for t in qs}
+
+        candidates = list(qs.order_by("-published_at")[: want * 5])
+        if not candidates:
+            return Response({"data": [], "error": None})
+
+        scored = sorted(
+            candidates,
+            key=lambda t: _score_terms(t.title, terms),
+            reverse=True,
+        )
 
         results = []
-        for hit_id in hit_ids:
-            tender = tenders.get(hit_id)
-            if not tender:
-                continue
+        for tender in scored[:want]:
             results.append({
                 "id": tender.pk,
                 "number": tender.number,
@@ -109,10 +141,7 @@ class TenderSearchView(APIView):
                 "trading_platform": tender.trading_platform,
                 "auction_date": tender.auction_date,
                 "procedure_type": tender.procedure_type,
-                "score": round(score_map[hit_id], 4),
             })
-            if len(results) >= want:
-                break
 
         out = SearchResultItemSerializer(results, many=True)
         return Response({"data": out.data, "error": None})

@@ -37,7 +37,7 @@ class SearchResultItemSerializer(serializers.Serializer):
     trading_platform = serializers.CharField(allow_null=True, required=False, allow_blank=True)
     auction_date = serializers.DateTimeField(allow_null=True, required=False)
     procedure_type = serializers.CharField(allow_null=True, required=False, allow_blank=True)
-    score = serializers.FloatField()
+    score = serializers.FloatField(required=False, allow_null=True)
     score_label = serializers.CharField(required=False, default="")
     explanations = ExplanationSerializer(many=True, required=False, default=list)
     matched_direction = serializers.CharField(allow_null=True, required=False)
