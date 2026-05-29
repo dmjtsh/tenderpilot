@@ -24,18 +24,15 @@ def _parse_terms(query: str) -> list[str]:
 def _build_title_q(terms: list[str]) -> Q:
     q = Q()
     for term in terms:
-        # \m / \M = word boundaries in PostgreSQL POSIX regex
-        q |= Q(title__iregex=rf'\m{re.escape(term)}\M')
+        q |= Q(title__icontains=term)
     return q
 
 
 def _score_terms(title: str, terms: list[str]) -> float:
     if not terms:
         return 0.0
-    matched = sum(
-        1 for t in terms
-        if re.search(rf'\b{re.escape(t)}\b', title, re.IGNORECASE)
-    )
+    title_lower = title.lower()
+    matched = sum(1 for t in terms if t.lower() in title_lower)
     return round(matched / len(terms), 4)
 
 
