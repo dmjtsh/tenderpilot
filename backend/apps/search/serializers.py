@@ -15,6 +15,7 @@ class SearchQuerySerializer(serializers.Serializer):
     deadline_days_min = serializers.IntegerField(required=False, allow_null=True, default=None)
     okpd = serializers.ListField(child=serializers.CharField(), required=False, default=list)
     customer = serializers.CharField(required=False, allow_blank=True, default="")
+    platform = serializers.ListField(child=serializers.CharField(), required=False, default=list)
 
 
 class ExplanationSerializer(serializers.Serializer):
