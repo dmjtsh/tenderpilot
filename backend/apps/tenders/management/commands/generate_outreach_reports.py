@@ -11,6 +11,7 @@
 """
 
 import csv
+import gc
 import json
 import logging
 import re
@@ -18,6 +19,7 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 
+from django import db
 from django.core.management.base import BaseCommand
 
 logger = logging.getLogger(__name__)
@@ -79,44 +81,52 @@ class Command(BaseCommand):
             pdf_path = output_dir / f"{inn}.pdf"
 
             if options["skip_existing"] and pdf_path.exists():
-                self.stdout.write(f"  SKIP (already exists)")
+                self.stdout.write("  SKIP (already exists)")
                 skip += 1
                 log_rows.append({"inn": inn, "company_name": name, "status": "skipped",
                                   "tenders_found": "", "pdf_path": str(pdf_path), "error": ""})
                 continue
 
+            selected = None
+            pdf_buf = None
             try:
                 selected = self._process_company(
                     company, qdrant, enrich_company_by_inn,
                     build_direction_vector, Tender, TenderDocument,
                     download_and_parse_documents, generate_tender_summary_v2,
                 )
+
+                if not selected:
+                    self.stdout.write("  WARN: 0 подходящих тендеров — пропускаем")
+                    fail += 1
+                    log_rows.append({"inn": inn, "company_name": name, "status": "no_tenders",
+                                      "tenders_found": 0, "pdf_path": "", "error": ""})
+                    continue
+
+                pdf_buf = render_outreach_pdf(
+                    company_name=name,
+                    company_inn=inn,
+                    company_emails=company.get("emails", ""),
+                    tenders=selected,
+                )
+                pdf_path.write_bytes(pdf_buf.read())
+                self.stdout.write(f"  OK: {len(selected)} тендеров → {pdf_path}")
+                ok += 1
+                log_rows.append({"inn": inn, "company_name": name, "status": "ok",
+                                  "tenders_found": len(selected), "pdf_path": str(pdf_path), "error": ""})
+
             except Exception as e:
                 logger.exception("Company %s failed", inn)
                 self.stderr.write(f"  FAIL: {e}")
                 fail += 1
                 log_rows.append({"inn": inn, "company_name": name, "status": "failed",
                                   "tenders_found": 0, "pdf_path": "", "error": str(e)})
-                continue
 
-            if not selected:
-                self.stdout.write("  WARN: 0 подходящих тендеров — пропускаем")
-                fail += 1
-                log_rows.append({"inn": inn, "company_name": name, "status": "no_tenders",
-                                  "tenders_found": 0, "pdf_path": "", "error": ""})
-                continue
-
-            pdf_buf = render_outreach_pdf(
-                company_name=name,
-                company_inn=inn,
-                company_emails=company.get("emails", ""),
-                tenders=selected,
-            )
-            pdf_path.write_bytes(pdf_buf.read())
-            self.stdout.write(f"  OK: {len(selected)} тендеров → {pdf_path}")
-            ok += 1
-            log_rows.append({"inn": inn, "company_name": name, "status": "ok",
-                              "tenders_found": len(selected), "pdf_path": str(pdf_path), "error": ""})
+            finally:
+                # Явно освобождаем крупные объекты после каждой компании
+                del selected, pdf_buf
+                db.reset_queries()   # сбрасываем Django query log
+                gc.collect()
 
         # Лог
         with log_path.open("w", newline="", encoding="utf-8-sig") as f:
@@ -185,8 +195,8 @@ class Command(BaseCommand):
         avg_vector, _ = build_direction_vector(direction)
         self.stdout.write(f"  HyDE: {time.monotonic()-t0:.1f}s")
 
-        # ── 3. Поиск кандидатов в Qdrant ──────────────────────────────
-        candidates = qdrant.search_tenders(avg_vector, limit=20, status="active")
+        # ── 3. Поиск кандидатов в Qdrant — берём 10, не 20 ───────────
+        candidates = qdrant.search_tenders(avg_vector, limit=10, status="active")
         self.stdout.write(f"  Кандидатов: {len(candidates)}")
 
         # ── 4. Итерируем, ищем 3 тендера с документами + AI-резюме ───
@@ -196,6 +206,7 @@ class Command(BaseCommand):
             if len(selected) >= 3:
                 break
 
+            tender = None
             try:
                 tender = Tender.objects.select_related("customer").get(pk=cand["id"])
             except Tender.DoesNotExist:
@@ -220,14 +231,18 @@ class Command(BaseCommand):
 
             if not has_docs:
                 self.stdout.write(f"    #{tender.number}: нет доков → пропускаем")
+                del tender
                 continue
 
             try:
                 sv2 = generate_tender_summary_v2(tender.id)
+                # Сохраняем только summary dict, не весь ORM объект sv2
                 selected.append({"tender": tender, "summary": sv2.summary})
+                del sv2
                 self.stdout.write(f"    #{tender.number}: резюме готово ({len(selected)}/3)")
             except Exception as e:
                 logger.warning("Summary failed for tender %s: %s", tender.id, e)
                 self.stdout.write(f"    #{tender.number}: резюме ошибка: {e}")
+                del tender
 
         return selected
