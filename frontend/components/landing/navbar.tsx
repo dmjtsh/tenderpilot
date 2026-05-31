@@ -59,9 +59,15 @@ export function Navbar() {
               >
                 Войти
               </Link>
-              <Link href="/login">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-[#374151] transition-colors hover:text-[#111827]"
+              >
+                Зарегистрироваться
+              </Link>
+              <Link href="/tenders">
                 <Button className="rounded-none bg-[#111827] text-white hover:bg-[#1f2937] btn-hover-lift">
-                  Попробовать бесплатно
+                  Перейти к тендерам
                 </Button>
               </Link>
             </>
@@ -112,9 +118,16 @@ export function Navbar() {
                 >
                   Войти
                 </Link>
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                <Link
+                  href="/login"
+                  className="block py-2 text-sm font-medium text-[#374151] transition-colors hover:text-[#111827]"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Зарегистрироваться
+                </Link>
+                <Link href="/tenders" onClick={() => setMobileMenuOpen(false)}>
                   <Button className="mt-2 w-full rounded-none bg-[#111827] text-white hover:bg-[#1f2937]">
-                    Попробовать бесплатно
+                    Перейти к тендерам
                   </Button>
                 </Link>
               </>

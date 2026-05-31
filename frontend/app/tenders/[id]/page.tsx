@@ -4,11 +4,44 @@ import { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
-import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderSummaryV2, type AnySummary, isV2Summary, type TenderDoc, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
-import { AlertTriangle, Building2, Calendar, Check, ChevronDown, ChevronLeft, ClipboardList, Clock, Copy, DollarSign, Download, ExternalLink, FileText, Loader2, Minus, RefreshCw, Send, Shield, Sparkles, XCircle, Wrench } from "lucide-react"
+import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderSummaryV2, type AnySummary, isV2Summary, type TenderDoc, type DocsResponse, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
+import { AlertTriangle, Building2, Calendar, Check, ChevronDown, ChevronLeft, ClipboardList, Clock, Copy, DollarSign, Download, ExternalLink, FileText, Loader2, Lock, Minus, RefreshCw, Send, Shield, Sparkles, XCircle, Wrench } from "lucide-react"
 import Link from "next/link"
 import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
 import { TenderCard } from "@/components/tender-card"
+
+function AuthCTA({ title, icon: Icon, linkHref, linkText, blurContent }: {
+  title?: string
+  icon?: React.ComponentType<{ className?: string }>
+  linkHref?: string
+  linkText?: string
+  blurContent?: React.ReactNode
+}) {
+  return (
+    <div className="mb-8 border border-amber-200 rounded-lg overflow-hidden">
+      {title && (
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-amber-200 bg-amber-50/40">
+          {Icon && <Icon className="w-4 h-4 text-amber-600" />}
+          <span className="text-sm font-semibold text-gray-800">{title}</span>
+        </div>
+      )}
+      <div className="relative">
+        {blurContent && (
+          <div className="blur-sm pointer-events-none select-none opacity-50 p-6">
+            {blurContent}
+          </div>
+        )}
+        <div className={`${blurContent ? "absolute inset-0" : ""} flex flex-col items-center justify-center p-6`}>
+          <Link href={linkHref ?? "/login"}
+            className="inline-flex items-center gap-1.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full hover:bg-amber-100 transition-colors">
+            <Lock className="w-3.5 h-3.5" />
+            {linkText ?? "Доступно после регистрации"}
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const STATUS_LABEL: Record<string, string> = {
   active: "Активный",
@@ -888,11 +921,14 @@ function DocRow({ doc, tenderId }: { doc: TenderDoc; tenderId: number }) {
 }
 
 function useDocsQuery(tenderId: number, downloading: boolean) {
-  return useQuery<TenderDoc[]>({
+  return useQuery<DocsResponse>({
     queryKey: ["tender-docs", tenderId],
     queryFn: () => tendersApi.getDocs(tenderId),
     refetchInterval: (query) => {
-      const d = query.state.data
+      const resp = query.state.data
+      if (!resp) return downloading ? 2000 : false
+      const { docs: d, downloadStatus } = resp
+      if (downloadStatus === "downloading") return 2000
       if (!d || d.length === 0) return downloading ? 2000 : false
       return d.some((doc) => doc.parse_status === "pending" || doc.parse_status === "processing")
         ? 2000
@@ -914,21 +950,20 @@ function docsAreProcessing(docs: TenderDoc[]): boolean {
 function DocumentsBlock({ tenderId }: { tenderId: number }) {
   const queryClient = useQueryClient()
   const [downloading, setDownloading] = useState(false)
-  const [noDocs, setNoDocs] = useState(false)
-  const downloadStartRef = useRef<number | null>(null)
-  const { data: docs = [], isLoading } = useDocsQuery(tenderId, downloading && !noDocs)
+  const { data: resp, isLoading: isQueryLoading } = useDocsQuery(tenderId, downloading)
+  const docs = resp?.docs ?? []
+  const downloadStatus = resp?.downloadStatus ?? ""
 
+  const noDocs = downloadStatus === "no_docs"
   const isProcessing = docsAreProcessing(docs)
 
   async function handleDownload() {
     setDownloading(true)
-    setNoDocs(false)
-    downloadStartRef.current = Date.now()
     try {
       const res = await tendersApi.downloadDocs(tenderId)
       if (res?.no_docs) {
         setDownloading(false)
-        setNoDocs(true)
+        queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
         return
       }
       setTimeout(() => {
@@ -941,18 +976,17 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
 
   useEffect(() => {
     if (!downloading) return
+    if (downloadStatus === "no_docs" || downloadStatus === "failed") {
+      setDownloading(false)
+      return
+    }
     if (docs.length > 0 && !isProcessing) {
       const t = setTimeout(() => setDownloading(false), 2000)
       return () => clearTimeout(t)
     }
-    const t = setTimeout(() => {
-      if (docs.length === 0) {
-        setDownloading(false)
-        setNoDocs(true)
-      }
-    }, 30_000)
-    return () => clearTimeout(t)
-  }, [downloading, docs.length, isProcessing])
+  }, [downloading, docs.length, isProcessing, downloadStatus])
+
+  const isLoading = isQueryLoading
 
   return (
     <div className="mb-8 border border-gray-200 bg-white">
@@ -1138,11 +1172,13 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
   const [phase, setPhase] = useState<SummaryPhase>("idle")
   const [error, setError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
-  const [noDocs, setNoDocs] = useState(false)
   const downloadStartRef = useRef<number | null>(null)
   const [autoStarted, setAutoStarted] = useState(false)
 
-  const { data: docs = [] } = useDocsQuery(tenderId, downloading)
+  const { data: resp } = useDocsQuery(tenderId, downloading)
+  const docs = resp?.docs ?? []
+  const downloadStatus = resp?.downloadStatus ?? ""
+  const noDocs = downloadStatus === "no_docs"
 
   const { data: me } = useQuery({
     queryKey: ["me"],
@@ -1219,13 +1255,20 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
 
   useEffect(() => {
     if (phase !== "downloading") return
-    const elapsed = downloadStartRef.current ? Date.now() - downloadStartRef.current : 0
-    if (docsAreReady(docs) || (elapsed > 30_000 && docs.length === 0)) {
+    if (downloadStatus === "no_docs" || downloadStatus === "failed") {
+      setDownloading(false)
+      if (downloadStatus === "failed") {
+        setError("Не удалось загрузить документы")
+      }
+      setPhase("idle")
+      return
+    }
+    if (docsAreReady(docs)) {
       setDownloading(false)
       generateSummary(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, docs])
+  }, [phase, docs, downloadStatus])
 
   async function handleGenerate(refresh = false) {
     setError(null)
@@ -1234,31 +1277,26 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
       setSummary(null)
     }
 
-    const currentDocs = queryClient.getQueryData<TenderDoc[]>(["tender-docs", tenderId])
-    const docsEmpty = !currentDocs || currentDocs.length === 0
+    const currentResp = queryClient.getQueryData<DocsResponse>(["tender-docs", tenderId])
+    const docsEmpty = !currentResp || currentResp.docs.length === 0
 
     if (docsEmpty && !autoStarted) {
       setAutoStarted(true)
       setPhase("downloading")
       setDownloading(true)
       downloadStartRef.current = Date.now()
-      const timeoutId = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
-      }, 32_000)
       try {
         const res = await tendersApi.downloadDocs(tenderId)
         if (res?.no_docs) {
-          clearTimeout(timeoutId)
           setDownloading(false)
-          setNoDocs(true)
           setPhase("idle")
+          queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
           return
         }
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
         }, 1500)
       } catch {
-        clearTimeout(timeoutId)
         setError("Не удалось загрузить документы")
         setPhase("idle")
         setDownloading(false)
@@ -1266,7 +1304,7 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
       return
     }
 
-    if (!docsEmpty && docsAreProcessing(currentDocs!)) {
+    if (!docsEmpty && docsAreProcessing(currentResp!.docs)) {
       setPhase("downloading")
       setDownloading(true)
       downloadStartRef.current = Date.now()
@@ -1762,7 +1800,24 @@ function SimilarTendersBlock({ tenderId, profileId }: { tenderId: number; profil
   )
 }
 
-function MetaRow({ label, value, href }: { label: string; value: string; href?: string }) {
+function MetaRow({ label, value, href, restricted, restrictionReason }: { label: string; value: string; href?: string; restricted?: boolean; restrictionReason?: string }) {
+  if (restricted) {
+    return (
+      <div className="flex items-center py-3.5 px-6 border-b border-gray-200 last:border-0">
+        <span className="text-[15px] text-gray-500 w-48 shrink-0">{label}</span>
+        <div className="flex-1 relative flex items-center justify-center">
+          <span className="text-[15px] text-gray-300 blur-[5px] select-none pointer-events-none absolute inset-0 flex items-center justify-center">
+            ООО «Название организации»
+          </span>
+          <Link href={restrictionReason === "free_plan" ? "/plan" : "/login"}
+            className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full hover:bg-amber-100 transition-colors whitespace-nowrap z-10">
+            <Lock className="w-3 h-3" />
+            {restrictionReason === "free_plan" ? "Коммерческий тендер. Доступно по подписке" : "Доступно после регистрации"}
+          </Link>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="flex items-start gap-4 py-3.5 px-6 border-b border-gray-200 last:border-0">
       <span className="text-[15px] text-gray-500 w-48 shrink-0">{label}</span>
@@ -1783,9 +1838,7 @@ function TenderDetailPageInner() {
   const searchParams = useSearchParams()
   const profileIdParam = searchParams.get("profile_id")
   const profileId = profileIdParam ? Number(profileIdParam) : null
-  useEffect(() => {
-    if (!isAuthenticated()) router.replace("/login")
-  }, [router])
+  const authed = isAuthenticated()
 
   const { data: tender, isLoading } = useQuery<Tender>({
     queryKey: ["tender", id],
@@ -1857,7 +1910,9 @@ function TenderDetailPageInner() {
               value={tender.trading_platform_url
                 ? `${tender.trading_platform || tender.trading_platform_url}`
                 : tender.trading_platform || "—"}
-              href={tender.trading_platform_url || undefined}
+              href={tender.is_restricted ? undefined : (tender.trading_platform_url || undefined)}
+              restricted={tender.is_restricted}
+              restrictionReason={tender.restriction_reason ?? undefined}
             />
             <MetaRow label="Подача заявок до" value={fmtDate(tender.deadline_at)} />
             {tender.auction_date && (
@@ -1889,19 +1944,30 @@ function TenderDetailPageInner() {
               />
             )}
             <MetaRow label="Опубликован" value={fmtDate(tender.published_at)} />
-            {(tender.customer_name || tender.customer) && (
+            {tender.is_restricted ? (
               <MetaRow
                 label="Заказчик"
-                value={tender.customer?.full_name || tender.customer?.name || tender.customer_name || "—"}
+                value="—"
+                restricted
+                restrictionReason={tender.restriction_reason ?? undefined}
               />
-            )}
-            {tender.customer?.inn && (
-              <MetaRow label="ИНН заказчика" value={tender.customer.inn} />
+            ) : (
+              <>
+                {(tender.customer_name || tender.customer) && (
+                  <MetaRow
+                    label="Заказчик"
+                    value={tender.customer?.full_name || tender.customer?.name || tender.customer_name || "—"}
+                  />
+                )}
+                {tender.customer?.inn && (
+                  <MetaRow label="ИНН заказчика" value={tender.customer.inn} />
+                )}
+              </>
             )}
           </div>
 
           {/* Pipeline status */}
-          <PipelineStatusButtons tenderId={tender.id} profileId={profileId} />
+          {authed && <PipelineStatusButtons tenderId={tender.id} profileId={profileId} />}
 
           {/* OKPD */}
           {tender.okpd_codes?.length > 0 && (
@@ -1922,18 +1988,66 @@ function TenderDetailPageInner() {
 
           {/* Info HTML from trading platform */}
           {tender.info_html_text && (
-            <div className="mb-8">
-              <Disclosure title="Описание с площадки" icon={FileText} defaultOpen={false}>
-                <div
-                  className="info-html-content text-sm text-gray-700 leading-relaxed max-h-[600px] overflow-y-auto"
-                  dangerouslySetInnerHTML={{ __html: tender.info_html_text }}
-                />
-              </Disclosure>
-            </div>
+            tender.is_restricted || !authed ? (
+              <AuthCTA
+                title="Описание с площадки"
+                icon={FileText}
+                linkHref={tender.restriction_reason === "free_plan" ? "/plan" : "/login"}
+                linkText={tender.restriction_reason === "free_plan" ? "Коммерческий тендер. Доступно по подписке" : "Доступно после регистрации"}
+                blurContent={
+                  <div className="space-y-2 text-sm text-gray-600 leading-relaxed">
+                    <div className="h-3 bg-gray-200 rounded w-full" />
+                    <div className="h-3 bg-gray-200 rounded w-11/12" />
+                    <div className="h-3 bg-gray-200 rounded w-4/5" />
+                    <div className="h-3 bg-gray-200 rounded w-full" />
+                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                  </div>
+                }
+              />
+            ) : (
+              <div className="mb-8">
+                <Disclosure title="Описание с площадки" icon={FileText} defaultOpen={false}>
+                  <div
+                    className="info-html-content text-sm text-gray-700 leading-relaxed max-h-[600px] overflow-y-auto"
+                    dangerouslySetInnerHTML={{ __html: tender.info_html_text }}
+                  />
+                </Disclosure>
+              </div>
+            )
           )}
 
           {/* Products (purchase line items) */}
           {tender.products && tender.products.length > 0 && (
+            tender.is_restricted || !authed ? (
+              <AuthCTA
+                title="Позиции закупки"
+                icon={ClipboardList}
+                linkHref={tender.restriction_reason === "free_plan" ? "/plan" : "/login"}
+                linkText={tender.restriction_reason === "free_plan" ? "Коммерческий тендер. Доступно по подписке" : "Доступно после регистрации"}
+                blurContent={
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-500 uppercase border-b border-gray-100">
+                        <th className="py-2 pr-4 font-medium">Название</th>
+                        <th className="py-2 pr-4 font-medium">ОКПД2</th>
+                        <th className="py-2 pr-4 font-medium text-right">Цена</th>
+                        <th className="py-2 font-medium text-right">Сумма</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {["Материалы и оборудование", "Монтажные работы", "Пусконаладочные работы"].map(n => (
+                        <tr key={n} className="border-b border-gray-50">
+                          <td className="py-2.5 pr-4 text-gray-900">{n}</td>
+                          <td className="py-2.5 pr-4 text-gray-500 font-mono text-xs">00.00.00</td>
+                          <td className="py-2.5 pr-4 text-right text-gray-700">0 ₽</td>
+                          <td className="py-2.5 text-right text-gray-900">0 ₽</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                }
+              />
+            ) : (
             <div className="mb-8">
               <Disclosure title="Позиции закупки" icon={ClipboardList} defaultOpen count={tender.products.length}>
                 <div className="overflow-x-auto">
@@ -1978,30 +2092,108 @@ function TenderDetailPageInner() {
                 </div>
               </Disclosure>
             </div>
+            )
           )}
 
           {/* Documents */}
-          <DocumentsBlock tenderId={tender.id} />
+          {authed && !tender.is_restricted ? (
+            <DocumentsBlock tenderId={tender.id} />
+          ) : tender.is_restricted ? (
+            <AuthCTA
+              title="Документы"
+              icon={FileText}
+              linkHref={tender.restriction_reason === "free_plan" ? "/plan" : "/login"}
+              linkText={tender.restriction_reason === "free_plan" ? "Коммерческий тендер. Доступно по подписке" : "Доступно после регистрации"}
+              blurContent={
+                <div className="space-y-2">
+                  {["Документация.pdf", "Техническое задание.docx", "Проект контракта.pdf", "Приложение 1.xlsx"].map(f => (
+                    <div key={f} className="flex items-center gap-3 py-2">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-600">{f}</span>
+                    </div>
+                  ))}
+                </div>
+              }
+            />
+          ) : !authed ? (
+            <AuthCTA
+              title="Документы"
+              icon={FileText}
+              blurContent={
+                <div className="space-y-2">
+                  {["Документация.pdf", "Техническое задание.docx", "Проект контракта.pdf", "Приложение 1.xlsx"].map(f => (
+                    <div key={f} className="flex items-center gap-3 py-2">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-600">{f}</span>
+                    </div>
+                  ))}
+                </div>
+              }
+            />
+          ) : (
+            <DocumentsBlock tenderId={tender.id} />
+          )}
 
           {/* AI summary */}
-          <AiSummaryBlock tenderId={tender.id} tender={tender} />
+          {authed ? (
+            <AiSummaryBlock tenderId={tender.id} tender={tender} />
+          ) : (
+            <AuthCTA
+              title="AI-анализ"
+              icon={Sparkles}
+              blurContent={
+                <div className="space-y-4">
+                  {["Анализ заказчика", "Описание работ", "Условия оплаты", "Сроки выполнения", "Требования к участникам", "Риски"].map(s => (
+                    <div key={s}>
+                      <div className="text-sm font-medium text-gray-700 mb-2">{s}</div>
+                      <div className="h-3 bg-gray-200 rounded w-full mb-1" />
+                      <div className="h-3 bg-gray-200 rounded w-3/4" />
+                    </div>
+                  ))}
+                </div>
+              }
+            />
+          )}
 
           {/* Chat */}
-          <TenderChat tenderId={tender.id} />
+          {authed ? (
+            <TenderChat tenderId={tender.id} />
+          ) : (
+            <AuthCTA
+              title="Вопросы по тендеру"
+              icon={Send}
+              blurContent={
+                <div className="space-y-3">
+                  <div className="flex gap-2 justify-end">
+                    <div className="bg-gray-100 rounded-lg px-4 py-2 text-sm text-gray-600 max-w-[70%]">Какие требования к участникам?</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-600 max-w-[70%]">Участник должен иметь лицензию и опыт выполнения аналогичных работ...</div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="h-10 flex-1 bg-gray-100 rounded-lg" />
+                    <div className="h-10 w-10 bg-gray-100 rounded-lg" />
+                  </div>
+                </div>
+              }
+            />
+          )}
 
           {/* Similar tenders */}
           <SimilarTendersBlock tenderId={tender.id} profileId={profileId} />
 
           {/* Source link */}
-          <a
-            href={tender.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2.5 h-11 px-5 text-base font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors"
-          >
-            <ExternalLink className="w-5 h-5" />
-            Открыть на площадке
-          </a>
+          {tender.source_url && !tender.is_restricted && (
+            <a
+              href={tender.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 h-11 px-5 text-base font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors"
+            >
+              <ExternalLink className="w-5 h-5" />
+              Открыть на площадке
+            </a>
+          )}
         </div>
       </div>
     </div>

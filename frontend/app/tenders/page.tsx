@@ -18,10 +18,12 @@ type Tab = "all" | "match"
 
 function usePipelineActions(profileId: number | null = null) {
   const qc = useQueryClient()
+  const authed = isAuthenticated()
 
   const { data: entries = [] } = useQuery({
     queryKey: ["pipeline-list"],
     queryFn: () => pipelineApi.list(),
+    enabled: authed,
   })
 
   const pipelineMap = new Map<number, { status: PipelineStatus; entryId: number }>()
@@ -70,12 +72,14 @@ function AllTab({ filters }: { filters: TenderFilters }) {
   const [page, setPage] = useState(1)
   const [allTenders, setAllTenders] = useState<Tender[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
+  const authed = isAuthenticated()
   const { pipelineMap, setStatus, removeEntry } = usePipelineActions(selectedProfileId)
 
   const { data: companies = [] } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
     queryFn: () => profileApi.listCompanies(),
     staleTime: 5 * 60 * 1000,
+    enabled: authed,
   })
 
   // Default to first (most recently created) profile
@@ -103,7 +107,7 @@ function AllTab({ filters }: { filters: TenderFilters }) {
   const { data: searchResults, isFetching: searchFetching } = useQuery({
     queryKey: ["search", query, filterKey],
     queryFn: () => searchApi.search(query, searchBody),
-    enabled: !!query,
+    enabled: !!query && authed,
   })
 
   useEffect(() => {
@@ -179,7 +183,7 @@ function AllTab({ filters }: { filters: TenderFilters }) {
         )}
         {tenders.map((t) => {
                 const p = pipelineMap.get(t.id)
-                return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={setStatus} onRemoveFromPipeline={removeEntry} profileId={selectedProfileId} />
+                return <TenderCard key={t.id} tender={t} pipelineStatus={p?.status} pipelineEntryId={p?.entryId} onSetPipelineStatus={authed ? setStatus : undefined} onRemoveFromPipeline={authed ? removeEntry : undefined} profileId={selectedProfileId} />
               })}
         {hasMore && (
           <div className="flex justify-center py-4">
@@ -471,13 +475,12 @@ function TendersPageInner() {
     router.replace(`/tenders?${params.toString()}`, { scroll: false })
   }
 
-  useEffect(() => {
-    if (!isAuthenticated()) router.replace("/login")
-  }, [router])
+  const authed = isAuthenticated()
 
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [regBannerDismissed, setRegBannerDismissed] = useState(() => typeof window !== "undefined" && localStorage.getItem("reg_banner_dismissed") === "1")
   useEffect(() => {
-    if (!isAuthenticated()) return
+    if (!authed) return
     const dismissed = localStorage.getItem("onboarding_dismissed")
     if (dismissed) return
     profileApi.listCompanies().then((companies) => {
@@ -485,7 +488,7 @@ function TendersPageInner() {
         setShowOnboarding(true)
       }
     }).catch(() => {})
-  }, [router])
+  }, [authed])
 
   return (
     <div className="flex flex-col h-screen">
@@ -514,17 +517,19 @@ function TendersPageInner() {
         >
           Все тендеры
         </button>
-        <button
-          onClick={() => handleTabChange("match")}
-          className={`h-10 px-5 text-base font-medium transition-all duration-200 border border-transparent ${
-            tab === "match"
-              ? "bg-violet-50 text-violet-700"
-              : "text-violet-600 hover:bg-violet-50 hover:border-violet-200"
-          }`}
-        >
-          <Sparkles className="w-4 h-4 inline mr-2 mb-px text-violet-500" />
-          Для вас
-        </button>
+        {authed && (
+          <button
+            onClick={() => handleTabChange("match")}
+            className={`h-10 px-5 text-base font-medium transition-all duration-200 border border-transparent ${
+              tab === "match"
+                ? "bg-violet-50 text-violet-700"
+                : "text-violet-600 hover:bg-violet-50 hover:border-violet-200"
+            }`}
+          >
+            <Sparkles className="w-4 h-4 inline mr-2 mb-px text-violet-500" />
+            Для вас
+          </button>
+        )}
       </div>
 
       <FilterBar
@@ -535,8 +540,22 @@ function TendersPageInner() {
         activeCount={activeCount}
       />
 
+      {!authed && !regBannerDismissed && (
+        <div className="flex items-center justify-between px-6 h-16 bg-amber-50 border-b border-amber-200 text-base">
+          <span className="text-amber-900">
+            <Link href="/login" className="underline font-medium">Зарегистрируйтесь</Link>, чтобы получать персональную подборку тендеров, AI-анализ и многое другое
+          </span>
+          <button
+            onClick={() => { setRegBannerDismissed(true); localStorage.setItem("reg_banner_dismissed", "1") }}
+            className="text-amber-400 hover:text-amber-600 ml-4"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       <div key={tab} className="flex flex-col flex-1 min-h-0 animate-fade-in">
-        {tab === "all" ? <AllTab filters={filters} /> : <MatchTab filters={filters} />}
+        {tab === "all" ? <AllTab filters={filters} /> : authed ? <MatchTab filters={filters} /> : <AllTab filters={filters} />}
       </div>
     </div>
   )

@@ -16,6 +16,15 @@ client.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && getToken()) {
       clearTokens()
+      const isPublicPage = typeof window !== "undefined" && window.location.pathname.startsWith("/tenders")
+      if (isPublicPage) {
+        const cfg = error.config
+        if (cfg && !cfg._retry) {
+          cfg._retry = true
+          delete cfg.headers.Authorization
+          return client.request(cfg)
+        }
+      }
       window.location.href = "/login"
     }
     return Promise.reject(error)
@@ -230,6 +239,8 @@ export interface Tender {
   ai_summary?: string
   score?: number
   score_label?: string
+  is_restricted?: boolean
+  restriction_reason?: "anon" | "free_plan" | null
 }
 
 export interface TenderDoc {
@@ -241,6 +252,13 @@ export interface TenderDoc {
   is_scanned: boolean
   content_priority: number
   archive_name?: string
+}
+
+export type DocsDownloadStatus = "" | "downloading" | "done" | "no_docs" | "failed"
+
+export interface DocsResponse {
+  docs: TenderDoc[]
+  downloadStatus: DocsDownloadStatus
 }
 
 export interface TenderQASource {
@@ -273,8 +291,11 @@ export const tendersApi = {
       ...(opts?.generate ? { generate: "true" } : {}),
     } }).then((r) => r.data.data as AnySummary | null),
 
-  getDocs: (id: number) =>
-    client.get(`/tenders/${id}/docs/`).then((r) => r.data.data as TenderDoc[]),
+  getDocs: (id: number): Promise<DocsResponse> =>
+    client.get(`/tenders/${id}/docs/`).then((r) => ({
+      docs: r.data.data as TenderDoc[],
+      downloadStatus: (r.data.docs_download_status || "") as DocsDownloadStatus,
+    })),
 
   downloadDocs: (id: number) =>
     client.post(`/tenders/${id}/download-docs/`).then((r) => r.data.data),

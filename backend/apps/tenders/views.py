@@ -98,14 +98,14 @@ class TenderFilterSet(django_filters.FilterSet):
 
 
 class RegionsListView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         return Response({"data": CANONICAL_REGIONS, "error": None})
 
 
 class OkvedSearchView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         from .okved import OKVED_NAMES
@@ -124,7 +124,7 @@ class OkvedSearchView(APIView):
 
 
 class CustomerSearchView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         q = request.query_params.get("q", "").strip()
@@ -139,7 +139,6 @@ class CustomerSearchView(APIView):
 
 
 class TenderViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = TenderFilterSet
     search_fields = ["title", "number"]
@@ -157,6 +156,11 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             .exclude(title="")
             .order_by("-content_quality", "-published_at")
         )
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve", "similar", "docs"):
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -191,17 +195,24 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             for t in Tender.objects.select_related("customer").filter(id__in=tender_ids)
         }
 
+        is_anon = not request.user.is_authenticated
+        if not is_anon:
+            from apps.billing.models import UserPlan
+            user_plan = UserPlan.objects.filter(user=request.user).values_list("plan", flat=True).first() or "free"
+        else:
+            user_plan = None
         data = []
         for r in results:
             t = tenders_db.get(r["id"])
             if not t:
                 continue
+            mask_b2b = t.law_type == "b2b" and (is_anon or user_plan == "free")
             data.append({
                 "id": t.id,
                 "number": t.number,
                 "title": t.title,
                 "nmck": float(t.nmck) if t.nmck else None,
-                "customer_name": t.customer.name if t.customer else r.get("customer_name", ""),
+                "customer_name": None if mask_b2b else (t.customer.name if t.customer else r.get("customer_name", "")),
                 "region": t.region or "",
                 "law_type": t.law_type or "",
                 "procedure_type": t.procedure_type or "",
@@ -209,10 +220,11 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 "auction_date": t.auction_date.isoformat() if t.auction_date else None,
                 "published_at": t.published_at.isoformat() if t.published_at else None,
                 "trading_platform": t.trading_platform or "",
-                "source_url": t.source_url or "",
+                "source_url": None if mask_b2b else (t.source_url or ""),
                 "status": t.status,
                 "score": round(r["score"] * 100),
                 "score_label": score_label(r["score"]),
+                "is_restricted": mask_b2b,
             })
 
         return Response({"data": data, "has_more": has_more, "error": None})
@@ -306,6 +318,13 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
     def docs(self, request, pk=None):
         from apps.documents.models import TenderDocument
         tender = self.get_object()
+        if tender.law_type == "b2b":
+            if not request.user.is_authenticated:
+                return Response({"data": [], "error": None})
+            from apps.billing.models import UserPlan
+            plan = UserPlan.objects.filter(user=request.user).values_list("plan", flat=True).first() or "free"
+            if plan == "free":
+                return Response({"data": [], "error": None})
         top_level = TenderDocument.objects.filter(
             tender=tender, parent_document__isnull=True,
         ).order_by("content_priority", "filename")
@@ -328,7 +347,11 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 # Always show top-level docs without children, including skipped
                 # (user should see the file even if we couldn't parse its content)
                 result.append(self._doc_to_dict(d))
-        return Response({"data": result, "error": None})
+        return Response({
+            "data": result,
+            "docs_download_status": tender.docs_download_status,
+            "error": None,
+        })
 
     @staticmethod
     def _doc_to_dict(d, archive_name: str = "") -> dict:
@@ -437,8 +460,12 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             has_links = True
 
         if not has_links:
+            tender.docs_download_status = Tender.DocsDownloadStatus.NO_DOCS
+            tender.save(update_fields=["docs_download_status"])
             return Response({"data": {"started": False, "no_docs": True}, "error": None})
 
+        tender.docs_download_status = Tender.DocsDownloadStatus.DOWNLOADING
+        tender.save(update_fields=["docs_download_status"])
         download_and_parse_documents.delay(tender.id)
         return Response({"data": {"started": True}, "error": None})
 

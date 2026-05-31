@@ -24,9 +24,9 @@ export function Hero() {
             </p>
 
             <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row lg:justify-start animate-hero" style={{ animationDelay: "0.45s" }}>
-              <Link href="/login">
+              <Link href="/tenders">
                 <Button size="lg" className="rounded-none bg-[#111827] text-white hover:bg-[#1f2937] btn-hover-lift h-12 px-8 text-base font-semibold">
-                  Начать бесплатно
+                  Перейти к тендерам
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>

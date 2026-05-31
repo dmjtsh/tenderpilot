@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Тендеры",
-  robots: { index: false, follow: false },
+  title: "Тендеры: 44-ФЗ, 223-ФЗ и коммерческие закупки",
+  description: "Поиск тендеров по 44-ФЗ, 223-ФЗ и коммерческих закупок. AI-анализ, мониторинг, персональный подбор.",
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {

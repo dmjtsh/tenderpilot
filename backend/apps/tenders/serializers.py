@@ -2,6 +2,20 @@ from rest_framework import serializers
 from .models import Customer, Tender, TenderPipeline, PipelineComment
 
 
+def _b2b_restriction(request, instance) -> tuple[bool, str | None]:
+    """Returns (is_restricted, restriction_reason) for B2B tenders."""
+    if instance.law_type != "b2b":
+        return False, None
+    is_anon = not (request and request.user and request.user.is_authenticated)
+    if is_anon:
+        return True, "anon"
+    from apps.billing.models import UserPlan
+    plan = UserPlan.objects.filter(user=request.user).values_list("plan", flat=True).first() or "free"
+    if plan == "free":
+        return True, "free_plan"
+    return False, None
+
+
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
@@ -22,6 +36,18 @@ class TenderListSerializer(serializers.ModelSerializer):
             "contract_security_amount", "contract_security_percent",
             "source_url", "source",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        restricted, reason = _b2b_restriction(request, instance)
+        data["is_restricted"] = restricted
+        data["restriction_reason"] = reason
+        if restricted:
+            data["customer_name"] = None
+            data["trading_platform_url"] = None
+            data["source_url"] = None
+        return data
 
 
 class TenderDetailSerializer(serializers.ModelSerializer):
@@ -59,6 +85,18 @@ class TenderDetailSerializer(serializers.ModelSerializer):
         from apps.tenders.summary_v2.context import _get_info_html_sanitized
         html = _get_info_html_sanitized(obj)
         return html if html else None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        restricted, reason = _b2b_restriction(request, instance)
+        data["is_restricted"] = restricted
+        data["restriction_reason"] = reason
+        if restricted:
+            data["customer"] = {"id": None, "inn": None, "name": None, "full_name": None, "region": instance.region}
+            data["trading_platform_url"] = None
+            data["source_url"] = None
+        return data
 
 
 class TenderPipelineSerializer(serializers.ModelSerializer):

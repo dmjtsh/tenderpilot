@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/login", "/tenders", "/profile", "/pipeline", "/api/"],
+        disallow: ["/login", "/profile", "/pipeline", "/plan", "/api/"],
       },
     ],
     sitemap: "https://tenderoll.ru/sitemap.xml",

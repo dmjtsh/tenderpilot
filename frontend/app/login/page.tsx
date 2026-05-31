@@ -151,13 +151,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 relative">
-      <a
-        href="/"
+      <button
+        onClick={() => window.history.back()}
         className="absolute top-6 left-6 flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#111827] transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        На главную
-      </a>
+        Назад
+      </button>
       <div className="w-full max-w-[360px]">
         {/* Logo */}
         <a href="/" className="flex items-center justify-center gap-2.5 mb-8">

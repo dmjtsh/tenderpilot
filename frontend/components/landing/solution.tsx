@@ -64,7 +64,7 @@ export function Solution() {
             </div>
           </div>
 
-          <div className={`flex-1 scroll-hidden ${isVisible ? "scroll-visible" : ""}`}>
+          <div id="demo" className={`flex-1 scroll-hidden ${isVisible ? "scroll-visible" : ""}`}>
             <div className="relative overflow-hidden rounded-2xl border border-zinc-600">
               <video
                 ref={videoRef}
