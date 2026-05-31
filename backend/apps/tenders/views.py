@@ -830,3 +830,22 @@ class ExperimentViewSet(viewsets.ReadOnlyModelViewSet):
 
         run_experiment_batch(exp)
         return Response({"data": {"status": exp.status}, "error": None})
+
+
+class TenderSitemapView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        now = timezone.now()
+        qs = (
+            Tender.objects
+            .filter(
+                Q(deadline_at__gt=now) | Q(deadline_at__isnull=True),
+                status=Tender.Status.ACTIVE,
+            )
+            .exclude(title="")
+            .values_list("id", "updated_at")
+            .order_by("id")
+        )
+        data = [{"id": tid, "updated_at": upd.isoformat() if upd else None} for tid, upd in qs]
+        return Response({"count": len(data), "results": data})

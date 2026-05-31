@@ -1882,6 +1882,13 @@ function TenderDetailPageInner() {
       {/* Content */}
       <div className="flex-1 overflow-auto animate-fade-in">
         <div className="max-w-4xl mx-auto px-6 py-10">
+          {/* Breadcrumbs */}
+          <nav className="flex items-center gap-1.5 text-sm text-gray-400 mb-6">
+            <Link href="/tenders" className="hover:text-gray-600 transition-colors">Тендеры</Link>
+            <span>/</span>
+            <span className="text-gray-500 truncate max-w-[400px]">{tender.title}</span>
+          </nav>
+
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-3">
