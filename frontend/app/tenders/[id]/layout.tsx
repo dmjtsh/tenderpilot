@@ -90,8 +90,14 @@ export async function generateMetadata({
       type: "article",
       locale: "ru_RU",
       siteName: "TendeRoll",
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: tender.title }],
     },
-    twitter: { card: "summary_large_image" },
+    twitter: {
+      card: "summary_large_image",
+      title: tender.title,
+      description,
+      images: ["/opengraph-image"],
+    },
   }
 }
 
