@@ -113,6 +113,20 @@ def download_and_parse_documents(self, tender_id: int) -> str:
     except Tender.DoesNotExist:
         return f"tender {tender_id} not found"
 
+    Tender.objects.filter(id=tender_id).update(
+        docs_download_status=Tender.DocsDownloadStatus.DOWNLOADING,
+    )
+
+    try:
+        return _do_download_and_parse(self, tender)
+    except Exception:
+        Tender.objects.filter(id=tender_id).update(
+            docs_download_status=Tender.DocsDownloadStatus.FAILED,
+        )
+        raise
+
+
+def _do_download_and_parse(self, tender: Tender) -> str:
     if tender.source == Tender.Source.KOMTENDER:
         links = _komtender_doc_links(tender)
     elif tender.source == Tender.Source.TENDERGURU:
@@ -121,6 +135,9 @@ def download_and_parse_documents(self, tender_id: int) -> str:
         links = fetch_document_links(tender.number, source_url=tender.source_url or "")
 
     if not links:
+        Tender.objects.filter(id=tender.id).update(
+            docs_download_status=Tender.DocsDownloadStatus.NO_DOCS,
+        )
         return f"no documents for tender {tender.number}"
 
     created_ids: list[int] = []
@@ -192,6 +209,11 @@ def download_and_parse_documents(self, tender_id: int) -> str:
         for doc_id in created_ids:
             parse_document.delay(doc_id)
 
+    Tender.objects.filter(id=tender.id).update(
+        docs_download_status=Tender.DocsDownloadStatus.DONE
+        if created_ids
+        else Tender.DocsDownloadStatus.NO_DOCS,
+    )
     return f"tender {tender.number}: {len(created_ids)} documents queued"
 
 

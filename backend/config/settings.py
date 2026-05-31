@@ -230,6 +230,9 @@ DEEPSEEK_BASE_URL = config("DEEPSEEK_BASE_URL", default="https://api.deepseek.co
 # Telegram
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 TELEGRAM_ADMIN_CHAT_ID = config("TELEGRAM_ADMIN_CHAT_ID", default="")
+TELEGRAM_API_ID = config("TELEGRAM_API_ID", default=0, cast=int)
+TELEGRAM_API_HASH = config("TELEGRAM_API_HASH", default="")
+TELEGRAM_PHONE = config("TELEGRAM_PHONE", default="+573128868945")
 
 # Proxy (для RusProfile)
 RUSPROFILE_PROXY_URL = config("RUSPROFILE_PROXY_URL", default="")

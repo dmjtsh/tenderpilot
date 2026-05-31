@@ -54,6 +54,13 @@ class Tender(models.Model):
         SINGLE_SOURCE = "single_source", "Единственный поставщик"
         OTHER = "other", "Иной"
 
+    class DocsDownloadStatus(models.TextChoices):
+        IDLE = "", "Не начато"
+        DOWNLOADING = "downloading", "Загрузка"
+        DONE = "done", "Готово"
+        NO_DOCS = "no_docs", "Нет документов"
+        FAILED = "failed", "Ошибка"
+
     source = models.CharField(
         max_length=20,
         choices=Source.choices,
@@ -93,6 +100,12 @@ class Tender(models.Model):
     docs_indexed_at = models.DateTimeField(null=True, blank=True)
     enriched_at = models.DateTimeField(null=True, blank=True)
     content_quality = models.SmallIntegerField(default=0, db_index=True)
+    docs_download_status = models.CharField(
+        max_length=20,
+        choices=DocsDownloadStatus.choices,
+        default=DocsDownloadStatus.IDLE,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

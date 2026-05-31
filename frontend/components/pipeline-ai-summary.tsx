@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { client, tendersApi, isV2Summary, type TenderSummaryV2, type TenderDoc, type AnySummary } from "@/lib/api"
+import { client, tendersApi, isV2Summary, type TenderSummaryV2, type TenderDoc, type DocsResponse, type AnySummary } from "@/lib/api"
 import { Sparkles, Loader2, Download, RefreshCw, AlertTriangle, ChevronDown } from "lucide-react"
 
 type Phase = "idle" | "downloading" | "analyzing"
@@ -219,10 +219,11 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
   const [phase, setPhase] = useState<Phase>("idle")
   const [error, setError] = useState<string | null>(null)
 
-  const { data: docs = [] } = useQuery<TenderDoc[]>({
+  const { data: resp } = useQuery<DocsResponse>({
     queryKey: ["tender-docs", tenderId],
     queryFn: () => tendersApi.getDocs(tenderId),
   })
+  const docs = resp?.docs ?? []
 
   const {
     data: cachedSummary,

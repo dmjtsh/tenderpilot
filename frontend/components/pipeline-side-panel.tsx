@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { client, pipelineApi, tendersApi, type PipelineStatus, type TenderDoc } from "@/lib/api"
+import { client, pipelineApi, tendersApi, type PipelineStatus, type TenderDoc, type DocsResponse } from "@/lib/api"
 import { X, ExternalLink, FileText, Download, Loader2 } from "lucide-react"
 import { deadlineText } from "@/lib/deadline"
 import Link from "next/link"
@@ -85,29 +85,39 @@ export function PipelineSidePanel({
   })
 
   const [downloading, setDownloading] = useState(false)
-  const [noDocs, setNoDocs] = useState(false)
 
-  const { data: docs = [] } = useQuery({
+  const { data: resp } = useQuery<DocsResponse>({
     queryKey: ["tender-docs", tenderId],
     queryFn: () => tendersApi.getDocs(tenderId),
     enabled: tab === "docs",
-    refetchInterval: downloading ? 3000 : false,
+    refetchInterval: (query) => {
+      const r = query.state.data
+      if (r?.downloadStatus === "downloading") return 3000
+      if (downloading) return 3000
+      return false
+    },
   })
+  const docs = resp?.docs ?? []
+  const downloadStatus = resp?.downloadStatus ?? ""
+  const noDocs = downloadStatus === "no_docs"
 
   useEffect(() => {
-    if (downloading && docs.length > 0 && docs.some((d: TenderDoc) => d.parse_status === "done")) {
+    if (!downloading) return
+    if (downloadStatus === "no_docs" || downloadStatus === "failed") {
+      setDownloading(false)
+      return
+    }
+    if (docs.length > 0 && docs.some((d: TenderDoc) => d.parse_status === "done")) {
       setDownloading(false)
     }
-  }, [downloading, docs])
+  }, [downloading, docs, downloadStatus])
 
   const handleDownloadDocs = async () => {
     setDownloading(true)
-    setNoDocs(false)
     try {
       const res = await tendersApi.downloadDocs(tenderId)
       if (res?.no_docs) {
         setDownloading(false)
-        setNoDocs(true)
       }
     } catch {
       setDownloading(false)
