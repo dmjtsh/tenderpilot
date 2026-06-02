@@ -21,27 +21,62 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
-          "custom": { "fillOpacity": 70, "stacking": { "mode": "normal" } }
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
         },
-        "overrides": []
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "active" }, "properties": [ { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "finished" }, "properties": [ { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } } ] }
+        ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 1 },
       "id": 1,
-      "options": { "barWidth": 0.7, "groupWidth": 0.7, "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "sum by (source) (tenderpilot_tenders_total{status=\"active\"})",
-          "legendFormat": "{{source}} active",
+          "expr": "tenderpilot_tenders_total{source=\"eis\", status=\"active\"}",
+          "legendFormat": "active",
           "refId": "A"
         },
         {
-          "expr": "sum by (source) (tenderpilot_tenders_total{status=\"finished\"})",
-          "legendFormat": "{{source}} finished",
+          "expr": "tenderpilot_tenders_total{source=\"eis\", status=\"finished\"}",
+          "legendFormat": "finished",
           "refId": "B"
         }
       ],
-      "title": "Тендеры по источнику",
-      "type": "barchart"
+      "title": "ЕИС (44-ФЗ / 223-ФЗ)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "active" }, "properties": [ { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "finished" }, "properties": [ { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 1 },
+      "id": 20,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "expr": "tenderpilot_tenders_total{source=\"tenderguru\", status=\"active\"}",
+          "legendFormat": "active",
+          "refId": "A"
+        },
+        {
+          "expr": "tenderpilot_tenders_total{source=\"tenderguru\", status=\"finished\"}",
+          "legendFormat": "finished",
+          "refId": "B"
+        }
+      ],
+      "title": "TenderGuru (b2b)",
+      "type": "timeseries"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
