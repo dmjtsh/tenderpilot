@@ -326,7 +326,7 @@
       "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
-          "expr": "app_collections_total_vector_count{collection_name=\"tenders\"}",
+          "expr": "collection_vectors{collection=\"tenders\"}",
           "legendFormat": "Векторов tenders",
           "refId": "A"
         }
@@ -351,7 +351,7 @@
       "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
-          "expr": "app_collections_total_vector_count{collection_name=\"doc_chunks\"}",
+          "expr": "collection_vectors{collection=\"doc_chunks\"}",
           "legendFormat": "Чанков doc_chunks",
           "refId": "A"
         }
@@ -365,7 +365,7 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": { "lineWidth": 2, "fillOpacity": 15 },
-          "unit": "bytes"
+          "unit": "short"
         }
       },
       "gridPos": { "h": 6, "w": 8, "x": 16, "y": 34 },
@@ -373,12 +373,12 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "app_collections_vector_data_size{collection_name=~\"tenders|doc_chunks\"}",
-          "legendFormat": "{{collection_name}}",
+          "expr": "collection_points{id=~\"tenders|doc_chunks\"}",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
-      "title": "Qdrant Vector Storage Size",
+      "title": "Qdrant Points по коллекциям",
       "type": "timeseries"
     }
   ],
