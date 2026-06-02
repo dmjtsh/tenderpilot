@@ -421,7 +421,7 @@ TENDERGURU_MAX_PER_RUN = 5000
 TENDERGURU_DELAY = 0.3
 # Окно публикации: берём тендеры за последние N дней.
 # Покрывает пропуски при простое синка (рестарты, деплой и т.д.)
-TENDERGURU_DATE_WINDOW_DAYS = 3
+TENDERGURU_DATE_WINDOW_DAYS = 2  # вчера + сегодня, покрывает ночной пропуск
 
 
 @shared_task(name="apps.tenders.tasks.sync_tenderguru", time_limit=7200)
