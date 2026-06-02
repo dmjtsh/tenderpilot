@@ -90,6 +90,7 @@ services:
     image: oliver006/redis_exporter:v1.62.0
     environment:
       REDIS_ADDR: "redis://redis:6379"
+      REDIS_EXPORTER_CHECK_KEYS: "celery,high_priority"
     ports:
       - "9121:9121"
     depends_on:
