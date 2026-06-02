@@ -45,6 +45,12 @@ systemctl restart tenderpilot-web tenderpilot-worker tenderpilot-beat tenderpilo
 systemctl reload nginx
 ok "web + worker + beat + frontend + nginx"
 
+step "Мониторинг"
+cd "$APP"
+docker compose up -d prometheus grafana flower celery_exporter redis_exporter postgres_exporter node_exporter
+docker compose restart prometheus
+ok "monitoring stack"
+
 step "Проверка"
 sleep 2
 for svc in tenderpilot-web tenderpilot-worker tenderpilot-beat tenderpilot-frontend nginx; do
