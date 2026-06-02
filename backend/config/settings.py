@@ -189,10 +189,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.tenders.tasks.cleanup_finished_tenders",
         "schedule": crontab(hour=4, minute=0, day_of_week="sunday"),  # после cleanup-old-documents
     },
-    "sync-komtender": {
-        "task": "apps.tenders.tasks.sync_komtender",
-        "schedule": crontab(minute=30),
-    },
     "sync-tenderguru": {
         "task": "apps.tenders.tasks.sync_tenderguru",
         "schedule": crontab(minute=15, hour="*/2"),

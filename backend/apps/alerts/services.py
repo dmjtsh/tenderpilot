@@ -85,6 +85,13 @@ def check_critical_alerts(run) -> None:
                 + "\nНужно дробить ценовые диапазоны"
             )
 
+    elif run.task_name == "sync_tenderguru" and run.status == "failed":
+        if _should_alert("tenderguru_failed"):
+            send_telegram(
+                f"⚠️ <b>sync_tenderguru упал</b>\n"
+                f"{run.error_message[:200] if run.error_message else 'без деталей'}"
+            )
+
     elif run.task_name == "enrich_tender" and run.status == "failed":
         last_5 = list(
             PipelineRun.objects.filter(
