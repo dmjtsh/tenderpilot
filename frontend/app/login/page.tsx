@@ -8,6 +8,7 @@ import { z } from "zod"
 import { useQueryClient } from "@tanstack/react-query"
 import { authApi } from "@/lib/api"
 import { setTokens, isAuthenticated } from "@/lib/auth"
+import { trackGoal } from "@/lib/analytics"
 import { ArrowLeft } from "lucide-react"
 
 const loginSchema = z.object({
@@ -95,6 +96,7 @@ function RegisterTab({ onSuccess }: { onSuccess: () => void }) {
     try {
       const res = await authApi.register(data)
       setTokens(res.access, res.refresh)
+      trackGoal("register_success")
       onSuccess()
     } catch (e: unknown) {
       const err = e as { response?: { data?: Record<string, string[]> } }
@@ -170,7 +172,7 @@ export default function LoginPage() {
           {(["login", "register"] as const).map((t) => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => { if (t === "register") trackGoal("viewed_register"); setTab(t) }}
               className={`flex-1 h-7 text-xs font-medium rounded-md transition-colors ${
                 tab === t
                   ? "bg-background text-foreground"

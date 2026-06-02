@@ -1,19 +1,33 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { billingApi } from "@/lib/api"
 import { isAuthenticated } from "@/lib/auth"
 import { plans, INTERVAL_MONTHS, INTERVAL_LABEL, formatPrice, type Interval } from "@/lib/plans"
+import { trackGoal } from "@/lib/analytics"
 
 export function Pricing() {
   const [interval, setInterval] = useState<Interval>("monthly")
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { trackGoal("viewed_pricing"); observer.disconnect() } },
+      { threshold: 0.3 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   async function handleCheckout(planKey: string) {
     setError(null)
+    trackGoal("clicked_pricing_cta")
 
     if (!isAuthenticated()) {
       window.location.href = `/login?redirect=/plan&plan=${planKey}&interval=${interval}`
@@ -23,6 +37,7 @@ export function Pricing() {
     setLoading(planKey)
     try {
       const result = await billingApi.checkout(planKey, interval)
+      trackGoal("checkout_started")
       window.location.href = result.confirmation_url
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -33,7 +48,7 @@ export function Pricing() {
   }
 
   return (
-    <section id="pricing" className="bg-[#F3F4F6] py-16 sm:py-24">
+    <section ref={sectionRef} id="pricing" className="bg-[#F3F4F6] py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">
@@ -127,6 +142,7 @@ export function Pricing() {
                       href="https://t.me/tenderoll_support"
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => trackGoal("clicked_pricing_cta")}
                       className="flex items-center justify-center w-full rounded-none border-2 border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6] h-12 text-base font-semibold transition-colors"
                     >
                       Связаться
@@ -134,6 +150,7 @@ export function Pricing() {
                   ) : isFree ? (
                     <a
                       href="/login"
+                      onClick={() => trackGoal("clicked_pricing_cta")}
                       className="flex items-center justify-center w-full rounded-none border-2 border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F3F4F6] h-12 text-base font-semibold transition-colors"
                     >
                       Начать

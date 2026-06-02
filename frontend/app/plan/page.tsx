@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
 import { billingApi, type UserPlan } from "@/lib/api"
 import { ProfilePricing } from "@/components/profile-pricing"
+import { trackGoal } from "@/lib/analytics"
 
 const PLAN_LABEL: Record<string, string> = { free: "Free", standard: "Standard", premium: "Premium" }
 
@@ -94,6 +95,7 @@ export default function PlanPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get("payment") === "success") {
+      trackGoal("payment_success")
       billingApi.verify().then(() => {
         qc.invalidateQueries({ queryKey: ["billing"] })
       }).catch(() => {})

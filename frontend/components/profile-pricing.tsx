@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Check } from "lucide-react"
 import { billingApi, type UserPlan } from "@/lib/api"
 import { plans, INTERVAL_MONTHS, INTERVAL_LABEL, formatPrice, type Interval } from "@/lib/plans"
+import { trackGoal } from "@/lib/analytics"
 
 const PAID_PLANS = plans.filter((p) => p.key === "standard" || p.key === "premium")
 
@@ -17,6 +18,7 @@ export function ProfilePricing({ currentPlan }: { currentPlan: UserPlan }) {
     setLoading(planKey)
     try {
       const result = await billingApi.checkout(planKey, interval)
+      trackGoal("checkout_started")
       window.location.href = result.confirmation_url
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
