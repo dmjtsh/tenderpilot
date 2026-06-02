@@ -59,6 +59,8 @@ def search_tenders(
     sort_dest: str = "desc",
     price_min: int | None = None,
     price_max: int | None = None,
+    date_start: str | None = None,
+    date_end: str | None = None,
     session: requests.Session | None = None,
     api_key: str | None = None,
 ) -> list[dict]:
@@ -66,6 +68,7 @@ def search_tenders(
     Fetch a page of tenders from TenderGuru list API.
 
     law_filter: "kom" (commercial), "44", "223", or "" (all).
+    date_start/date_end: filter by publication date, format "DD.MM.YYYY".
     Returns list of raw API dicts (without the Total item).
     """
     key = api_key or _get_api_key()
@@ -85,6 +88,10 @@ def search_tenders(
         params["price1"] = price_min
     if price_max is not None:
         params["price2"] = price_max
+    if date_start is not None:
+        params["date_start"] = date_start
+    if date_end is not None:
+        params["date_end"] = date_end
 
     sess = session or _session()
     resp = sess.get(BASE_URL, params=params, timeout=30)

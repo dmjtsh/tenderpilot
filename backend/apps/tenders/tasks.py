@@ -419,12 +419,20 @@ def cleanup_finished_tenders() -> dict:
 
 TENDERGURU_MAX_PER_RUN = 5000
 TENDERGURU_DELAY = 0.3
-TENDERGURU_STOP_AFTER = 3
+# Окно публикации: берём тендеры за последние N дней.
+# Покрывает пропуски при простое синка (рестарты, деплой и т.д.)
+TENDERGURU_DATE_WINDOW_DAYS = 3
 
 
 @shared_task(name="apps.tenders.tasks.sync_tenderguru", time_limit=7200)
 def sync_tenderguru() -> dict:
-    """Hourly sync of commercial tenders from TenderGuru API."""
+    """Sync of commercial tenders from TenderGuru API.
+
+    Filters by date_start (last TENDERGURU_DATE_WINDOW_DAYS days) so we only
+    scan recently published tenders instead of the entire catalogue.
+    TenderGuru sorts within a date by ID ascending, so new tenders within a
+    day appear on the last pages — date filtering keeps the page count small.
+    """
     from .models import Tender
     from .tenderguru_client import (
         search_tenders as tg_search,
@@ -457,15 +465,19 @@ def sync_tenderguru() -> dict:
     except Exception:
         pass
 
-    consecutive_no_new = 0
+    # Фильтр по дате — берём только свежие публикации
+    date_from = (timezone.now() - timedelta(days=TENDERGURU_DATE_WINDOW_DAYS))
+    date_start = date_from.strftime("%d.%m.%Y")
+
     new_tender_pks: list[int] = []
 
-    for page in range(1, 100):
+    for page in range(1, 500):
         try:
             items = tg_search(
                 page=page,
                 law_filter="kom",
                 actual=True,
+                date_start=date_start,
                 session=session,
             )
         except Exception as exc:
@@ -477,7 +489,6 @@ def sync_tenderguru() -> dict:
             break
 
         stats["pages"] = page
-        page_new = 0
 
         for item in items:
             try:
@@ -502,7 +513,6 @@ def sync_tenderguru() -> dict:
                     Tender.objects.filter(pk=tender.pk).update(enriched_at=timezone.now())
                     existing_numbers.add(parsed["number"])
                     new_tender_pks.append(tender.pk)
-                    page_new += 1
                     stats["new"] += 1
 
                     if len(new_tender_pks) >= TENDERGURU_MAX_PER_RUN:
@@ -510,13 +520,6 @@ def sync_tenderguru() -> dict:
             except Exception as exc:
                 logger.error("sync_tenderguru item error: %s", exc)
                 stats["errors"] += 1
-
-        if page_new == 0:
-            consecutive_no_new += 1
-            if consecutive_no_new >= TENDERGURU_STOP_AFTER:
-                break
-        else:
-            consecutive_no_new = 0
 
         if len(items) < 20:
             break
