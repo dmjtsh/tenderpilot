@@ -7,5 +7,7 @@ class AlertsConfig(AppConfig):
     verbose_name = "Алерты"
 
     def ready(self) -> None:
-        from .metrics import register_collector
-        register_collector()
+        import sys
+        if "runserver" in sys.argv or "gunicorn" in " ".join(sys.argv):
+            from .metrics import register_collector
+            register_collector()

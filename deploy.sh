@@ -36,6 +36,7 @@ ok "frontend собран"
 
 step "Обновление systemd сервисов"
 cp "$APP/infra/tenderpilot-worker.service" /etc/systemd/system/tenderpilot-worker.service
+cp "$APP/infra/tenderpilot-web.service" /etc/systemd/system/tenderpilot-web.service
 systemctl daemon-reload
 ok "systemd обновлён"
 
