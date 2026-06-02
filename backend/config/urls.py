@@ -3,6 +3,7 @@ from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
+    path("", include("django_prometheus.urls")),
     path("admin/", admin.site.urls),
     path("api/v1/tenders/", include("apps.tenders.urls")),
     path("api/v1/experiments/", include("apps.tenders.experiment_urls")),

@@ -2,16 +2,34 @@
 
 Дата обновления: 28 мая 2026
 
-## Docker Compose (локальная разработка)
+## Docker Compose
 
-4 сервиса с healthchecks:
+Базовые инфра-сервисы:
 - `postgres:16` — БД tenders (порт 5432)
 - `redis:7` — Celery broker (порт 6379)
 - `qdrant:latest` — vector DB (порт 6333)
 - `minio:latest` — S3 storage (порт 9000)
 
+Мониторинг-стек (см. ниже):
+- `prometheus` — сбор метрик (порт 9090)
+- `grafana` — дашборды (порт 3001, логин admin / `GRAFANA_PASSWORD`)
+- `flower` — Celery web UI (порт 5555)
+- `celery_exporter` — Celery→Prometheus (порт 9808)
+- `redis_exporter` — Redis→Prometheus (порт 9121)
+- `postgres_exporter` — Postgres→Prometheus (порт 9187)
+- `node_exporter` — CPU/RAM/диск (порт 9100, host network)
+
 ```bash
+# Все сервисы
 docker compose up -d
+
+# Только мониторинг
+docker compose up -d prometheus grafana flower celery_exporter redis_exporter postgres_exporter node_exporter
+```
+
+### Переменные для мониторинга
+```
+GRAFANA_PASSWORD=your_password   # default: admin
 ```
 
 ## Celery Beat (полное расписание)
@@ -65,6 +83,42 @@ for d in CompanyDirection.objects.all():
 "
 ```
 
+## Мониторинг (Prometheus + Grafana)
+
+### Источники метрик
+
+| Job | Target | Что собирает |
+|-----|--------|-------------|
+| `django` | `host:8080/metrics` | HTTP latency, DB queries, custom pipeline metrics |
+| `celery` | `celery_exporter:9808` | Task success/failure/runtime по task_name |
+| `redis` | `redis_exporter:9121` | Memory, ops/sec, connections, queue depth |
+| `postgres` | `postgres_exporter:9187` | Connections, transactions, DB size |
+| `node` | `localhost:9100` | CPU, RAM, disk, network |
+| `qdrant` | `qdrant:6333/metrics` | Vector counts, storage size |
+
+### Custom метрики Django (`/metrics`)
+
+- `tenderpilot_tenders_total{source, status}` — количество тендеров
+- `tenderpilot_pipeline_last_success_timestamp_seconds{task_name}` — последний успешный запуск
+- `tenderpilot_pipeline_last_duration_ms{task_name}` — длительность последнего запуска
+- `tenderpilot_pipeline_errors_last_run{task_name}` — ошибки в последнем запуске
+- `tenderpilot_documents_total{parse_status}` — документы по статусу
+- `tenderpilot_unenriched_tenders_total` — активные тендеры без enrichment
+- `tenderpilot_unembedded_tenders_total` — активные тендеры без векторов
+
+### Grafana дашборды
+
+Провизионируются автоматически из `infra/grafana/provisioning/dashboards/`:
+
+| Файл | Дашборд | Что показывает |
+|------|---------|----------------|
+| `pipeline.json` | Pipeline & Data | Наполняемость, coverage, pipeline задачи |
+| `celery.json` | Celery & HTTP | Очереди, скорость/ошибки задач, HTTP latency |
+| `infra.json` | Infrastructure | CPU/RAM/диск, Redis, Postgres, Qdrant |
+
+### Prometheus конфиг
+`infra/prometheus.yml` — retention 30 дней, scrape_interval 15s.
+
 ## Environment Variables
 
 ```
@@ -84,6 +138,7 @@ TENDERGURU_API_KEY=...
 YOOKASSA_SHOP_ID=...
 YOOKASSA_SECRET_KEY=...
 YOOKASSA_RETURN_URL=...
+GRAFANA_PASSWORD=...
 ```
 
 ## Разработка
