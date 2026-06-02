@@ -129,12 +129,13 @@ services:
 
   node_exporter:
     image: prom/node-exporter:v1.8.0
-    network_mode: host
     pid: host
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+    ports:
+      - "9100:9100"
     command:
       - "--path.procfs=/host/proc"
       - "--path.sysfs=/host/sys"
