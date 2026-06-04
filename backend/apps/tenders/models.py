@@ -2,6 +2,8 @@ import uuid
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.indexes import GinIndex
 
 
 class Customer(models.Model):
@@ -108,6 +110,7 @@ class Tender(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    search_vector = SearchVectorField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Тендер"
@@ -118,6 +121,9 @@ class Tender(models.Model):
                 fields=["number", "source"],
                 name="unique_number_per_source",
             )
+        ]
+        indexes = [
+            GinIndex(fields=["search_vector"], name="tender_search_vector_gin"),
         ]
 
     def __str__(self) -> str:
