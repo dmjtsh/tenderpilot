@@ -191,7 +191,7 @@ created_at          DateTimeField
 |------|-----------|----------|
 | `enrich_tender` | countdown=5 после sync | max_retries=3, delay=60с. При финальном провале ставит enriched_at |
 | `sync_active_tenders` | каждый час :00 | ЕИС по дням × ценовым диапазонам, time_limit=1800 |
-| `sync_tenderguru` | каждые 2ч :15 | 5000/run, time_limit=7200. Сканирует ВЕСЬ датовый диапазон (window=2дн), без потолка страниц — внутри дня API сортирует ID по возрастанию, свежак в хвосте дня |
+| `sync_tenderguru` | каждые 2ч :15 | 5000/run, time_limit=7200. Сканирует ВЕСЬ датовый диапазон (window=2дн), без потолка страниц — внутри дня API сортирует ID по возрастанию, свежак в хвосте дня. В конце — verified-expiry: протухшие TG-тендеры перед FINISHED перепроверяются по detail-API (продлён дедлайн → остаётся active), до 1000/прогон. TG исключён из дедлайн-экспирации в `sync_active_tenders` |
 | `sync_komtender` | каждые 30 мин | Коммерческие тендеры с komtender.ru |
 | `cleanup_finished_tenders` | воскресенье 04:00 | Помечает старые завершённые тендеры |
 

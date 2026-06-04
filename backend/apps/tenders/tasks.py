@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone as dt_tz
 from celery import shared_task
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -262,6 +263,9 @@ def sync_active_tenders() -> dict:
     stats["updated"] = stats["fetched"] - stats["new"]
 
     # --- Помечаем просроченные тендеры как FINISHED и удаляем из Qdrant ---
+    # TenderGuru исключён: его дедлайны часто продлевают, поэтому TG-тендеры
+    # экспирируются отдельно в sync_tenderguru с предварительной проверкой по API
+    # (см. _verify_and_expire_tenderguru). Для ЕИС такой проверки не нужно.
     from apps.search.services import qdrant
 
     now = timezone.now()
@@ -271,7 +275,7 @@ def sync_active_tenders() -> dict:
             deadline_at__lt=now,
             deadline_at__isnull=False,
             status=Tender.Status.ACTIVE,
-        ).values_list("pk", flat=True)
+        ).exclude(source=Tender.Source.TENDERGURU).values_list("pk", flat=True)
     )
     if expired_ids:
         Tender.objects.filter(pk__in=expired_ids).update(status=Tender.Status.FINISHED)
@@ -289,7 +293,7 @@ def sync_active_tenders() -> dict:
             deadline_at__isnull=True,
             published_at__lt=now - timedelta(days=180),
             status=Tender.Status.ACTIVE,
-        ).values_list("pk", flat=True)
+        ).exclude(source=Tender.Source.TENDERGURU).values_list("pk", flat=True)
     )
     if old_ids:
         Tender.objects.filter(pk__in=old_ids).update(status=Tender.Status.FINISHED)
@@ -423,6 +427,78 @@ TENDERGURU_DELAY = 0.3
 # Покрывает пропуски при простое синка (рестарты, деплой и т.д.)
 TENDERGURU_DATE_WINDOW_DAYS = 2  # вчера + сегодня, покрывает ночной пропуск
 
+# Verified expiry: за один прогон проверяем по API не больше N протухших
+# TG-тендеров (защита от спама лимитов). Остаток досматривается в следующий
+# прогон — пока он остаётся active, что безопасно.
+TENDERGURU_EXPIRE_MAX_CHECKS = 1000
+TENDERGURU_EXPIRE_DELAY = 0.3
+
+
+def _verify_and_expire_tenderguru(now, session=None) -> dict:
+    """Аккуратно экспирировать протухшие TenderGuru-тендеры с проверкой по API.
+
+    TenderGuru часто продлевает дедлайны: тендер с прошедшим у нас `deadline_at`
+    может всё ещё быть активным (новый `EndTime` в будущем). Поэтому перед тем
+    как гасить, перечитываем карточку через detail-API:
+      * свежий дедлайн в будущем  -> продлеваем `deadline_at`, оставляем active,
+        обновляем payload в Qdrant (embed_tender);
+      * иначе (прошёл / карточка пропала / ошибка) -> FINISHED + удаляем из Qdrant.
+
+    Лимитировано TENDERGURU_EXPIRE_MAX_CHECKS за прогон.
+    """
+    from .models import Tender
+    from .tenderguru_client import fetch_tender_detail, parse_list_item
+    from apps.search.services import qdrant
+    from apps.search.tasks import embed_tender
+
+    res = {"checked": 0, "extended": 0, "finished": 0, "errors": 0}
+
+    candidates = list(
+        Tender.objects.filter(
+            source=Tender.Source.TENDERGURU,
+            status=Tender.Status.ACTIVE,
+            deadline_at__lt=now,
+            deadline_at__isnull=False,
+        )
+        .order_by("deadline_at")
+        .values_list("pk", "number")[:TENDERGURU_EXPIRE_MAX_CHECKS]
+    )
+
+    for pk, number in candidates:
+        res["checked"] += 1
+        tg_id = number.replace("tg-", "")
+
+        fresh_deadline = None
+        try:
+            detail = fetch_tender_detail(tg_id, session=session)
+            if detail:
+                parsed = parse_list_item(detail)
+                if parsed and parsed.get("deadline_at"):
+                    fresh_deadline = parse_datetime(parsed["deadline_at"])
+        except Exception as exc:
+            logger.warning("tg expire: detail %s failed: %s", number, exc)
+            res["errors"] += 1
+
+        if fresh_deadline and fresh_deadline > now:
+            # Продлён в TenderGuru — оставляем активным, освежаем дедлайн и Qdrant.
+            Tender.objects.filter(pk=pk).update(deadline_at=fresh_deadline)
+            try:
+                embed_tender.delay(pk)
+            except Exception as exc:
+                logger.warning("tg expire: embed %d failed: %s", pk, exc)
+            res["extended"] += 1
+        else:
+            Tender.objects.filter(pk=pk).update(status=Tender.Status.FINISHED)
+            try:
+                qdrant.delete_tender(pk)
+            except Exception as exc:
+                logger.warning("tg expire: qdrant delete %d failed: %s", pk, exc)
+            res["finished"] += 1
+
+        time.sleep(TENDERGURU_EXPIRE_DELAY)
+
+    return res
+
 
 @shared_task(name="apps.tenders.tasks.sync_tenderguru", time_limit=7200)
 def sync_tenderguru() -> dict:
@@ -436,6 +512,11 @@ def sync_tenderguru() -> dict:
     page range, not on page 1. We therefore crawl the ENTIRE date window (no
     early page cap) until an empty page marks the real end — otherwise every
     run would re-scan only the stale head of the day and miss all new tenders.
+
+    At the end we run verified expiry (_verify_and_expire_tenderguru): TG
+    deadlines are often extended, so a TG tender past its stored deadline is
+    re-checked via the detail API before being finished. This is why TG is
+    excluded from the deadline-based expiry in sync_active_tenders.
     """
     from .models import Tender
     from .tenderguru_client import (
@@ -454,6 +535,9 @@ def sync_tenderguru() -> dict:
         "new": 0,
         "enriched": 0,
         "errors": 0,
+        "expired_checked": 0,
+        "extended": 0,
+        "finished": 0,
     }
 
     existing_numbers = set(
@@ -553,6 +637,17 @@ def sync_tenderguru() -> dict:
     for pk in new_tender_pks:
         enrich_tender.apply_async(args=[pk], countdown=5)
 
+    # Аккуратная экспирация протухших TG-тендеров с проверкой дедлайна по API.
+    try:
+        exp = _verify_and_expire_tenderguru(timezone.now(), session=session)
+        stats["expired_checked"] = exp["checked"]
+        stats["extended"] = exp["extended"]
+        stats["finished"] = exp["finished"]
+        stats["errors"] += exp["errors"]
+    except Exception as exc:
+        logger.error("sync_tenderguru expire step error: %s", exc)
+        stats["errors"] += 1
+
     if stats["new"] == 0 and stats["errors"] > 0:
         sync_status = "failed"
     elif stats["errors"] > 0:
@@ -561,9 +656,11 @@ def sync_tenderguru() -> dict:
         sync_status = "ok"
 
     logger.info(
-        "sync_tenderguru done: pages=%d fetched=%d new=%d enriched=%d errors=%d",
+        "sync_tenderguru done: pages=%d fetched=%d new=%d enriched=%d errors=%d "
+        "| expire: checked=%d extended=%d finished=%d",
         stats["pages"], stats["fetched"], stats["new"],
         stats["enriched"], stats["errors"],
+        stats["expired_checked"], stats["extended"], stats["finished"],
     )
     log_pipeline_run(
         task_name="sync_tenderguru",
