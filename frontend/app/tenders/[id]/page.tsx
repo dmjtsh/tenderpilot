@@ -950,6 +950,9 @@ function docsAreProcessing(docs: TenderDoc[]): boolean {
 function DocumentsBlock({ tenderId }: { tenderId: number }) {
   const queryClient = useQueryClient()
   const [downloading, setDownloading] = useState(false)
+  // Отслеживаем, что мы уже видели статус "downloading" после нажатия кнопки.
+  // Это нужно чтобы не сбрасывать downloading по стale "failed" из кеша.
+  const seenDownloadingRef = useRef(false)
   const { data: resp, isLoading: isQueryLoading } = useDocsQuery(tenderId, downloading)
   const docs = resp?.docs ?? []
   const downloadStatus = resp?.downloadStatus ?? ""
@@ -958,6 +961,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
   const isProcessing = docsAreProcessing(docs)
 
   async function handleDownload() {
+    seenDownloadingRef.current = false
     setDownloading(true)
     try {
       const res = await tendersApi.downloadDocs(tenderId)
@@ -975,8 +979,15 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
   }
 
   useEffect(() => {
-    if (!downloading) return
-    if (downloadStatus === "no_docs" || downloadStatus === "failed") {
+    if (!downloading) {
+      seenDownloadingRef.current = false
+      return
+    }
+    if (downloadStatus === "downloading") {
+      seenDownloadingRef.current = true
+    }
+    // Сбрасываем только если уже видели "downloading" — чтобы не реагировать на stale "failed" из кеша
+    if (downloadStatus === "no_docs" || (downloadStatus === "failed" && seenDownloadingRef.current)) {
       setDownloading(false)
       return
     }
@@ -985,6 +996,13 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
       return () => clearTimeout(t)
     }
   }, [downloading, docs.length, isProcessing, downloadStatus])
+
+  // Таймаут 3 минуты — защита от навсегда зависшего статуса
+  useEffect(() => {
+    if (!downloading) return
+    const t = setTimeout(() => setDownloading(false), 3 * 60 * 1000)
+    return () => clearTimeout(t)
+  }, [downloading])
 
   const isLoading = isQueryLoading
 
