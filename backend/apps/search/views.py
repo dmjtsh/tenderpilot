@@ -129,8 +129,9 @@ class TenderSearchView(APIView):
             bm25_ids = []
 
         # === Ветка 2: Qdrant (vector / semantic) ===
-        # Порог отсекает семантически далёкие результаты до RRF
-        _VECTOR_SCORE_THRESHOLD = 0.50
+        # Фильтруем короткие заголовки (< 30 символов) — они дают шумные векторы
+        # и вытесняют релевантные результаты (Болты, Сетка, Канат и т.д.)
+        _VECTOR_MIN_TITLE_LEN = 30
         try:
             vector = embedder.embed_query(query)
             vector_hits = qdrant.search_tenders(
@@ -143,7 +144,10 @@ class TenderSearchView(APIView):
                 law_types=params.get("law_type") or None,
                 procedure_types=params.get("procedure_type") or None,
             )
-            vector_ids = [h["id"] for h in vector_hits if h["score"] >= _VECTOR_SCORE_THRESHOLD]
+            vector_ids = [
+                h["id"] for h in vector_hits
+                if len(h.get("title", "")) >= _VECTOR_MIN_TITLE_LEN
+            ]
         except Exception:
             logger.exception("Vector search failed, falling back to BM25-only")
             vector_ids = []
