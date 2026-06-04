@@ -12,6 +12,7 @@ from __future__ import annotations
 import html
 import logging
 import re
+import time
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -22,6 +23,12 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.tenderguru.ru/api2.3/export"
 USER_AGENT = "Tenderoll/1.0 (tender aggregator; support@tenderoll.ru)"
+
+# List pagination is deep (~4200 pages for the full active catalogue). A single
+# transient hiccup (rate limit, empty body, 5xx) must NOT abort a multi-hour
+# crawl, so list fetches retry with linear backoff before giving up.
+LIST_MAX_RETRIES = 4
+LIST_RETRY_BACKOFF = 2.0  # seconds * attempt
 
 PROCEDURE_KEYWORDS: dict[str, str] = {
     "электронный аукцион": "auction",
@@ -50,7 +57,7 @@ def _session() -> requests.Session:
 # List endpoint
 # ---------------------------------------------------------------------------
 
-def search_tenders(
+def fetch_list_page(
     *,
     page: int = 1,
     law_filter: str = "kom",
@@ -63,13 +70,23 @@ def search_tenders(
     date_end: str | None = None,
     session: requests.Session | None = None,
     api_key: str | None = None,
-) -> list[dict]:
+    retries: int = LIST_MAX_RETRIES,
+) -> tuple[list[dict], int | None]:
     """
-    Fetch a page of tenders from TenderGuru list API.
+    Fetch one page of the TenderGuru list API, with retries.
 
     law_filter: "kom" (commercial), "44", "223", or "" (all).
     date_start/date_end: filter by publication date, format "DD.MM.YYYY".
-    Returns list of raw API dicts (without the Total item).
+
+    Returns ``(items, total)`` where ``items`` is the list of raw API dicts
+    (without the leading ``{"Total": ...}`` item) and ``total`` is the parsed
+    catalogue size for the current filter (or None if absent).
+
+    An empty ``items`` list means we are genuinely past the last page — the API
+    returns ``[]`` only at the real end of the catalogue. Transient failures
+    (network errors, non-JSON bodies, 5xx) are retried; if every attempt fails
+    the underlying exception is re-raised so callers can distinguish a real
+    "end of catalogue" from a temporary hiccup.
     """
     key = api_key or _get_api_key()
     params: dict[str, str | int] = {
@@ -94,14 +111,71 @@ def search_tenders(
         params["date_end"] = date_end
 
     sess = session or _session()
-    resp = sess.get(BASE_URL, params=params, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
+    last_exc: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = sess.get(BASE_URL, params=params, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+        except (requests.RequestException, ValueError) as exc:
+            last_exc = exc
+            logger.warning(
+                "TenderGuru list page=%s attempt %d/%d failed: %s",
+                page, attempt, retries, exc,
+            )
+            if attempt < retries:
+                time.sleep(LIST_RETRY_BACKOFF * attempt)
+            continue
 
-    if not isinstance(data, list) or len(data) < 2:
-        return []
+        if not isinstance(data, list) or not data:
+            return [], None
 
-    return data[1:]
+        total: int | None = None
+        first = data[0]
+        if isinstance(first, dict) and "Total" in first:
+            try:
+                total = int(str(first["Total"]).strip())
+            except (TypeError, ValueError):
+                total = None
+            return data[1:], total
+
+        # No Total marker (unexpected) — treat the whole payload as items.
+        return data, None
+
+    raise last_exc or requests.RequestException(
+        f"TenderGuru list page {page} failed after {retries} attempts"
+    )
+
+
+def search_tenders(
+    *,
+    page: int = 1,
+    law_filter: str = "kom",
+    actual: bool = True,
+    sort_by: str = "by_date",
+    sort_dest: str = "desc",
+    price_min: int | None = None,
+    price_max: int | None = None,
+    date_start: str | None = None,
+    date_end: str | None = None,
+    session: requests.Session | None = None,
+    api_key: str | None = None,
+) -> list[dict]:
+    """Backward-compatible wrapper around :func:`fetch_list_page` returning only items."""
+    items, _ = fetch_list_page(
+        page=page,
+        law_filter=law_filter,
+        actual=actual,
+        sort_by=sort_by,
+        sort_dest=sort_dest,
+        price_min=price_min,
+        price_max=price_max,
+        date_start=date_start,
+        date_end=date_end,
+        session=session,
+        api_key=api_key,
+    )
+    return items
 
 
 def fetch_tender_detail(

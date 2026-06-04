@@ -429,13 +429,17 @@ def sync_tenderguru() -> dict:
     """Sync of commercial tenders from TenderGuru API.
 
     Filters by date_start (last TENDERGURU_DATE_WINDOW_DAYS days) so we only
-    scan recently published tenders instead of the entire catalogue.
-    TenderGuru sorts within a date by ID ascending, so new tenders within a
-    day appear on the last pages — date filtering keeps the page count small.
+    scan recently published tenders instead of the entire 84k catalogue.
+
+    IMPORTANT: TenderGuru sorts newest-day-first but ID-ASCENDING within a day,
+    so the freshest tenders of the current day live in the TAIL of that day's
+    page range, not on page 1. We therefore crawl the ENTIRE date window (no
+    early page cap) until an empty page marks the real end — otherwise every
+    run would re-scan only the stale head of the day and miss all new tenders.
     """
     from .models import Tender
     from .tenderguru_client import (
-        search_tenders as tg_search,
+        fetch_list_page,
         fetch_tender_detail,
         parse_list_item,
         enrich_from_detail,
@@ -471,9 +475,20 @@ def sync_tenderguru() -> dict:
 
     new_tender_pks: list[int] = []
 
-    for page in range(1, 500):
+    # TenderGuru sorts newest-day-first but ID-ascending WITHIN a day, so the
+    # freshest tenders of the current day sit in the TAIL of the day's page
+    # range — well beyond a small page cap. We must therefore crawl the whole
+    # date window, not just the first N pages, or we permanently miss the newest
+    # tenders every run. An empty page marks the real end of the window; a page
+    # that fails every retry is skipped, not fatal.
+    EMPTY_STOP = 3
+    HARD_PAGE_CAP = 4000  # safety guard (~2-day window is ~1800 pages)
+    consecutive_empty = 0
+    page = 1
+
+    while page < HARD_PAGE_CAP:
         try:
-            items = tg_search(
+            items, _ = fetch_list_page(
                 page=page,
                 law_filter="kom",
                 actual=True,
@@ -481,12 +496,18 @@ def sync_tenderguru() -> dict:
                 session=session,
             )
         except Exception as exc:
-            logger.error("sync_tenderguru list page=%d error: %s", page, exc)
+            logger.error("sync_tenderguru list page=%d failed after retries, skipping: %s", page, exc)
             stats["errors"] += 1
-            break
+            page += 1
+            continue
 
         if not items:
-            break
+            consecutive_empty += 1
+            if consecutive_empty >= EMPTY_STOP:
+                break
+            page += 1
+            continue
+        consecutive_empty = 0
 
         stats["pages"] = page
 
@@ -521,12 +542,12 @@ def sync_tenderguru() -> dict:
                 logger.error("sync_tenderguru item error: %s", exc)
                 stats["errors"] += 1
 
-        if len(items) < 20:
-            break
-
+        # A short page (<20) is normal mid-window — only an empty page (handled
+        # above) marks the end, so we keep crawling instead of bailing early.
         if len(new_tender_pks) >= TENDERGURU_MAX_PER_RUN:
             break
 
+        page += 1
         time.sleep(TENDERGURU_DELAY)
 
     for pk in new_tender_pks:

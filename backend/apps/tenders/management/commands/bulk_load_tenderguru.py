@@ -30,7 +30,7 @@ class Command(BaseCommand):
         import requests as req
         from apps.tenders.models import Tender
         from apps.tenders.tenderguru_client import (
-            search_tenders,
+            fetch_list_page,
             fetch_tender_detail,
             parse_list_item,
             enrich_from_detail,
@@ -56,25 +56,50 @@ class Command(BaseCommand):
         session.headers["User-Agent"] = "Tenderoll/1.0 (tender aggregator; support@tenderoll.ru)"
 
         stats = {"pages": 0, "fetched": 0, "new": 0, "skipped": 0, "errors": 0, "enriched": 0}
-        consecutive_skip_pages = 0
-        SKIP_STOP = 3
 
-        for page in range(start_page, 5000):
+        # The catalogue is sorted newest-first and paginates cleanly to its real
+        # end (an empty page only appears past the last record). We crawl the
+        # whole computed range instead of bailing on the first short/empty page,
+        # and a page that fails every retry is skipped — never fatal.
+        EMPTY_STOP = 3            # consecutive genuinely-empty pages = end reached
+        HARD_PAGE_CAP = 8000      # safety guard against an unbounded loop
+        consecutive_empty = 0
+        total: int | None = None
+        last_page_hint: int | None = None
+
+        page = start_page
+        while page < HARD_PAGE_CAP:
             try:
-                items = search_tenders(
+                items, page_total = fetch_list_page(
                     page=page,
                     law_filter=law,
                     actual=True,
                     session=session,
                 )
             except Exception as exc:
-                self.stderr.write(f"Page {page} error: {exc}")
+                # Persistent failure on one page: log, skip it, keep crawling.
+                self.stderr.write(f"Page {page} failed after retries, skipping: {exc}")
                 stats["errors"] += 1
-                break
+                page += 1
+                continue
+
+            if total is None and page_total:
+                total = page_total
+                last_page_hint = (total + 19) // 20
+                self.stdout.write(
+                    f"Catalogue Total={total} (~{last_page_hint} pages)"
+                )
 
             if not items:
-                self.stdout.write(f"Page {page}: empty, stopping")
-                break
+                consecutive_empty += 1
+                if consecutive_empty >= EMPTY_STOP:
+                    self.stdout.write(
+                        f"Page {page}: {consecutive_empty} consecutive empty pages — end of catalogue"
+                    )
+                    break
+                page += 1
+                continue
+            consecutive_empty = 0
 
             stats["pages"] = page
 
@@ -135,10 +160,9 @@ class Command(BaseCommand):
                 self.stdout.write(f"Reached limit={limit}")
                 break
 
-            if len(items) < 20:
-                self.stdout.write(f"Page {page}: {len(items)} items (last page)")
-                break
-
+            # A short page (<20) is normal mid-catalogue under shifting/actual
+            # filters — only a genuinely empty page marks the end, so we keep going.
+            page += 1
             time.sleep(delay)
 
         self.stdout.write(self.style.SUCCESS(
