@@ -13,29 +13,9 @@ from apps.tenders.models import Tender
 from apps.tenders.region_aliases import expand_regions
 from apps.users.models import CompanyProfile
 from .services import qdrant
-from .embedder import embedder
 from .serializers import SearchQuerySerializer, SearchResultItemSerializer
 
 logger = logging.getLogger(__name__)
-
-# k-константа RRF — стандартное значение 60 (из оригинальной статьи)
-_RRF_K = 60
-
-
-def _rrf_merge(
-    bm25_ids: list[int],
-    vector_ids: list[int],
-) -> list[tuple[int, float]]:
-    """
-    Reciprocal Rank Fusion: объединяет два ранжированных списка.
-    Возвращает список (id, rrf_score) отсортированный по убыванию.
-    """
-    scores: dict[int, float] = {}
-    for rank, tid in enumerate(bm25_ids):
-        scores[tid] = scores.get(tid, 0.0) + 1.0 / (_RRF_K + rank + 1)
-    for rank, tid in enumerate(vector_ids):
-        scores[tid] = scores.get(tid, 0.0) + 1.0 / (_RRF_K + rank + 1)
-    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
 
 def _apply_db_filters(qs, params: dict):
@@ -73,10 +53,6 @@ def _apply_db_filters(qs, params: dict):
     return qs
 
 
-# Сколько кандидатов берём из каждого источника перед RRF
-_CANDIDATE_FACTOR = 10
-
-
 class TenderSearchView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -90,7 +66,6 @@ class TenderSearchView(APIView):
             return Response({"data": [], "error": None})
 
         want = params["limit"]
-        candidate_limit = want * _CANDIDATE_FACTOR
         now = timezone.now()
 
         # --- Регионы ---
@@ -99,81 +74,33 @@ class TenderSearchView(APIView):
             regions = [params["region"]]
         expanded_regions = expand_regions(regions) if regions else None
 
-        # === Ветка 1: Postgres FTS (BM25) ===
-        try:
-            pg_query = SearchQuery(query, config="russian")
-            bm25_qs = (
-                Tender.objects.filter(
-                    search_vector=pg_query,
-                    status=params.get("status") or "active",
-                    deadline_at__gt=now,
-                )
-                .exclude(title="")
-                .annotate(rank=SearchRank(F("search_vector"), pg_query))
-                .order_by("-rank")
-            )
-            if expanded_regions:
-                bm25_qs = bm25_qs.filter(region__in=expanded_regions)
-            if params.get("nmck_min") is not None:
-                bm25_qs = bm25_qs.filter(nmck__gte=params["nmck_min"])
-            if params.get("nmck_max") is not None:
-                bm25_qs = bm25_qs.filter(nmck__lte=params["nmck_max"])
-            if params.get("law_type"):
-                bm25_qs = bm25_qs.filter(law_type__in=params["law_type"])
-            if params.get("procedure_type"):
-                bm25_qs = bm25_qs.filter(procedure_type__in=params["procedure_type"])
-
-            bm25_ids = list(bm25_qs.values_list("id", flat=True)[:candidate_limit])
-        except Exception:
-            logger.exception("BM25 search failed, falling back to vector-only")
-            bm25_ids = []
-
-        # === Ветка 2: Qdrant (vector / semantic) ===
-        # Фильтруем короткие заголовки (< 30 символов) — они дают шумные векторы
-        # и вытесняют релевантные результаты (Болты, Сетка, Канат и т.д.)
-        _VECTOR_MIN_TITLE_LEN = 30
-        try:
-            vector = embedder.embed_query(query)
-            vector_hits = qdrant.search_tenders(
-                vector=vector,
-                limit=candidate_limit,
-                regions=expanded_regions,
-                status=params.get("status") or "active",
-                nmck_min=params.get("nmck_min"),
-                nmck_max=params.get("nmck_max"),
-                law_types=params.get("law_type") or None,
-                procedure_types=params.get("procedure_type") or None,
-            )
-            vector_ids = [
-                h["id"] for h in vector_hits
-                if len(h.get("title", "")) >= _VECTOR_MIN_TITLE_LEN
-            ]
-        except Exception:
-            logger.exception("Vector search failed, falling back to BM25-only")
-            vector_ids = []
-
-        if not bm25_ids and not vector_ids:
-            return Response({"data": [], "error": None})
-
-        # === RRF merge ===
-        merged = _rrf_merge(bm25_ids, vector_ids)  # [(id, rrf_score), ...]
-        merged_ids = [tid for tid, _ in merged]
-
-        # === Загрузка из БД (дедлайн + DB-only фильтры) ===
+        # === Postgres FTS (BM25) ===
+        pg_query = SearchQuery(query, config="russian")
         qs = (
-            Tender.objects.filter(pk__in=merged_ids, deadline_at__gt=now)
+            Tender.objects.filter(
+                search_vector=pg_query,
+                status=params.get("status") or "active",
+                deadline_at__gt=now,
+            )
             .exclude(title="")
+            .annotate(rank=SearchRank(F("search_vector"), pg_query))
+            .order_by("-rank")
             .select_related("customer")
         )
+        if expanded_regions:
+            qs = qs.filter(region__in=expanded_regions)
+        if params.get("nmck_min") is not None:
+            qs = qs.filter(nmck__gte=params["nmck_min"])
+        if params.get("nmck_max") is not None:
+            qs = qs.filter(nmck__lte=params["nmck_max"])
+        if params.get("law_type"):
+            qs = qs.filter(law_type__in=params["law_type"])
+        if params.get("procedure_type"):
+            qs = qs.filter(procedure_type__in=params["procedure_type"])
         qs = _apply_db_filters(qs, params)
-        tenders = {t.pk: t for t in qs}
 
-        # === Собираем результаты в порядке RRF ===
         results = []
-        for tid, _ in merged:
-            tender = tenders.get(tid)
-            if not tender:
-                continue
+        for tender in qs[:want]:
             results.append({
                 "id": tender.pk,
                 "number": tender.number,
@@ -190,8 +117,6 @@ class TenderSearchView(APIView):
                 "auction_date": tender.auction_date,
                 "procedure_type": tender.procedure_type,
             })
-            if len(results) >= want:
-                break
 
         out = SearchResultItemSerializer(results, many=True)
         return Response({"data": out.data, "error": None})
