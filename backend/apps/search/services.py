@@ -140,7 +140,12 @@ class QdrantService:
                 FieldCondition(key="deadline_at_ts", range=Range(gt=int(time.time()))),
             ]
 
-            regions = expand_regions(extra_regions or direction.regions or [])
+            if extra_regions:
+                regions = expand_regions(extra_regions)
+            elif getattr(direction, "region_mode", "boost") == "only" and direction.regions:
+                regions = expand_regions(direction.regions)
+            else:
+                regions = []
             if regions:
                 conditions.append(
                     FieldCondition(key="region", match=MatchAny(any=regions))

@@ -55,8 +55,13 @@ class TenderFilterSet(django_filters.FilterSet):
 
     def filter_region(self, queryset, name, value):
         vals = [v.strip() for v in value.split(",") if v.strip()]
+        if not vals:
+            return queryset
+        region_mode = self.request.query_params.get("region_mode", "only")
+        if region_mode == "boost":
+            return queryset
         expanded = expand_regions(vals)
-        return queryset.filter(region__in=expanded) if expanded else queryset
+        return queryset.filter(region__in=expanded)
 
     def filter_deadline_days(self, queryset, name, value):
         if value is None:
@@ -139,23 +144,36 @@ class CustomerSearchView(APIView):
 
 
 class TenderViewSet(viewsets.ReadOnlyModelViewSet):
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = TenderFilterSet
     search_fields = ["title", "number"]
-    ordering_fields = ["published_at", "deadline_at", "nmck"]
-    ordering = ["-content_quality", "-published_at"]
 
     def get_queryset(self):
         now = timezone.now()
-        return (
+        qs = (
             Tender.objects.select_related("customer")
             .filter(
                 Q(deadline_at__gt=now) | Q(deadline_at__isnull=True),
                 status=Tender.Status.ACTIVE,
             )
             .exclude(title="")
-            .order_by("-content_quality", "-published_at")
         )
+
+        region_mode = self.request.query_params.get("region_mode")
+        region_raw = self.request.query_params.get("region", "")
+        boost_regions = [v.strip() for v in region_raw.split(",") if v.strip()]
+
+        if region_mode == "boost" and boost_regions:
+            from .geo import build_nearby_annotations, get_coords
+            coords = get_coords(boost_regions[0])
+            if coords:
+                priority_ann, distance_ann = build_nearby_annotations(boost_regions, coords)
+                return qs.annotate(
+                    region_priority=priority_ann,
+                    geo_distance=distance_ann,
+                ).order_by("region_priority", "geo_distance", "-content_quality", "-published_at")
+
+        return qs.order_by("-content_quality", "-published_at")
 
     def get_permissions(self):
         if self.action in ("list", "retrieve", "similar", "docs"):

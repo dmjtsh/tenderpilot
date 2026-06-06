@@ -237,6 +237,28 @@ class TenderMatchView(APIView):
         }
         scored.sort(key=sort_keys.get(sort_by, sort_keys["score"]))
 
+        region_mode = request.query_params.get("region_mode")
+        filter_bar_regions = self._csv_param(request, "region")
+
+        geo_regions: list[str] | None = None
+        if region_mode == "boost" and filter_bar_regions:
+            geo_regions = filter_bar_regions
+        elif not filter_bar_regions:
+            dir_qs = profile.directions.filter(id__in=direction_ids) if direction_ids else profile.directions.all()
+            for d in dir_qs:
+                if getattr(d, "region_mode", "boost") == "boost" and d.regions:
+                    geo_regions = list(geo_regions or []) + list(d.regions)
+
+        if geo_regions:
+            from apps.tenders.geo import geo_sort_key, get_coords
+            user_coords = get_coords(geo_regions[0])
+            if user_coords:
+                expanded = set(expand_regions(geo_regions))
+                scored.sort(key=lambda r: (
+                    geo_sort_key(r, expanded, user_coords),
+                    sort_keys.get(sort_by, sort_keys["score"])(r),
+                ))
+
         start = (page - 1) * page_size
         end = start + page_size
         results = scored[start:end]

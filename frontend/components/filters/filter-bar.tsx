@@ -56,6 +56,33 @@ interface Props {
   activeCount: number
 }
 
+const regionModeTabs = (filters: TenderFilters, setFilter: Props["setFilter"]) => (
+  <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5 border-b border-gray-100">
+    <button
+      type="button"
+      onClick={() => setFilter("region_mode", "only")}
+      className={`h-7 px-2.5 text-xs font-medium rounded transition-colors ${
+        filters.region_mode === "only"
+          ? "bg-gray-900 text-white"
+          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      }`}
+    >
+      Только эти
+    </button>
+    <button
+      type="button"
+      onClick={() => setFilter("region_mode", "boost")}
+      className={`h-7 px-2.5 text-xs font-medium rounded transition-colors ${
+        filters.region_mode === "boost"
+          ? "bg-gray-900 text-white"
+          : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+      }`}
+    >
+      Сначала эти
+    </button>
+  </div>
+)
+
 export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCount }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -119,6 +146,7 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
       </FilterDropdown>
 
       <FilterDropdown label="Регион" activeCount={filters.regions.length}>
+        {regionModeTabs(filters, setFilter)}
         <MultiSelectFilter
           options={regionOptions}
           selected={filters.regions}
@@ -240,6 +268,30 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1.5">Регион</p>
+                <div className="flex items-center gap-1 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setFilter("region_mode", "only")}
+                    className={`h-7 px-2.5 text-xs font-medium rounded transition-colors ${
+                      filters.region_mode === "only"
+                        ? "bg-gray-900 text-white"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    Только эти
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilter("region_mode", "boost")}
+                    className={`h-7 px-2.5 text-xs font-medium rounded transition-colors ${
+                      filters.region_mode === "boost"
+                        ? "bg-gray-900 text-white"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    Сначала эти
+                  </button>
+                </div>
                 <MultiSelectFilter
                   options={regionOptions}
                   selected={filters.regions}

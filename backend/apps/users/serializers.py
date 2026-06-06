@@ -91,7 +91,7 @@ class CompanyDirectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompanyDirection
         fields = [
-            "id", "name", "description", "okved_codes", "keywords", "exclude_keywords", "regions",
+            "id", "name", "description", "okved_codes", "keywords", "exclude_keywords", "regions", "region_mode",
             "nmck_min", "nmck_max", "law_types", "procedure_types",
             "vector_updated_at", "created_at",
         ]

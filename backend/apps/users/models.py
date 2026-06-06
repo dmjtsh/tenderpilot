@@ -50,6 +50,7 @@ class CompanyDirection(models.Model):
     keywords = ArrayField(models.CharField(max_length=100), default=list, blank=True)
     exclude_keywords = ArrayField(models.CharField(max_length=100), default=list, blank=True)
     regions = ArrayField(models.CharField(max_length=100), default=list, blank=True)
+    region_mode = models.CharField(max_length=10, default="boost", choices=[("only", "only"), ("boost", "boost")])
     nmck_min = models.BigIntegerField(null=True, blank=True)
     nmck_max = models.BigIntegerField(null=True, blank=True)
     law_types = ArrayField(models.CharField(max_length=10), default=list, blank=True)

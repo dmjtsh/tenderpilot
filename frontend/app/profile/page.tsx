@@ -334,6 +334,7 @@ function DirectionCard({
   const [keywords, setKeywords] = useState((direction.keywords ?? []).join(", "))
   const [excludeKeywords, setExcludeKeywords] = useState((direction.exclude_keywords ?? []).join(", "))
   const [regions, setRegions] = useState<string[]>(direction.regions ?? [])
+  const [regionMode, setRegionMode] = useState<"only" | "boost">(direction.region_mode ?? "boost")
   const [lawTypes, setLawTypes] = useState<string[]>(direction.law_types ?? [])
   const [procedureTypes, setProcedureTypes] = useState<string[]>(direction.procedure_types ?? [])
   const [nmckPreset, setNmckPreset] = useState(() => {
@@ -361,6 +362,7 @@ function DirectionCard({
         keywords: split(keywords),
         exclude_keywords: split(excludeKeywords),
         regions,
+        region_mode: regionMode,
         law_types: lawTypes,
         procedure_types: procedureTypes,
         nmck_min,
@@ -478,6 +480,47 @@ function DirectionCard({
 
           </div>
 
+          {/* Regions */}
+          <div className="space-y-3 mt-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-sm font-medium text-[#111827]">Регионы <span className="text-gray-400 font-normal">(необязательно)</span></p>
+                <div className="group relative">
+                  <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                  <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-64 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg shadow-lg z-50">
+                    <b>Только эти</b>: тендеры вне выбранных регионов не будут показаны<br />
+                    <b>Сначала эти</b>: покажем все тендеры, но из выбранных регионов первыми
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setRegionMode("only")}
+                  className={`h-7 px-2.5 text-xs font-medium rounded transition-colors ${
+                    regionMode === "only"
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Только эти
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegionMode("boost")}
+                  className={`h-7 px-2.5 text-xs font-medium rounded transition-colors ${
+                    regionMode === "boost"
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Сначала эти
+                </button>
+              </div>
+              <RegionSelect value={regions} onChange={setRegions} options={regionOptions} />
+            </div>
+          </div>
+
           {/* Section 2: Hard filters */}
           <div className="space-y-5 mt-6">
             <div className="bg-gray-50 -mx-5 px-5 py-3 border-y border-gray-200 flex items-center justify-between">
@@ -503,12 +546,6 @@ function DirectionCard({
                 onChange={(e) => setExcludeKeywords(e.target.value)}
               />
               <p className="text-xs text-gray-400 mt-1.5">Тендеры с этими словами в названии будут скрыты</p>
-            </div>
-
-            {/* Regions */}
-            <div>
-              <p className="text-sm font-medium text-[#111827] mb-2">Регионы <span className="text-gray-400 font-normal">(необязательно)</span></p>
-              <RegionSelect value={regions} onChange={setRegions} options={regionOptions} />
             </div>
 
             {/* NMC */}
@@ -636,6 +673,7 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
         keywords: [],
         exclude_keywords: [],
         regions: [],
+        region_mode: "boost",
         law_types: [],
         procedure_types: [],
         nmck_min: null,
@@ -976,6 +1014,7 @@ export default function ProfilePage() {
           keywords: [],
           exclude_keywords: [],
           regions: [],
+          region_mode: "boost",
           law_types: [],
           procedure_types: [],
           nmck_min: null,

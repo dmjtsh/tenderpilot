@@ -8,7 +8,7 @@ import { tendersApi, searchApi, directionsApi, pipelineApi, profileApi, type Ten
 import { TenderCard } from "@/components/tender-card"
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getDirectionColor } from "@/lib/direction-colors"
-import { Search, X, Sparkles, Building2, ChevronDown, ArrowUpDown } from "lucide-react"
+import { Search, X, Sparkles, Building2, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { useTenderFilters, filtersToApiParams, filtersToSearchBody, type TenderFilters } from "@/hooks/use-tender-filters"
 import { FilterBar } from "@/components/filters/filter-bar"
@@ -246,32 +246,10 @@ function ProfileSelector({
 
 // ─── Match tab ────────────────────────────────────────────────────────────────
 
-const SORT_OPTIONS = [
-  { value: "score", label: "По релевантности" },
-  { value: "deadline", label: "По дедлайну" },
-  { value: "published", label: "По дате публикации" },
-  { value: "nmck_asc", label: "По НМЦК ↑" },
-  { value: "nmck_desc", label: "По НМЦК ↓" },
-] as const
-
 function MatchTab({ filters }: { filters: TenderFilters }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
   const [selectedDirId, setSelectedDirId] = useState<number | null>(null)
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
-  const [sortBy, setSortBy] = useState(() => searchParams.get("sort") || "score")
   const { pipelineMap, setStatus, removeEntry } = usePipelineActions(selectedProfileId)
-
-  function handleSortChange(value: string) {
-    setSortBy(value)
-    const params = new URLSearchParams(searchParams.toString())
-    if (value === "score") {
-      params.delete("sort")
-    } else {
-      params.set("sort", value)
-    }
-    router.replace(`/tenders?${params.toString()}`, { scroll: false })
-  }
 
   const { data: companies = [] } = useQuery<CompanyProfile[]>({
     queryKey: ["companies"],
@@ -310,9 +288,9 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["match", activeIds, filterKey, selectedProfileId, sortBy],
+    queryKey: ["match", activeIds, filterKey, selectedProfileId],
     queryFn: ({ pageParam = 1 }) =>
-      searchApi.match(20, activeIds, filterParams, selectedProfileId ?? undefined, pageParam, sortBy),
+      searchApi.match(20, activeIds, filterParams, selectedProfileId ?? undefined, pageParam, "score"),
     getNextPageParam: (lastPage, allPages) =>
       lastPage.has_more ? allPages.length + 1 : undefined,
     initialPageParam: 1,
@@ -352,18 +330,6 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
           ))}
         </>
       )}
-      <div className="ml-auto flex items-center gap-1.5">
-        <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-        <select
-          value={sortBy}
-          onChange={(e) => handleSortChange(e.target.value)}
-          className="h-8 pl-1 pr-6 text-sm border border-gray-200 text-gray-600 bg-white hover:border-gray-300 transition-colors appearance-none cursor-pointer focus:outline-none"
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
     </div>
   )
 

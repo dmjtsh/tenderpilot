@@ -367,6 +367,7 @@ export interface CompanyDirection {
   keywords: string[]
   exclude_keywords: string[]
   regions: string[]
+  region_mode: "only" | "boost"
   nmck_min: number | null
   nmck_max: number | null
   law_types: string[]

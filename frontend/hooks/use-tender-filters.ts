@@ -1,7 +1,9 @@
 "use client"
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useRef } from "react"
+
+export type RegionMode = "only" | "boost"
 
 export interface TenderFilters {
   procedure_type: string[]
@@ -10,6 +12,7 @@ export interface TenderFilters {
   nmck_min: number | null
   nmck_max: number | null
   regions: string[]
+  region_mode: RegionMode
   deadline_days: number | null
   deadline_days_min: number | null
   okpd: string[]
@@ -23,6 +26,7 @@ export const EMPTY_FILTERS: TenderFilters = {
   nmck_min: null,
   nmck_max: null,
   regions: [],
+  region_mode: "only",
   deadline_days: null,
   deadline_days_min: null,
   okpd: [],
@@ -45,6 +49,7 @@ function parseFiltersFromParams(sp: URLSearchParams): TenderFilters {
     nmck_min: num("nmck_min"),
     nmck_max: num("nmck_max"),
     regions: csv("region"),
+    region_mode: (sp.get("region_mode") === "boost" ? "boost" : "only") as RegionMode,
     deadline_days: num("deadline_days"),
     deadline_days_min: num("deadline_days_min"),
     okpd: csv("okpd"),
@@ -60,6 +65,7 @@ function filtersToParams(filters: TenderFilters): Record<string, string> {
   if (filters.nmck_min !== null) p.nmck_min = String(filters.nmck_min)
   if (filters.nmck_max !== null) p.nmck_max = String(filters.nmck_max)
   if (filters.regions.length) p.region = filters.regions.join(",")
+  if (filters.region_mode === "boost") p.region_mode = "boost"
   if (filters.deadline_days !== null) p.deadline_days = String(filters.deadline_days)
   if (filters.deadline_days_min !== null) p.deadline_days_min = String(filters.deadline_days_min)
   if (filters.okpd.length) p.okpd = filters.okpd.join(",")
@@ -93,10 +99,14 @@ export function useTenderFilters() {
 
   const filters = useMemo(() => parseFiltersFromParams(searchParams), [searchParams])
 
+  const filtersRef = useRef(filters)
+  filtersRef.current = filters
+
   const setFilters = useCallback(
     (next: TenderFilters) => {
+      filtersRef.current = next
       const params = new URLSearchParams(searchParams.toString())
-      const FILTER_KEYS = ["procedure_type", "law_type", "platform", "nmck_min", "nmck_max", "region", "deadline_days", "deadline_days_min", "okpd", "customer"]
+      const FILTER_KEYS = ["procedure_type", "law_type", "platform", "nmck_min", "nmck_max", "region", "region_mode", "deadline_days", "deadline_days_min", "okpd", "customer"]
       FILTER_KEYS.forEach((k) => params.delete(k))
       const fp = filtersToParams(next)
       Object.entries(fp).forEach(([k, v]) => params.set(k, v))
@@ -107,9 +117,9 @@ export function useTenderFilters() {
 
   const setFilter = useCallback(
     <K extends keyof TenderFilters>(key: K, value: TenderFilters[K]) => {
-      setFilters({ ...filters, [key]: value })
+      setFilters({ ...filtersRef.current, [key]: value })
     },
-    [filters, setFilters]
+    [setFilters]
   )
 
   const clearAll = useCallback(() => setFilters(EMPTY_FILTERS), [setFilters])
