@@ -1991,6 +1991,19 @@ function TenderDetailPageInner() {
             )}
           </div>
 
+          {/* Source link */}
+          {tender.source_url && !tender.is_restricted && (
+            <a
+              href={tender.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 h-11 px-5 mb-8 text-base font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors"
+            >
+              <ExternalLink className="w-5 h-5" />
+              Открыть на площадке
+            </a>
+          )}
+
           {/* Pipeline status */}
           {authed && <PipelineStatusButtons tenderId={tender.id} profileId={profileId} />}
 
@@ -2207,18 +2220,6 @@ function TenderDetailPageInner() {
           {/* Similar tenders */}
           <SimilarTendersBlock tenderId={tender.id} profileId={profileId} />
 
-          {/* Source link */}
-          {tender.source_url && !tender.is_restricted && (
-            <a
-              href={tender.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 h-11 px-5 text-base font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors"
-            >
-              <ExternalLink className="w-5 h-5" />
-              Открыть на площадке
-            </a>
-          )}
         </div>
       </div>
     </div>
