@@ -123,9 +123,9 @@ class Command(BaseCommand):
                                   "tenders_found": 0, "pdf_path": "", "error": str(e)})
 
             finally:
-                # Явно освобождаем крупные объекты после каждой компании
                 del selected, pdf_buf
-                db.reset_queries()   # сбрасываем Django query log
+                db.reset_queries()
+                db.close_old_connections()
                 gc.collect()
 
         # Лог
@@ -236,13 +236,22 @@ class Command(BaseCommand):
 
             try:
                 sv2 = generate_tender_summary_v2(tender.id)
-                # Сохраняем только summary dict, не весь ORM объект sv2
-                selected.append({"tender": tender, "summary": sv2.summary})
-                del sv2
-                self.stdout.write(f"    #{tender.number}: резюме готово ({len(selected)}/3)")
+                # Сохраняем только нужные поля — ORM объект не держим
+                tender_dto = SimpleNamespace(
+                    number=tender.number,
+                    title=tender.title,
+                    nmck=tender.nmck,
+                    region=tender.region,
+                    deadline_at=tender.deadline_at,
+                    customer=SimpleNamespace(name=tender.customer.name) if tender.customer else None,
+                )
+                selected.append({"tender": tender_dto, "summary": sv2.summary})
+                del tender, sv2, tender_dto
+                gc.collect()
+                self.stdout.write(f"    резюме готово ({len(selected)}/3)")
             except Exception as e:
                 logger.warning("Summary failed for tender %s: %s", tender.id, e)
-                self.stdout.write(f"    #{tender.number}: резюме ошибка: {e}")
+                self.stdout.write(f"    резюме ошибка: {e}")
                 del tender
 
         return selected
