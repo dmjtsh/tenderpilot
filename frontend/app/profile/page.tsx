@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { isAuthenticated } from "@/lib/auth"
 import { profileApi, directionsApi, tendersApi, type CompanyProfile, type CompanyDirection, type WonTenderRef, type InnLookupResult } from "@/lib/api"
-import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles, Building2 } from "lucide-react"
+import { ChevronDown, Search, X, Plus, Trash2, Loader2, Sparkles, Building2, Info } from "lucide-react"
 import { OkvedCombobox } from "@/components/okved-combobox"
 
 type FormValues = {
@@ -403,154 +403,204 @@ function DirectionCard({
 
       {/* Body */}
       {expanded && (
-        <div className="px-5 pb-5 pt-2 space-y-5 border-t border-gray-200">
-          {/* Name */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">Название направления</p>
-            <input
-              className={inputCls}
-              placeholder="Кровельные работы"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">Описание направления <span className="text-muted-foreground/50">(специфика работ, типы объектов, материалы)</span></p>
-            <textarea
-              className="w-full bg-gray-50 border border-gray-200 px-4 py-3 text-base text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors resize-none"
-              rows={3}
-              maxLength={500}
-              placeholder="Капитальный ремонт мягкой кровли. Рулонные материалы, металлочерепица. Объекты: школы, детсады, жилые дома до 5 этажей."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-
-          {/* OKVED */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">ОКВЭД коды</p>
-            <OkvedCombobox value={okvedCodes} onChange={setOkvedCodes} />
-          </div>
-
-          {/* Keywords */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">Ключевые слова <span className="text-muted-foreground/50">(через запятую)</span></p>
-            <input
-              className={inputCls}
-              placeholder="кровля, кровельные работы"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-            />
-          </div>
-
-          {/* Exclude Keywords */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">Слова-исключения <span className="text-muted-foreground/50">(через запятую, тендеры с этими словами в названии будут скрыты)</span></p>
-            <input
-              className={inputCls}
-              placeholder="уборка, клининг, озеленение"
-              value={excludeKeywords}
-              onChange={(e) => setExcludeKeywords(e.target.value)}
-            />
-          </div>
-
-          {/* Regions */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">Регионы <span className="text-gray-400 font-normal">(необязательно)</span></p>
-            <RegionSelect value={regions} onChange={setRegions} options={regionOptions} />
-          </div>
-
-          {/* NMC */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">НМЦК <span className="text-gray-400 font-normal">(необязательно)</span></p>
-            <div className="flex flex-wrap gap-1.5">
-              {NMCK_PRESETS.map((preset, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setNmckPreset(idx)}
-                  className={`h-9 px-3.5 text-sm border transition-colors ${
-                    nmckPreset === idx
-                      ? "bg-[#111827] border-[#111827] text-white"
-                      : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-900"
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-            {isCustom && (
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  className={`${inputCls} w-36`}
-                  placeholder="от ₽"
-                  value={customMin}
-                  onChange={(e) => setCustomMin(e.target.value)}
-                />
-                <span className="text-xs text-muted-foreground">—</span>
-                <input
-                  className={`${inputCls} w-36`}
-                  placeholder="до ₽"
-                  value={customMax}
-                  onChange={(e) => setCustomMax(e.target.value)}
-                />
+        <div className="px-5 pb-5 border-t border-gray-200">
+          {/* Section 1: Semantic matching */}
+          <div className="space-y-5">
+            <div className="bg-gray-50 -mx-5 px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-[#111827]">О компании</p>
+                <p className="text-xs text-gray-500 mt-0.5">Влияет на смысловой подбор тендеров</p>
               </div>
-            )}
-          </div>
-
-          {/* Law types */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">Типы закупок <span className="text-gray-400 font-normal">(необязательно)</span></p>
-            <div className="flex gap-4">
-              {LAW_TYPES.map((lt) => (
-                <label key={lt} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={lawTypes.includes(lt)}
-                    onChange={() =>
-                      setLawTypes((prev) =>
-                        prev.includes(lt) ? prev.filter((x) => x !== lt) : [...prev, lt]
-                      )
-                    }
-                    className="w-4 h-4 accent-[#111827]"
-                  />
-                  <span className="text-sm text-[#111827] font-mono">{lt}</span>
-                </label>
-              ))}
+              <div className="group relative">
+                <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                <div className="hidden group-hover:block absolute right-0 bottom-full mb-1.5 w-64 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg shadow-lg z-50">
+                  Эти поля помогают AI понять вашу деятельность и подобрать подходящие тендеры по смыслу
+                </div>
+              </div>
             </div>
-            {lawTypes.length === 0 && (
-              <p className="text-xs text-gray-400 mt-1.5">Если не выбрано, ищем по всем типам</p>
-            )}
-          </div>
 
-          {/* Procedure types */}
-          <div>
-            <p className="text-sm text-gray-500 mb-2">Типы процедур <span className="text-gray-400 font-normal">(необязательно)</span></p>
-            <div className="flex flex-wrap gap-4">
-              {PROCEDURE_TYPES.map((pt) => (
-                <label key={pt.value} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={procedureTypes.includes(pt.value)}
-                    onChange={() =>
-                      setProcedureTypes((prev) =>
-                        prev.includes(pt.value) ? prev.filter((x) => x !== pt.value) : [...prev, pt.value]
-                      )
-                    }
-                    className="w-4 h-4 accent-[#111827]"
-                  />
-                  <span className="text-sm text-[#111827]">{pt.label}</span>
-                </label>
-              ))}
+            {/* Name */}
+            <div>
+              <p className="text-sm font-medium text-[#111827] mb-2">Название направления</p>
+              <input
+                className={inputCls}
+                placeholder="Кровельные работы"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
-            {procedureTypes.length === 0 && (
-              <p className="text-xs text-gray-400 mt-1.5">Если не выбрано, ищем по всем типам</p>
-            )}
+
+            {/* Description */}
+            <div>
+              <p className="text-sm font-medium text-[#111827] mb-2">Описание направления <span className="text-gray-400 font-normal">(специфика работ, типы объектов, материалы)</span></p>
+              <textarea
+                className="w-full bg-gray-50 border border-gray-200 px-4 py-3 text-base text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors resize-none"
+                rows={3}
+                maxLength={500}
+                placeholder="Капитальный ремонт мягкой кровли. Рулонные материалы, металлочерепица. Объекты: школы, детсады, жилые дома до 5 этажей."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            {/* OKVED */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-sm font-medium text-[#111827]">Вид деятельности (ОКВЭД)</p>
+                <div className="group relative">
+                  <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                  <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-64 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg shadow-lg z-50">
+                    Коды из ЕГРЮЛ вашей компании. Помогают AI понять сферу деятельности. Это не жёсткий фильтр: вы можете увидеть тендеры смежных отраслей.
+                  </div>
+                </div>
+              </div>
+              <OkvedCombobox value={okvedCodes} onChange={setOkvedCodes} />
+            </div>
+
+            {/* Keywords */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-sm font-medium text-[#111827]">Ключевые слова <span className="text-gray-400 font-normal">(через запятую)</span></p>
+                <div className="group relative">
+                  <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                  <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-64 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg shadow-lg z-50">
+                    Слова и фразы, описывающие нужные тендеры. Чем точнее, тем лучше подбор.
+                  </div>
+                </div>
+              </div>
+              <input
+                className={inputCls}
+                placeholder="кровля, кровельные работы"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+              />
+            </div>
+
           </div>
 
-          <div className="flex justify-end">
+          {/* Section 2: Hard filters */}
+          <div className="space-y-5 mt-6">
+            <div className="bg-gray-50 -mx-5 px-5 py-3 border-y border-gray-200 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-[#111827]">Фильтры</p>
+                <p className="text-xs text-gray-500 mt-0.5">Тендеры вне этих параметров не будут показаны</p>
+              </div>
+              <div className="group relative">
+                <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                <div className="hidden group-hover:block absolute right-0 bottom-full mb-1.5 w-64 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg shadow-lg z-50">
+                  Жёсткие ограничения: тендеры, не соответствующие этим параметрам, не будут показаны
+                </div>
+              </div>
+            </div>
+
+            {/* Exclude Keywords */}
+            <div>
+              <p className="text-sm font-medium text-[#111827] mb-2">Слова-исключения <span className="text-gray-400 font-normal">(через запятую)</span></p>
+              <input
+                className={inputCls}
+                placeholder="уборка, клининг, озеленение"
+                value={excludeKeywords}
+                onChange={(e) => setExcludeKeywords(e.target.value)}
+              />
+              <p className="text-xs text-gray-400 mt-1.5">Тендеры с этими словами в названии будут скрыты</p>
+            </div>
+
+            {/* Regions */}
+            <div>
+              <p className="text-sm font-medium text-[#111827] mb-2">Регионы <span className="text-gray-400 font-normal">(необязательно)</span></p>
+              <RegionSelect value={regions} onChange={setRegions} options={regionOptions} />
+            </div>
+
+            {/* NMC */}
+            <div>
+              <p className="text-sm font-medium text-[#111827] mb-2">НМЦК <span className="text-gray-400 font-normal">(необязательно)</span></p>
+              <div className="flex flex-wrap gap-1.5">
+                {NMCK_PRESETS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setNmckPreset(idx)}
+                    className={`h-9 px-3.5 text-sm border transition-colors ${
+                      nmckPreset === idx
+                        ? "bg-[#111827] border-[#111827] text-white"
+                        : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-900"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              {isCustom && (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    className={`${inputCls} w-36`}
+                    placeholder="от ₽"
+                    value={customMin}
+                    onChange={(e) => setCustomMin(e.target.value)}
+                  />
+                  <span className="text-xs text-muted-foreground">-</span>
+                  <input
+                    className={`${inputCls} w-36`}
+                    placeholder="до ₽"
+                    value={customMax}
+                    onChange={(e) => setCustomMax(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Law types */}
+            <div>
+              <p className="text-sm font-medium text-[#111827] mb-2">Типы закупок <span className="text-gray-400 font-normal">(необязательно)</span></p>
+              <div className="flex gap-4">
+                {LAW_TYPES.map((lt) => (
+                  <label key={lt} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={lawTypes.includes(lt)}
+                      onChange={() =>
+                        setLawTypes((prev) =>
+                          prev.includes(lt) ? prev.filter((x) => x !== lt) : [...prev, lt]
+                        )
+                      }
+                      className="w-4 h-4 accent-[#111827]"
+                    />
+                    <span className="text-sm text-[#111827] font-mono">{lt}</span>
+                  </label>
+                ))}
+              </div>
+              {lawTypes.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1.5">Если не выбрано, ищем по всем типам</p>
+              )}
+            </div>
+
+            {/* Procedure types */}
+            <div>
+              <p className="text-sm font-medium text-[#111827] mb-2">Типы процедур <span className="text-gray-400 font-normal">(необязательно)</span></p>
+              <div className="flex flex-wrap gap-4">
+                {PROCEDURE_TYPES.map((pt) => (
+                  <label key={pt.value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={procedureTypes.includes(pt.value)}
+                      onChange={() =>
+                        setProcedureTypes((prev) =>
+                          prev.includes(pt.value) ? prev.filter((x) => x !== pt.value) : [...prev, pt.value]
+                        )
+                      }
+                      className="w-4 h-4 accent-[#111827]"
+                    />
+                    <span className="text-sm text-[#111827]">{pt.label}</span>
+                  </label>
+                ))}
+              </div>
+              {procedureTypes.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1.5">Если не выбрано, ищем по всем типам</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-6">
             <button
               type="button"
               onClick={() => saveMutation.mutate()}
