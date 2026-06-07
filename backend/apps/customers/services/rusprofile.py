@@ -1,9 +1,9 @@
+import json
 import logging
 import random
 import re
 import time
 from typing import Any
-from urllib.parse import urlencode
 
 import requests
 from django.core.cache import cache
@@ -63,55 +63,104 @@ class RusProfileParser:
 
     def get_company_info(self, inn: str) -> dict[str, Any] | None:
         self._rate_limit()
-        search_url = f"{self.BASE_URL}/search?{urlencode({'query': inn})}"
-        resp = self._fetch(search_url)
-        if resp is None:
+
+        session = self._create_session()
+
+        # 1. GET главную — получаем cookie __Host-csrf-token
+        try:
+            home_resp = session.get(self.BASE_URL, timeout=15)
+            if home_resp.status_code != 200:
+                logger.warning("RusProfile home page HTTP %d", home_resp.status_code)
+                return None
+        except requests.RequestException as e:
+            logger.error("RusProfile home request failed: %s", e)
             return None
 
-        page_html, final_url = resp
-        rusprofile_id = _extract_rusprofile_id(final_url)
+        csrf_token = session.cookies.get("__Host-csrf-token")
+        if not csrf_token:
+            logger.warning("RusProfile: no CSRF token in cookies")
+            return None
 
-        data = self._parse(page_html)
+        self._rate_limit()
+
+        # 2. AJAX-поиск по ИНН
+        company_path = self._ajax_search(session, inn, csrf_token)
+        if not company_path:
+            return None
+
+        self._rate_limit()
+
+        # 3. GET страницу компании
+        company_url = f"{self.BASE_URL}{company_path}"
+        try:
+            page_resp = session.get(company_url, timeout=15)
+            if page_resp.status_code != 200:
+                logger.warning("RusProfile company page HTTP %d for %s", page_resp.status_code, company_url)
+                return None
+        except requests.RequestException as e:
+            logger.error("RusProfile company page failed: %s", e)
+            return None
+
+        rusprofile_id = _extract_rusprofile_id(page_resp.url)
+        data = self._parse(page_resp.text)
         if not data:
             return None
 
         data["rusprofile_id"] = rusprofile_id
-        data["source_url"] = final_url
+        data["source_url"] = page_resp.url
         return data
 
-    def _fetch(self, url: str) -> tuple[str, str] | None:
-        headers = {
-            "User-Agent": random.choice(USER_AGENTS),
+    def _create_session(self) -> requests.Session:
+        from django.conf import settings
+
+        session = requests.Session()
+        ua = random.choice(USER_AGENTS)
+        session.headers.update({
+            "User-Agent": ua,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
             "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
             "Accept-Encoding": "gzip, deflate, br",
             "DNT": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1",
-        }
-        from django.conf import settings
-        proxies = None
+        })
         if settings.RUSPROFILE_PROXY_URL:
-            proxies = {"http": settings.RUSPROFILE_PROXY_URL, "https": settings.RUSPROFILE_PROXY_URL}
+            session.proxies = {
+                "http": settings.RUSPROFILE_PROXY_URL,
+                "https": settings.RUSPROFILE_PROXY_URL,
+            }
+        return session
 
+    def _ajax_search(self, session: requests.Session, inn: str, csrf_token: str) -> str | None:
+        url = f"{self.BASE_URL}/ajax/search/advanced"
+        headers = {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "x-csrf-token": csrf_token,
+            "Referer": f"{self.BASE_URL}/",
+        }
+        payload = {"query": inn, "action": "search"}
         try:
-            resp = requests.get(url, headers=headers, timeout=15, allow_redirects=True, proxies=proxies)
+            resp = session.post(url, json=payload, headers=headers, timeout=15)
             if resp.status_code == 429:
-                logger.warning("RusProfile rate limited (429)")
-                return None
-            if resp.status_code == 503:
-                logger.warning("RusProfile unavailable (503)")
+                logger.warning("RusProfile AJAX rate limited (429)")
                 return None
             if resp.status_code != 200:
-                logger.warning("RusProfile HTTP %d for %s", resp.status_code, url)
+                logger.warning("RusProfile AJAX HTTP %d", resp.status_code)
                 return None
-            return resp.text, resp.url
-        except requests.RequestException as e:
-            logger.error("RusProfile request failed: %s", e)
+            data = resp.json()
+        except (requests.RequestException, json.JSONDecodeError) as e:
+            logger.error("RusProfile AJAX search failed: %s", e)
             return None
+
+        if not data.get("success"):
+            logger.warning("RusProfile AJAX search unsuccessful: %s", data.get("message"))
+            return None
+
+        items = data.get("data", {}).get("items", [])
+        if not items:
+            logger.info("RusProfile: no results for INN %s", inn)
+            return None
+
+        return items[0].get("link") or items[0].get("url")
 
     def _rate_limit(self) -> None:
         last = cache.get(CACHE_KEY_LAST_REQUEST)
