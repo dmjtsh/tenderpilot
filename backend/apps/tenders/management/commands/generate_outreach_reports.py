@@ -15,6 +15,8 @@ import gc
 import json
 import logging
 import re
+import subprocess
+import sys
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -73,6 +75,9 @@ class Command(BaseCommand):
 
         ok = skip = fail = 0
 
+        # Если --inn указан — работаем в текущем процессе (одна компания)
+        single_inn = options.get("inn")
+
         for i, company in enumerate(companies, 1):
             inn = company["inn"]
             name = company["company_name"]
@@ -87,6 +92,29 @@ class Command(BaseCommand):
                                   "tenders_found": "", "pdf_path": str(pdf_path), "error": ""})
                 continue
 
+            # Batch-режим: каждая компания в отдельном subprocess — память полностью
+            # освобождается ОС после завершения процесса.
+            if not single_inn:
+                result = self._run_subprocess(inn, options)
+                if result == "skipped":
+                    skip += 1
+                    log_rows.append({"inn": inn, "company_name": name, "status": "skipped",
+                                      "tenders_found": "", "pdf_path": str(pdf_path), "error": ""})
+                elif result == "ok":
+                    ok += 1
+                    log_rows.append({"inn": inn, "company_name": name, "status": "ok",
+                                      "tenders_found": "?", "pdf_path": str(pdf_path), "error": ""})
+                elif result == "no_tenders":
+                    fail += 1
+                    log_rows.append({"inn": inn, "company_name": name, "status": "no_tenders",
+                                      "tenders_found": 0, "pdf_path": "", "error": ""})
+                else:
+                    fail += 1
+                    log_rows.append({"inn": inn, "company_name": name, "status": "failed",
+                                      "tenders_found": 0, "pdf_path": "", "error": result})
+                continue
+
+            # Single-inn режим: обрабатываем напрямую
             selected = None
             pdf_buf = None
             try:
@@ -137,6 +165,42 @@ class Command(BaseCommand):
         self.stdout.write(
             f"\nГотово: ✓{ok} пропущено={skip} ошибок={fail}. Лог: {log_path}"
         )
+
+    def _run_subprocess(self, inn: str, options: dict) -> str:
+        """Запускает обработку одной компании в отдельном процессе.
+        Возвращает: 'ok', 'skipped', 'no_tenders' или строку с ошибкой.
+        """
+        cmd = [
+            sys.executable, "manage.py", "generate_outreach_reports",
+            "--csv", options["csv"],
+            "--output-dir", options["output_dir"],
+            "--inn", inn,
+        ]
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,  # 10 минут на компанию
+            )
+            output = result.stdout + result.stderr
+            # Форвардим вывод дочернего процесса
+            for line in output.splitlines():
+                self.stdout.write(f"  {line}")
+
+            if result.returncode != 0:
+                return f"exit code {result.returncode}"
+            if "WARN: 0 подходящих" in output:
+                return "no_tenders"
+            if "SKIP" in output:
+                return "skipped"
+            if "OK:" in output:
+                return "ok"
+            return "ok"
+        except subprocess.TimeoutExpired:
+            return "timeout"
+        except Exception as e:
+            return str(e)
 
     def _read_csv(self, path: str) -> list[dict]:
         rows = []
