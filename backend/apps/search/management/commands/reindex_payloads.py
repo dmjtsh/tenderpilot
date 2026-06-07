@@ -39,6 +39,7 @@ class Command(BaseCommand):
             payload_patch = {
                 "procedure_type": tender.procedure_type or "",
                 "deadline_at_ts": int(tender.deadline_at.timestamp()) if tender.deadline_at else 0,
+                "industry": tender.industry or "",
             }
 
             if dry_run:

@@ -71,6 +71,7 @@ class QdrantService:
         nmck_max: float | None = None,
         law_types: list[str] | None = None,
         procedure_types: list[str] | None = None,
+        industries: list[str] | None = None,
         exclude_ids: list[int] | None = None,
     ) -> list[dict[str, Any]]:
         conditions = []
@@ -89,6 +90,8 @@ class QdrantService:
             conditions.append(FieldCondition(key="law_type", match=MatchAny(any=law_types)))
         if procedure_types:
             conditions.append(FieldCondition(key="procedure_type", match=MatchAny(any=procedure_types)))
+        if industries:
+            conditions.append(FieldCondition(key="industry", match=MatchAny(any=industries)))
         if exclude_ids:
             must_not.append(HasIdCondition(has_id=exclude_ids))
 
@@ -116,6 +119,7 @@ class QdrantService:
         extra_nmck_max: float | None = None,
         extra_law_types: list[str] | None = None,
         extra_procedure_types: list[str] | None = None,
+        extra_industries: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         qs = profile.directions.filter(profile_vector__isnull=False)
         if direction_ids:
@@ -168,6 +172,12 @@ class QdrantService:
             if proc_types:
                 conditions.append(
                     FieldCondition(key="procedure_type", match=MatchAny(any=proc_types))
+                )
+
+            industries = extra_industries or getattr(direction, "industries", None)
+            if industries:
+                conditions.append(
+                    FieldCondition(key="industry", match=MatchAny(any=industries))
                 )
 
             direction_filter = Filter(must=conditions) if conditions else None

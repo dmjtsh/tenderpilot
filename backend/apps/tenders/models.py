@@ -56,6 +56,28 @@ class Tender(models.Model):
         SINGLE_SOURCE = "single_source", "Единственный поставщик"
         OTHER = "other", "Иной"
 
+    class Industry(models.TextChoices):
+        CONSTRUCTION_MATERIALS = "construction_materials", "Стройматериалы"
+        CONSTRUCTION_WORKS = "construction_works", "Строительные работы"
+        MEDICINE = "medicine", "Медицина и фармацевтика"
+        IT = "it", "IT и оргтехника"
+        FOOD = "food", "Продовольствие"
+        EQUIPMENT = "equipment", "Оборудование"
+        ENERGY = "energy", "Энергия и ГСМ"
+        CHEMISTRY = "chemistry", "Химия"
+        PAPER = "paper", "Бумага и полиграфия"
+        AGRICULTURE = "agriculture", "Сельское хозяйство"
+        TEXTILE = "textile", "Текстиль и одежда"
+        FURNITURE = "furniture", "Мебель"
+        SECURITY = "security", "Охрана и безопасность"
+        VEHICLES = "vehicles", "Транспортные средства"
+        TRANSPORT = "transport", "Транспорт и логистика"
+        EDUCATION = "education", "Образование и наука"
+        MINING = "mining", "Добыча и металлургия"
+        FINANCE = "finance", "Финансы и страхование"
+        OTHER_GOODS = "other_goods", "Прочие товары"
+        OTHER_SERVICES = "other_services", "Прочие услуги"
+
     class DocsDownloadStatus(models.TextChoices):
         IDLE = "", "Не начато"
         DOWNLOADING = "downloading", "Загрузка"
@@ -88,6 +110,9 @@ class Tender(models.Model):
     law_type = models.CharField(max_length=10, choices=LawType.choices, blank=True, db_index=True)
     procedure_type = models.CharField(
         max_length=25, choices=ProcedureType.choices, default=ProcedureType.OTHER, db_index=True
+    )
+    industry = models.CharField(
+        max_length=30, choices=Industry.choices, blank=True, db_index=True
     )
     trading_platform = models.CharField(max_length=500, blank=True)
     trading_platform_url = models.URLField(max_length=500, blank=True)

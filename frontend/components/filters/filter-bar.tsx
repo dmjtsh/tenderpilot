@@ -48,6 +48,29 @@ const PLATFORM_OPTIONS = [
   { value: "ONLINECONTRACT", label: "Онлайнконтракт" },
 ]
 
+const INDUSTRY_OPTIONS = [
+  { value: "construction_materials", label: "Стройматериалы" },
+  { value: "construction_works", label: "Строительные работы" },
+  { value: "medicine", label: "Медицина и фармацевтика" },
+  { value: "it", label: "IT и оргтехника" },
+  { value: "food", label: "Продовольствие" },
+  { value: "equipment", label: "Оборудование" },
+  { value: "energy", label: "Энергия и ГСМ" },
+  { value: "chemistry", label: "Химия" },
+  { value: "paper", label: "Бумага и полиграфия" },
+  { value: "agriculture", label: "Сельское хозяйство" },
+  { value: "textile", label: "Текстиль и одежда" },
+  { value: "furniture", label: "Мебель" },
+  { value: "security", label: "Охрана и безопасность" },
+  { value: "vehicles", label: "Транспортные средства" },
+  { value: "transport", label: "Транспорт и логистика" },
+  { value: "education", label: "Образование и наука" },
+  { value: "mining", label: "Добыча и металлургия" },
+  { value: "finance", label: "Финансы и страхование" },
+  { value: "other_goods", label: "Прочие товары" },
+  { value: "other_services", label: "Прочие услуги" },
+]
+
 interface Props {
   filters: TenderFilters
   setFilter: <K extends keyof TenderFilters>(key: K, value: TenderFilters[K]) => void
@@ -108,6 +131,16 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
 
   const content = (
     <>
+      <FilterDropdown label="Категория" activeCount={filters.industries.length}>
+        <MultiSelectFilter
+          options={INDUSTRY_OPTIONS}
+          selected={filters.industries}
+          onChange={(v) => setFilter("industries", v)}
+          searchable
+          searchPlaceholder="Найти категорию..."
+        />
+      </FilterDropdown>
+
       <FilterDropdown label="Процедура" activeCount={filters.procedure_type.length}>
         <MultiSelectFilter
           options={PROCEDURE_OPTIONS}
@@ -239,6 +272,16 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1.5">Категория</p>
+                <MultiSelectFilter
+                  options={INDUSTRY_OPTIONS}
+                  selected={filters.industries}
+                  onChange={(v) => setFilter("industries", v)}
+                  searchable
+                  searchPlaceholder="Найти категорию..."
+                />
+              </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1.5">Процедура</p>
                 <MultiSelectFilter

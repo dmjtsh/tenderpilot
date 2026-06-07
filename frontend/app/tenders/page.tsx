@@ -8,7 +8,7 @@ import { tendersApi, searchApi, directionsApi, pipelineApi, profileApi, type Ten
 import { TenderCard } from "@/components/tender-card"
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getDirectionColor } from "@/lib/direction-colors"
-import { Search, X, Sparkles, Building2, ChevronDown } from "lucide-react"
+import { Search, X, Sparkles, Building2, ChevronDown, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useTenderFilters, filtersToApiParams, filtersToSearchBody, type TenderFilters } from "@/hooks/use-tender-filters"
 import { FilterBar } from "@/components/filters/filter-bar"
@@ -267,6 +267,10 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
     queryKey: ["directions", selectedProfileId],
     queryFn: () => directionsApi.list(selectedProfileId ?? undefined),
     enabled: !!selectedProfileId,
+    refetchInterval: (query) => {
+      const dirs = query.state.data
+      return dirs?.some((d) => !d.vector_updated_at) ? 5000 : false
+    },
   })
 
   useEffect(() => {
@@ -280,6 +284,9 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
   const filterParams = filtersToApiParams(filters)
   const filterKey = JSON.stringify(filterParams)
 
+  const selectedDir = directions.find((d) => d.id === selectedDirId)
+  const dirVersion = selectedDir ? `${selectedDir.vector_updated_at ?? ""}_${(selectedDir.industries ?? []).join(",")}` : ""
+
   const {
     data,
     isFetching,
@@ -288,7 +295,7 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["match", activeIds, filterKey, selectedProfileId],
+    queryKey: ["match", activeIds, filterKey, selectedProfileId, dirVersion],
     queryFn: ({ pageParam = 1 }) =>
       searchApi.match(20, activeIds, filterParams, selectedProfileId ?? undefined, pageParam, "score"),
     getNextPageParam: (lastPage, allPages) =>
@@ -325,6 +332,7 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
                   : "border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400"
               }`}
             >
+              {!d.vector_updated_at && <Loader2 className="w-3 h-3 animate-spin inline mr-1.5" />}
               {d.name || "Без названия"}
             </button>
           ))}
@@ -352,6 +360,19 @@ function MatchTab({ filters }: { filters: TenderFilters }) {
         <div className="flex flex-col items-center justify-center flex-1 h-48 gap-3">
           <Sparkles className="w-8 h-8 text-gray-300" />
           <p className="text-sm text-gray-500">Выберите направление</p>
+        </div>
+      </>
+    )
+  }
+
+  if (selectedDir && !selectedDir.vector_updated_at) {
+    return (
+      <>
+        {directionFilter}
+        <div className="flex flex-col items-center justify-center flex-1 h-48 gap-3">
+          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+          <p className="text-base text-gray-600">Направление обновляется</p>
+          <p className="text-sm text-gray-400">Обычно это занимает 30-60 секунд</p>
         </div>
       </>
     )

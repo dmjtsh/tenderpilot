@@ -17,6 +17,7 @@ export interface TenderFilters {
   deadline_days_min: number | null
   okpd: string[]
   customers: string[]
+  industries: string[]
 }
 
 export const EMPTY_FILTERS: TenderFilters = {
@@ -31,6 +32,7 @@ export const EMPTY_FILTERS: TenderFilters = {
   deadline_days_min: null,
   okpd: [],
   customers: [],
+  industries: [],
 }
 
 function parseFiltersFromParams(sp: URLSearchParams): TenderFilters {
@@ -54,6 +56,7 @@ function parseFiltersFromParams(sp: URLSearchParams): TenderFilters {
     deadline_days_min: num("deadline_days_min"),
     okpd: csv("okpd"),
     customers: csv("customer"),
+    industries: csv("industry"),
   }
 }
 
@@ -70,6 +73,7 @@ function filtersToParams(filters: TenderFilters): Record<string, string> {
   if (filters.deadline_days_min !== null) p.deadline_days_min = String(filters.deadline_days_min)
   if (filters.okpd.length) p.okpd = filters.okpd.join(",")
   if (filters.customers.length) p.customer = filters.customers.join(",")
+  if (filters.industries.length) p.industry = filters.industries.join(",")
   return p
 }
 
@@ -89,6 +93,7 @@ export function filtersToSearchBody(filters: TenderFilters): Record<string, unkn
   if (filters.deadline_days_min !== null) body.deadline_days_min = filters.deadline_days_min
   if (filters.okpd.length) body.okpd = filters.okpd
   if (filters.customers.length) body.customer = filters.customers.join(",")
+  if (filters.industries.length) body.industry = filters.industries
   return body
 }
 
@@ -106,7 +111,7 @@ export function useTenderFilters() {
     (next: TenderFilters) => {
       filtersRef.current = next
       const params = new URLSearchParams(searchParams.toString())
-      const FILTER_KEYS = ["procedure_type", "law_type", "platform", "nmck_min", "nmck_max", "region", "region_mode", "deadline_days", "deadline_days_min", "okpd", "customer"]
+      const FILTER_KEYS = ["procedure_type", "law_type", "platform", "nmck_min", "nmck_max", "region", "region_mode", "deadline_days", "deadline_days_min", "okpd", "customer", "industry"]
       FILTER_KEYS.forEach((k) => params.delete(k))
       const fp = filtersToParams(next)
       Object.entries(fp).forEach(([k, v]) => params.set(k, v))
@@ -134,6 +139,7 @@ export function useTenderFilters() {
     if (filters.deadline_days !== null || filters.deadline_days_min !== null) c++
     if (filters.okpd.length) c++
     if (filters.customers.length) c++
+    if (filters.industries.length) c++
     return c
   }, [filters])
 

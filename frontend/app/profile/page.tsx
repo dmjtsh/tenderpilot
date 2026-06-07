@@ -152,6 +152,29 @@ const PROCEDURE_TYPES = [
   { value: "other", label: "Иной способ" },
 ] as const
 
+const INDUSTRY_TYPES = [
+  { value: "construction_materials", label: "Стройматериалы" },
+  { value: "construction_works", label: "Строительные работы" },
+  { value: "medicine", label: "Медицина и фармацевтика" },
+  { value: "it", label: "IT и оргтехника" },
+  { value: "food", label: "Продовольствие" },
+  { value: "equipment", label: "Оборудование" },
+  { value: "energy", label: "Энергия и ГСМ" },
+  { value: "chemistry", label: "Химия" },
+  { value: "paper", label: "Бумага и полиграфия" },
+  { value: "agriculture", label: "Сельское хозяйство" },
+  { value: "textile", label: "Текстиль и одежда" },
+  { value: "furniture", label: "Мебель" },
+  { value: "security", label: "Охрана и безопасность" },
+  { value: "vehicles", label: "Транспортные средства" },
+  { value: "transport", label: "Транспорт и логистика" },
+  { value: "education", label: "Образование и наука" },
+  { value: "mining", label: "Добыча и металлургия" },
+  { value: "finance", label: "Финансы и страхование" },
+  { value: "other_goods", label: "Прочие товары" },
+  { value: "other_services", label: "Прочие услуги" },
+] as const
+
 
 // ─── WonTendersSection ────────────────────────────────────────────────────────
 
@@ -312,6 +335,62 @@ function WonTendersSection({
   )
 }
 
+// ─── FilterSection (collapsible) ─────────────────────────────────────────────
+
+function FilterSection({
+  children,
+  excludeKeywords,
+  lawTypes,
+  procedureTypes,
+  industries,
+  nmckPreset,
+}: {
+  children: React.ReactNode
+  excludeKeywords: string
+  lawTypes: string[]
+  procedureTypes: string[]
+  industries: string[]
+  nmckPreset: number
+}) {
+  const activeCount =
+    (excludeKeywords.trim() ? 1 : 0) +
+    (nmckPreset > 0 ? 1 : 0) +
+    (lawTypes.length > 0 ? 1 : 0) +
+    (procedureTypes.length > 0 ? 1 : 0) +
+    (industries.length > 0 ? 1 : 0)
+
+  const [open, setOpen] = useState(activeCount > 0)
+
+  return (
+    <div className="mt-6">
+      <div
+        className="bg-gray-50 -mx-5 px-5 py-3 border-y border-gray-200 flex items-center justify-between cursor-pointer select-none"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div className="flex items-center gap-2">
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+          <div>
+            <p className="text-sm font-semibold text-[#111827]">
+              Фильтры
+              {activeCount > 0 && (
+                <span className="ml-2 text-xs font-normal text-violet-600">{activeCount} активных</span>
+              )}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">Тендеры вне этих параметров не будут показаны</p>
+          </div>
+        </div>
+        <div className="group relative">
+          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+          <div className="hidden group-hover:block absolute right-0 bottom-full mb-1.5 w-64 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg shadow-lg z-50">
+            Жёсткие ограничения: тендеры, не соответствующие этим параметрам, не будут показаны
+          </div>
+        </div>
+      </div>
+      {open && <div className="space-y-5 mt-5">{children}</div>}
+    </div>
+  )
+}
+
 // ─── DirectionCard ────────────────────────────────────────────────────────────
 
 function DirectionCard({
@@ -337,6 +416,7 @@ function DirectionCard({
   const [regionMode, setRegionMode] = useState<"only" | "boost">(direction.region_mode ?? "boost")
   const [lawTypes, setLawTypes] = useState<string[]>(direction.law_types ?? [])
   const [procedureTypes, setProcedureTypes] = useState<string[]>(direction.procedure_types ?? [])
+  const [industries, setIndustries] = useState<string[]>(direction.industries ?? [])
   const [nmckPreset, setNmckPreset] = useState(() => {
     if (direction.nmck_min === null && direction.nmck_max === null) return 0
     const idx = NMCK_PRESETS.findIndex(
@@ -365,6 +445,7 @@ function DirectionCard({
         region_mode: regionMode,
         law_types: lawTypes,
         procedure_types: procedureTypes,
+        industries,
         nmck_min,
         nmck_max,
       }, profileId)
@@ -522,20 +603,13 @@ function DirectionCard({
           </div>
 
           {/* Section 2: Hard filters */}
-          <div className="space-y-5 mt-6">
-            <div className="bg-gray-50 -mx-5 px-5 py-3 border-y border-gray-200 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-[#111827]">Фильтры</p>
-                <p className="text-xs text-gray-500 mt-0.5">Тендеры вне этих параметров не будут показаны</p>
-              </div>
-              <div className="group relative">
-                <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                <div className="hidden group-hover:block absolute right-0 bottom-full mb-1.5 w-64 px-3 py-2 text-xs text-white bg-gray-900 rounded-lg shadow-lg z-50">
-                  Жёсткие ограничения: тендеры, не соответствующие этим параметрам, не будут показаны
-                </div>
-              </div>
-            </div>
-
+          <FilterSection
+            excludeKeywords={excludeKeywords}
+            lawTypes={lawTypes}
+            procedureTypes={procedureTypes}
+            industries={industries}
+            nmckPreset={nmckPreset}
+          >
             {/* Exclude Keywords */}
             <div>
               <p className="text-sm font-medium text-[#111827] mb-2">Слова-исключения <span className="text-gray-400 font-normal">(через запятую)</span></p>
@@ -635,7 +709,32 @@ function DirectionCard({
                 <p className="text-xs text-gray-400 mt-1.5">Если не выбрано, ищем по всем типам</p>
               )}
             </div>
-          </div>
+
+            {/* Industries */}
+            <div>
+              <p className="text-sm font-medium text-[#111827] mb-2">Категории <span className="text-gray-400 font-normal">(необязательно)</span></p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                {INDUSTRY_TYPES.map((ind) => (
+                  <label key={ind.value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={industries.includes(ind.value)}
+                      onChange={() =>
+                        setIndustries((prev) =>
+                          prev.includes(ind.value) ? prev.filter((x) => x !== ind.value) : [...prev, ind.value]
+                        )
+                      }
+                      className="w-4 h-4 accent-[#111827]"
+                    />
+                    <span className="text-sm text-[#111827]">{ind.label}</span>
+                  </label>
+                ))}
+              </div>
+              {industries.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1.5">Если не выбрано, ищем по всем категориям</p>
+              )}
+            </div>
+          </FilterSection>
 
           <div className="flex justify-end mt-6">
             <button
@@ -662,6 +761,10 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
     queryKey: ["directions", profileId],
     queryFn: () => directionsApi.list(profileId),
     enabled: !!profileId,
+    refetchInterval: (query) => {
+      const dirs = query.state.data
+      return dirs?.some((d) => !d.vector_updated_at) ? 5000 : false
+    },
   })
 
   const createMutation = useMutation({
@@ -676,6 +779,7 @@ function DirectionsSection({ regionOptions, profileId }: { regionOptions: string
         region_mode: "boost",
         law_types: [],
         procedure_types: [],
+        industries: [],
         nmck_min: null,
         nmck_max: null,
       }, profileId),
@@ -1017,6 +1121,7 @@ export default function ProfilePage() {
           region_mode: "boost",
           law_types: [],
           procedure_types: [],
+          industries: [],
           nmck_min: null,
           nmck_max: null,
         }, selectedProfileId ?? undefined)

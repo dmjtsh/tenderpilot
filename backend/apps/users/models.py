@@ -55,6 +55,7 @@ class CompanyDirection(models.Model):
     nmck_max = models.BigIntegerField(null=True, blank=True)
     law_types = ArrayField(models.CharField(max_length=10), default=list, blank=True)
     procedure_types = ArrayField(models.CharField(max_length=25), default=list, blank=True)
+    industries = ArrayField(models.CharField(max_length=30), default=list, blank=True)
     description = models.TextField(blank=True)
     hyde_texts = models.JSONField(null=True, blank=True)
     profile_vector = ArrayField(models.FloatField(), size=1024, null=True, blank=True)

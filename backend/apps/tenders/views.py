@@ -36,6 +36,7 @@ class TenderFilterSet(django_filters.FilterSet):
     okpd = django_filters.CharFilter(method="filter_okpd")
     customer = django_filters.CharFilter(method="filter_customer")
     platform = django_filters.CharFilter(method="filter_platform")
+    industry = django_filters.CharFilter(method="filter_industry")
 
     class Meta:
         model = Tender
@@ -100,6 +101,10 @@ class TenderFilterSet(django_filters.FilterSet):
         for p in vals:
             q |= Q(trading_platform__icontains=p)
         return queryset.filter(q)
+
+    def filter_industry(self, queryset, name, value):
+        vals = [v.strip() for v in value.split(",") if v.strip()]
+        return queryset.filter(industry__in=vals) if vals else queryset
 
 
 class RegionsListView(APIView):

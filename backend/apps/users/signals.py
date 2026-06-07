@@ -13,6 +13,9 @@ def schedule_vector_rebuild(sender, instance, **kwargs):
 
     from apps.search.tasks import rebuild_direction_vector
 
+    CompanyDirection = sender
+    CompanyDirection.objects.filter(id=instance.id).update(vector_updated_at=None)
+
     rebuild_direction_vector.apply_async(
         args=[instance.id],
         countdown=30,

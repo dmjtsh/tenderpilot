@@ -38,6 +38,7 @@ def embed_tender(self, tender_id: int, force: bool = False) -> None:
         "published_at": tender.published_at.isoformat() if tender.published_at else None,
         "procedure_type": tender.procedure_type or "",
         "deadline_at_ts": int(tender.deadline_at.timestamp()) if tender.deadline_at else 0,
+        "industry": tender.industry or "",
     }
     qdrant.upsert_tender(tender.pk, vector, payload)
 

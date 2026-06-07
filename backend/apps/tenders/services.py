@@ -876,6 +876,94 @@ def compute_content_quality(data: dict, source: str) -> int:
     return 0 if rj.get("doc_files") else -1
 
 
+OKPD_TO_INDUSTRY: dict[str, str] = {
+    "01": "agriculture", "02": "agriculture", "03": "agriculture",
+    "05": "mining", "06": "mining", "07": "mining", "08": "mining", "09": "mining", "24": "mining",
+    "10": "food", "11": "food", "12": "food", "56": "food",
+    "13": "textile", "14": "textile", "15": "textile",
+    "16": "construction_materials", "22": "construction_materials", "23": "construction_materials", "25": "construction_materials",
+    "17": "paper", "18": "paper",
+    "19": "energy", "35": "energy", "36": "energy", "37": "energy", "38": "energy", "39": "energy",
+    "20": "chemistry",
+    "21": "medicine", "32": "medicine", "86": "medicine",
+    "26": "it", "58": "it", "59": "it", "60": "it", "61": "it", "62": "it", "63": "it",
+    "27": "equipment", "28": "equipment", "33": "equipment",
+    "29": "vehicles", "30": "vehicles",
+    "31": "furniture",
+    "41": "construction_works", "42": "construction_works", "43": "construction_works",
+    "49": "transport", "50": "transport", "51": "transport", "52": "transport", "53": "transport",
+    "64": "finance", "65": "finance", "66": "finance",
+    "72": "education", "85": "education",
+    "80": "security",
+}
+
+TG_CATEGORY_TO_INDUSTRY: dict[str, str | None] = {
+    "Оборудование": "equipment",
+    "Строительство": None,
+    "Земля и недвижимость": "other_services",
+    "Медицина": "medicine",
+    "Системная интеграция, оргтехника": "it",
+    "Услуги": "other_services",
+    "Продовольствие": "food",
+    "Хозяйственные товары": "other_goods",
+    "Транспорт": "transport",
+    "Легкая промышленность": "textile",
+    "Бумага, издательство": "paper",
+    "Энергия и ГСМ": "energy",
+    "Промышленные товары": "other_goods",
+    "Мебель, предметы интерьера": "furniture",
+    "Образование, наука и исследования": "education",
+    "Страхование": "finance",
+}
+
+_GOODS_WORDS = ("поставка", "закупка", "приобретение", "материал", "оборудовани", "купли-продажи")
+_WORKS_WORDS = ("ремонт", "строительств", "монтаж", "реконструкц", "демонтаж", "благоустройств", "выполнение работ", "комплекс работ", "устройство")
+_SERVICE_WORDS = ("услуг", "обслуживан", "аренд", "экспертиз", "проектно-изыскат", "надзор", "обследован", "перевозк", "охран", "уборк", "страхован")
+
+
+def classify_industry(okpd_codes: list[str], title: str = "", tg_category: str = "") -> str:
+    if okpd_codes:
+        prefix = okpd_codes[0].split(".")[0].zfill(2)
+        industry = OKPD_TO_INDUSTRY.get(prefix)
+        if industry:
+            return industry
+        try:
+            num = int(prefix)
+        except (ValueError, TypeError):
+            pass
+        else:
+            return "other_goods" if num <= 39 else "other_services"
+
+    t = title.lower()
+    has_goods = any(w in t for w in _GOODS_WORDS)
+    has_works = any(w in t for w in _WORKS_WORDS)
+    has_services = any(w in t for w in _SERVICE_WORDS)
+
+    if tg_category == "Строительство" or (not tg_category and (has_goods or has_works or has_services)):
+        if has_goods and not has_works:
+            return "construction_materials" if tg_category == "Строительство" else "other_goods"
+        if has_works:
+            return "construction_works" if tg_category == "Строительство" else "other_services"
+        if has_services:
+            return "other_services"
+        if tg_category == "Строительство":
+            return "construction_works"
+
+    if tg_category:
+        mapped = TG_CATEGORY_TO_INDUSTRY.get(tg_category)
+        if mapped:
+            return mapped
+
+    if has_goods:
+        return "other_goods"
+    if has_works:
+        return "other_services"
+    if has_services:
+        return "other_services"
+
+    return ""
+
+
 def upsert_tender(data: dict[str, Any]) -> Tender:
     """Создать или обновить тендер из сырых данных парсера."""
     customer = None
@@ -934,10 +1022,16 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
         "content_quality": compute_content_quality(data, source),
     }
 
+    okpd_codes = data.get("okpd_codes", [])
+    tg_category = ""
+    raw_json_inner = data.get("raw_json", {})
+    if isinstance(raw_json_inner, dict):
+        tg_category = raw_json_inner.get("category", "")
+
     enrichment_fields = {
         "nmck": data.get("nmck"),
         "region": data.get("region", ""),
-        "okpd_codes": data.get("okpd_codes", []),
+        "okpd_codes": okpd_codes,
         "published_at": data.get("published_at"),
         "deadline_at": data.get("deadline_at"),
         "auction_date": data.get("auction_date"),
@@ -947,6 +1041,7 @@ def upsert_tender(data: dict[str, Any]) -> Tender:
         "bid_security_required": data.get("bid_security_required"),
         "contract_security_amount": data.get("contract_security_amount"),
         "contract_security_percent": data.get("contract_security_percent"),
+        "industry": classify_industry(okpd_codes, data.get("title", ""), tg_category),
     }
 
     existing = Tender.objects.filter(number=data["number"], source=source).select_related("customer").first()

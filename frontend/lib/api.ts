@@ -372,6 +372,7 @@ export interface CompanyDirection {
   nmck_max: number | null
   law_types: string[]
   procedure_types: string[]
+  industries: string[]
   vector_updated_at: string | null
   created_at: string
 }

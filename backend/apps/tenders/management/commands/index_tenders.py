@@ -69,6 +69,7 @@ class Command(BaseCommand):
                 "status": t.status,
                 "published_at": t.published_at.isoformat() if t.published_at else None,
                 "deadline_at_ts": int(t.deadline_at.timestamp()) if t.deadline_at else 0,
+                "industry": t.industry or "",
             }
             items.append((t.pk, vec, payload))
 

@@ -16,6 +16,7 @@ class SearchQuerySerializer(serializers.Serializer):
     okpd = serializers.ListField(child=serializers.CharField(), required=False, default=list)
     customer = serializers.CharField(required=False, allow_blank=True, default="")
     platform = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    industry = serializers.ListField(child=serializers.CharField(), required=False, default=list)
 
 
 class ExplanationSerializer(serializers.Serializer):
@@ -38,6 +39,7 @@ class SearchResultItemSerializer(serializers.Serializer):
     trading_platform = serializers.CharField(allow_null=True, required=False, allow_blank=True)
     auction_date = serializers.DateTimeField(allow_null=True, required=False)
     procedure_type = serializers.CharField(allow_null=True, required=False, allow_blank=True)
+    industry = serializers.CharField(required=False, allow_blank=True, default="")
     score = serializers.FloatField(required=False, allow_null=True)
     score_label = serializers.CharField(required=False, default="")
     explanations = ExplanationSerializer(many=True, required=False, default=list)

@@ -97,6 +97,8 @@ class TenderSearchView(APIView):
             qs = qs.filter(law_type__in=params["law_type"])
         if params.get("procedure_type"):
             qs = qs.filter(procedure_type__in=params["procedure_type"])
+        if params.get("industry"):
+            qs = qs.filter(industry__in=params["industry"])
         qs = _apply_db_filters(qs, params)
 
         results = []
@@ -116,6 +118,7 @@ class TenderSearchView(APIView):
                 "trading_platform": tender.trading_platform,
                 "auction_date": tender.auction_date,
                 "procedure_type": tender.procedure_type,
+                "industry": tender.industry,
             })
 
         out = SearchResultItemSerializer(results, many=True)
@@ -161,6 +164,7 @@ class TenderMatchView(APIView):
         extra_nmck_max_raw = request.query_params.get("nmck_max")
         extra_nmck_min = float(extra_nmck_min_raw) if extra_nmck_min_raw else None
         extra_nmck_max = float(extra_nmck_max_raw) if extra_nmck_max_raw else None
+        extra_industries = self._csv_param(request, "industry") or None
 
         hits = qdrant.match_profile(
             profile, limit=page_size, direction_ids=direction_ids or None,
@@ -169,6 +173,7 @@ class TenderMatchView(APIView):
             extra_nmck_max=extra_nmck_max,
             extra_law_types=extra_law_types,
             extra_procedure_types=extra_proc_types,
+            extra_industries=extra_industries,
         )
 
         if not hits:
@@ -196,6 +201,8 @@ class TenderMatchView(APIView):
             "platform": self._csv_param(request, "platform"),
         }
         qs = _apply_db_filters(qs, db_filters)
+        if extra_industries:
+            qs = qs.filter(industry__in=extra_industries)
         tenders = {t.pk: t for t in qs}
 
         scored = []
@@ -221,6 +228,7 @@ class TenderMatchView(APIView):
                 "trading_platform": tender.trading_platform,
                 "auction_date": tender.auction_date,
                 "procedure_type": tender.procedure_type,
+                "industry": tender.industry,
                 "score": round(cosine, 4),
                 "score_label": score_label(cosine),
             })
