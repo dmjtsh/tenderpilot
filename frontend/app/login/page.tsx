@@ -73,6 +73,11 @@ function LoginTab({ onSuccess }: { onSuccess: () => void }) {
       <Field label="Пароль" error={errors.password?.message}>
         <input className={inputCls} type="password" placeholder="••••••••" {...register("password")} />
       </Field>
+      <div className="flex justify-end">
+        <a href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+          Забыли пароль?
+        </a>
+      </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
       <button
         type="submit"

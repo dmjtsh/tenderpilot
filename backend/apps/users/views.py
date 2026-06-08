@@ -9,6 +9,8 @@ from .serializers import (
     CompanyDirectionSerializer,
     RegisterSerializer,
     ChangePasswordSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
 )
 
 
@@ -54,6 +56,40 @@ class ChangePasswordView(APIView):
         request.user.set_password(serializer.validated_data["new_password"])
         request.user.save()
         return Response({"data": {"detail": "Пароль изменён."}, "error": None})
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        from .services import send_password_reset_email
+        send_password_reset_email(serializer.validated_data["email"])
+        return Response({"data": {"detail": "Если аккаунт существует, письмо отправлено."}, "error": None})
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        from .services import confirm_password_reset
+        from django.core.exceptions import ValidationError
+        try:
+            confirm_password_reset(
+                uid=serializer.validated_data["uid"],
+                token=serializer.validated_data["token"],
+                new_password=serializer.validated_data["new_password"],
+            )
+        except ValidationError as e:
+            messages = e.messages if hasattr(e, "messages") else [str(e.message)]
+            return Response(
+                {"data": None, "error": "; ".join(messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({"data": {"detail": "Пароль успешно изменён."}, "error": None})
 
 
 def _get_first_profile(user: User) -> CompanyProfile:

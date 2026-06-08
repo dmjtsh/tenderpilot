@@ -38,6 +38,12 @@ export const authApi = {
 
   register: (data: { email: string; password: string; password2: string; first_name?: string }) =>
     client.post("/users/register/", data).then((r) => r.data.data),
+
+  passwordResetRequest: (email: string) =>
+    client.post("/users/password-reset/", { email }).then((r) => r.data),
+
+  passwordResetConfirm: (uid: string, token: string, new_password: string) =>
+    client.post("/users/password-reset/confirm/", { uid, token, new_password }).then((r) => r.data),
 }
 
 // Tenders
