@@ -1338,7 +1338,7 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
 
   if (isV2 && phase === "idle") {
     return (
-      <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white shadow-sm">
+      <div className="mb-8 border border-gray-200 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white">
         <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-200">
           <Sparkles className="w-4 h-4 text-gray-900" />
           <p className="text-sm font-semibold text-[#111827]">AI-резюме</p>
@@ -1422,7 +1422,7 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
   }
 
   return (
-    <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white shadow-sm">
+    <div className="mb-8 border border-gray-200 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white">
       <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
         <Sparkles className="w-5 h-5 text-gray-900" />
         <p className="text-base font-semibold text-[#111827]">AI-резюме</p>
@@ -1698,7 +1698,7 @@ function TenderChat({ tenderId }: { tenderId: number }) {
   const questionCount = messages.filter((m) => m.role === "user").length
 
   return (
-    <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white shadow-sm">
+    <div className="mb-8 border border-gray-200 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200">
         <div className="flex items-center gap-2.5">
           <Send className="w-4 h-4 text-gray-900" />
@@ -2196,8 +2196,8 @@ function TenderDetailPageInner() {
           {authed ? (
             <AiSummaryBlock tenderId={tender.id} tender={tender} />
           ) : (
-            <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 rounded-lg overflow-hidden shadow-sm">
-              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <div className="mb-8 border border-gray-200 border-l-[3px] border-l-gray-900 overflow-hidden bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200">
                 <Sparkles className="w-4 h-4 text-gray-900" />
                 <span className="text-sm font-semibold text-gray-800">AI-анализ</span>
                 <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gray-900 text-white">AI</span>
@@ -2229,8 +2229,8 @@ function TenderDetailPageInner() {
           {authed ? (
             <TenderChat tenderId={tender.id} />
           ) : (
-            <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 rounded-lg overflow-hidden shadow-sm">
-              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+            <div className="mb-8 border border-gray-200 border-l-[3px] border-l-gray-900 overflow-hidden bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200">
                 <Send className="w-4 h-4 text-gray-900" />
                 <span className="text-sm font-semibold text-gray-800">Вопросы по тендеру</span>
                 <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gray-900 text-white">AI</span>
