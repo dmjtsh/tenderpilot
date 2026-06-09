@@ -54,7 +54,7 @@ def _apply_db_filters(qs, params: dict):
 
 
 class TenderSearchView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request: Request) -> Response:
         serializer = SearchQuerySerializer(data=request.data)

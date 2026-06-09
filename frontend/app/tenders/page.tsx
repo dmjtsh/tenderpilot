@@ -107,7 +107,7 @@ function AllTab({ filters }: { filters: TenderFilters }) {
   const { data: searchResults, isFetching: searchFetching } = useQuery({
     queryKey: ["search", query, filterKey],
     queryFn: () => searchApi.search(query, searchBody),
-    enabled: !!query && authed,
+    enabled: !!query,
   })
 
   useEffect(() => {
