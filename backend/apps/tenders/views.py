@@ -114,6 +114,31 @@ class RegionsListView(APIView):
         return Response({"data": CANONICAL_REGIONS, "error": None})
 
 
+class PlatformsListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        now = timezone.now()
+        qs = (
+            Tender.objects
+            .filter(
+                Q(deadline_at__gt=now) | Q(deadline_at__isnull=True),
+                status=Tender.Status.ACTIVE,
+            )
+            .exclude(trading_platform="")
+            .exclude(trading_platform__isnull=True)
+            .values("trading_platform")
+            .annotate(count=Count("id"))
+            .filter(count__gte=3)
+            .order_by("-count")
+        )
+        data = [
+            {"value": row["trading_platform"], "count": row["count"]}
+            for row in qs
+        ]
+        return Response({"data": data, "error": None})
+
+
 class OkvedSearchView(APIView):
     permission_classes = [permissions.AllowAny]
 

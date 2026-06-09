@@ -291,6 +291,9 @@ export const tendersApi = {
   regions: () =>
     client.get("/tenders/regions/").then((r) => r.data.data as string[]),
 
+  platforms: () =>
+    client.get("/tenders/platforms/").then((r) => r.data.data as { value: string; count: number }[]),
+
   getSummary: (id: number, opts?: { refresh?: boolean; generate?: boolean }) =>
     client.get(`/tenders/${id}/summary/`, { params: {
       ...(opts?.refresh ? { refresh: "true" } : {}),

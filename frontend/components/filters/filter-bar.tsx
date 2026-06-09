@@ -26,28 +26,6 @@ const LAW_OPTIONS = [
   { value: "b2b", label: "Коммерческие" },
 ]
 
-const PLATFORM_OPTIONS = [
-  { value: "РТС-тендер", label: "РТС-тендер" },
-  { value: "Сбербанк-АСТ", label: "Сбербанк-АСТ" },
-  { value: "Росэлторг", label: "Росэлторг" },
-  { value: "Фабрикант", label: "Фабрикант" },
-  { value: "ГПБ", label: "ЭТП ГПБ" },
-  { value: "АГЗ РТ", label: "АГЗ РТ" },
-  { value: "ТЭК-Торг", label: "ТЭК-Торг" },
-  { value: "РАД", label: "РАД" },
-  { value: "ЕЭТП", label: "ЕЭТП" },
-  { value: "Портал поставщиков", label: "Портал поставщиков" },
-  { value: "РТС-МАРКЕТ", label: "РТС-Маркет" },
-  { value: "B2B-Center", label: "B2B-Center" },
-  { value: "Берез", label: "Берёзка" },
-  { value: "ОТС", label: "ОТС" },
-  { value: "Бидзаар", label: "Бидзаар" },
-  { value: "SberB2B", label: "SberB2B" },
-  { value: "Tender.Pro", label: "Tender.Pro" },
-  { value: "ЗаказРф", label: "ЗаказРФ" },
-  { value: "ONLINECONTRACT", label: "Онлайнконтракт" },
-]
-
 const INDUSTRY_OPTIONS = [
   { value: "construction_materials", label: "Материалы и изделия" },
   { value: "construction_works", label: "Строительные работы" },
@@ -117,6 +95,17 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
 
   const regionOptions = regions.map((r: string) => ({ value: r, label: r }))
 
+  const { data: platforms = [] } = useQuery({
+    queryKey: ["platforms"],
+    queryFn: () => tendersApi.platforms(),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const platformOptions = platforms.map((p: { value: string; count: number }) => ({
+    value: p.value,
+    label: `${p.value} (${p.count})`,
+  }))
+
   const [customerQuery, setCustomerQuery] = useState("")
   const { data: customerResults = [], isFetching: customerLoading } = useQuery({
     queryKey: ["customer-search", customerQuery],
@@ -159,9 +148,11 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
 
       <FilterDropdown label="Площадка" activeCount={filters.platforms.length}>
         <MultiSelectFilter
-          options={PLATFORM_OPTIONS}
+          options={platformOptions}
           selected={filters.platforms}
           onChange={(v) => setFilter("platforms", v)}
+          searchable
+          searchPlaceholder="Найти площадку..."
         />
       </FilterDropdown>
 
@@ -296,6 +287,16 @@ export function FilterBar({ filters, setFilter, setFilters, clearAll, activeCoun
                   options={LAW_OPTIONS}
                   selected={filters.law_type}
                   onChange={(v) => setFilter("law_type", v)}
+                />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-1.5">Площадка</p>
+                <MultiSelectFilter
+                  options={platformOptions}
+                  selected={filters.platforms}
+                  onChange={(v) => setFilter("platforms", v)}
+                  searchable
+                  searchPlaceholder="Найти площадку..."
                 />
               </div>
               <div>
