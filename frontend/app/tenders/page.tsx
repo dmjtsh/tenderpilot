@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
 import { tendersApi, searchApi, directionsApi, pipelineApi, profileApi, type Tender, type PipelineStatus, type CompanyProfile } from "@/lib/api"
@@ -10,11 +10,15 @@ import { TenderCard } from "@/components/tender-card"
 import { getDirectionColor } from "@/lib/direction-colors"
 import { Search, X, Sparkles, Building2, ChevronDown, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { useTenderFilters, filtersToApiParams, filtersToSearchBody, type TenderFilters } from "@/hooks/use-tender-filters"
+import { useTenderFilters, filtersToApiParams, filtersToSearchBody, filtersToParams, saveFiltersToSession, loadFiltersFromSession, EMPTY_FILTERS, type TenderFilters, type Tab } from "@/hooks/use-tender-filters"
 import { FilterBar } from "@/components/filters/filter-bar"
 
 
-type Tab = "all" | "match"
+const FILTER_PARAM_KEYS = ["procedure_type", "law_type", "platform", "nmck_min", "nmck_max", "region", "region_mode", "deadline_days", "deadline_days_min", "okpd", "customer", "industry"]
+
+function hasFilterParams(sp: URLSearchParams): boolean {
+  return FILTER_PARAM_KEYS.some((k) => sp.has(k))
+}
 
 function usePipelineActions(profileId: number | null = null) {
   const qc = useQueryClient()
@@ -67,8 +71,11 @@ function usePipelineActions(profileId: number | null = null) {
 // ─── All tenders tab ─────────────────────────────────────────────────────────
 
 function AllTab({ filters }: { filters: TenderFilters }) {
-  const [query, setQuery] = useState("")
-  const [input, setInput] = useState("")
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const [query, setQuery] = useState(() => searchParams.get("q") || "")
+  const [input, setInput] = useState(() => searchParams.get("q") || "")
   const [page, setPage] = useState(1)
   const [allTenders, setAllTenders] = useState<Tender[]>([])
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null)
@@ -118,8 +125,13 @@ function AllTab({ filters }: { filters: TenderFilters }) {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    setQuery(input.trim())
+    const q = input.trim()
+    setQuery(q)
     setPage(1)
+    const params = new URLSearchParams(searchParams.toString())
+    if (q) { params.set("q", q) } else { params.delete("q") }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    sessionStorage.setItem("tender_search_query", q)
   }
 
   function handleClear() {
@@ -127,6 +139,10 @@ function AllTab({ filters }: { filters: TenderFilters }) {
     setQuery("")
     setPage(1)
     setAllTenders([])
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("q")
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    sessionStorage.removeItem("tender_search_query")
   }
 
   const tenders = query ? (searchResults ?? []) : allTenders
@@ -149,7 +165,7 @@ function AllTab({ filters }: { filters: TenderFilters }) {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             <input
               className="h-11 w-full pl-11 pr-4 text-base bg-gray-50 border border-gray-200 focus:border-gray-300 focus:outline-none text-gray-900 placeholder:text-gray-400 transition-all duration-200"
-              placeholder="Семантический поиск..."
+              placeholder="Поиск тендеров..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
             />
@@ -449,16 +465,39 @@ function TendersPageInner() {
   const [tab, setTab] = useState<Tab>(() =>
     searchParams.get("tab") === "match" ? "match" : "all"
   )
-  const { filters, setFilter, setFilters, clearAll, activeCount } = useTenderFilters()
+  const { filters, setFilter, setFilters, clearAll, activeCount } = useTenderFilters(tab)
+
+  useEffect(() => {
+    if (!hasFilterParams(searchParams)) {
+      const restored = loadFiltersFromSession(tab)
+      if (restored) {
+        const params = new URLSearchParams(searchParams.toString())
+        const fp = filtersToParams(restored)
+        Object.entries(fp).forEach(([k, v]) => params.set(k, v))
+        if (tab === "all") {
+          const q = sessionStorage.getItem("tender_search_query")
+          if (q) params.set("q", q)
+        }
+        router.replace(`/tenders?${params.toString()}`, { scroll: false })
+      }
+    }
+    sessionStorage.setItem("tender_active_tab", tab)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleTabChange(t: Tab) {
-    setTab(t)
-    const params = new URLSearchParams(searchParams.toString())
-    if (t === "match") {
-      params.set("tab", "match")
-    } else {
-      params.delete("tab")
+    saveFiltersToSession(tab, filters)
+    const restored = loadFiltersFromSession(t) ?? EMPTY_FILTERS
+    const params = new URLSearchParams()
+    if (t === "match") params.set("tab", "match")
+    const fp = filtersToParams(restored)
+    Object.entries(fp).forEach(([k, v]) => params.set(k, v))
+    if (t === "all") {
+      const q = sessionStorage.getItem("tender_search_query")
+      if (q) params.set("q", q)
     }
+    setTab(t)
+    sessionStorage.setItem("tender_active_tab", t)
     router.replace(`/tenders?${params.toString()}`, { scroll: false })
   }
 

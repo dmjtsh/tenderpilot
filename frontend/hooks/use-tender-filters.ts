@@ -60,7 +60,25 @@ function parseFiltersFromParams(sp: URLSearchParams): TenderFilters {
   }
 }
 
-function filtersToParams(filters: TenderFilters): Record<string, string> {
+export type Tab = "all" | "match"
+
+export function saveFiltersToSession(tab: Tab, filters: TenderFilters): void {
+  if (typeof window === "undefined") return
+  sessionStorage.setItem(`tender_filters_${tab}`, JSON.stringify(filters))
+}
+
+export function loadFiltersFromSession(tab: Tab): TenderFilters | null {
+  if (typeof window === "undefined") return null
+  const raw = sessionStorage.getItem(`tender_filters_${tab}`)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as TenderFilters
+  } catch {
+    return null
+  }
+}
+
+export function filtersToParams(filters: TenderFilters): Record<string, string> {
   const p: Record<string, string> = {}
   if (filters.procedure_type.length) p.procedure_type = filters.procedure_type.join(",")
   if (filters.law_type.length) p.law_type = filters.law_type.join(",")
@@ -97,7 +115,7 @@ export function filtersToSearchBody(filters: TenderFilters): Record<string, unkn
   return body
 }
 
-export function useTenderFilters() {
+export function useTenderFilters(tab?: Tab) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -116,8 +134,9 @@ export function useTenderFilters() {
       const fp = filtersToParams(next)
       Object.entries(fp).forEach(([k, v]) => params.set(k, v))
       router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+      if (tab) saveFiltersToSession(tab, next)
     },
-    [searchParams, router, pathname]
+    [searchParams, router, pathname, tab]
   )
 
   const setFilter = useCallback(

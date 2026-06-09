@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState, Suspense } from "react"
+import { useEffect, useMemo, useRef, useState, Suspense } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAuthenticated } from "@/lib/auth"
 import { client, tendersApi, profileApi, experimentsApi, type Tender, type TenderSummary, type TenderSummaryV2, type AnySummary, isV2Summary, type TenderDoc, type DocsResponse, type SummaryExperimentResult, type ExperimentRun } from "@/lib/api"
 import { AlertTriangle, Building2, Calendar, Check, ChevronDown, ChevronLeft, ClipboardList, Clock, Copy, DollarSign, Download, ExternalLink, FileText, Loader2, Lock, Minus, RefreshCw, Send, Shield, Sparkles, XCircle, Wrench } from "lucide-react"
 import Link from "next/link"
+import { filtersToParams, loadFiltersFromSession, type Tab } from "@/hooks/use-tender-filters"
 import { PipelineStatusButtons } from "@/components/pipeline-status-buttons"
 import { TenderCard } from "@/components/tender-card"
 
@@ -1861,6 +1862,22 @@ function TenderDetailPageInner() {
   const profileId = profileIdParam ? Number(profileIdParam) : null
   const authed = isAuthenticated()
 
+  const backToListHref = useMemo(() => {
+    if (typeof window === "undefined") return "/tenders"
+    const tab = (sessionStorage.getItem("tender_active_tab") || "all") as Tab
+    const saved = loadFiltersFromSession(tab)
+    const query = sessionStorage.getItem("tender_search_query")
+    const params = new URLSearchParams()
+    if (tab === "match") params.set("tab", "match")
+    if (saved) {
+      const fp = filtersToParams(saved)
+      Object.entries(fp).forEach(([k, v]) => params.set(k, v))
+    }
+    if (query && tab === "all") params.set("q", query)
+    const qs = params.toString()
+    return qs ? `/tenders?${qs}` : "/tenders"
+  }, [])
+
   const { data: tender, isLoading } = useQuery<Tender>({
     queryKey: ["tender", id],
     queryFn: () => tendersApi.get(Number(id)),
@@ -1881,7 +1898,7 @@ function TenderDetailPageInner() {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2">
         <p className="text-sm text-muted-foreground">Тендер не найден</p>
-        <Link href="/tenders" className="text-xs text-violet-600 hover:underline">Назад</Link>
+        <Link href={backToListHref} className="text-xs text-violet-600 hover:underline">Назад</Link>
       </div>
     )
   }
@@ -1905,7 +1922,7 @@ function TenderDetailPageInner() {
         <div className="max-w-4xl mx-auto px-6 py-10">
           {/* Breadcrumbs */}
           <nav className="flex items-center gap-1.5 text-sm text-gray-400 mb-6">
-            <Link href="/tenders" className="hover:text-gray-600 transition-colors">Тендеры</Link>
+            <Link href={backToListHref} className="hover:text-gray-600 transition-colors">Тендеры</Link>
             <span>/</span>
             <span className="text-gray-500 truncate max-w-[400px]">{tender.title}</span>
           </nav>

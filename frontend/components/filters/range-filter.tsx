@@ -86,12 +86,7 @@ export function RangeFilter({ min, max, onChange }: Props) {
       </div>
 
       {showCustom && (
-        <div
-          className="flex items-center gap-2"
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) applyCustom()
-          }}
-        >
+        <div className="flex items-center gap-2">
           <input
             value={customMin}
             onChange={(e) => setCustomMin(e.target.value)}
@@ -107,6 +102,12 @@ export function RangeFilter({ min, max, onChange }: Props) {
             placeholder="до"
             className="w-full h-8 px-2.5 text-sm border border-gray-200 rounded-md bg-gray-50 text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300"
           />
+          <button
+            onClick={applyCustom}
+            className="h-8 px-3 text-xs font-medium bg-[#111827] text-white rounded-md hover:bg-[#1f2937] transition-colors shrink-0"
+          >
+            OK
+          </button>
         </div>
       )}
 
