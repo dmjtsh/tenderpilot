@@ -1337,10 +1337,11 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
 
   if (isV2 && phase === "idle") {
     return (
-      <div className="mb-8 border border-gray-200 bg-white">
+      <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white shadow-sm">
         <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-200">
-          <Sparkles className="w-4 h-4 text-gray-400" />
+          <Sparkles className="w-4 h-4 text-gray-900" />
           <p className="text-sm font-semibold text-[#111827]">AI-резюме</p>
+          <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gray-900 text-white">AI</span>
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={async () => {
@@ -1420,10 +1421,11 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
   }
 
   return (
-    <div className="mb-8 border border-gray-200 bg-white">
+    <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white shadow-sm">
       <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
-        <Sparkles className="w-5 h-5 text-gray-400" />
+        <Sparkles className="w-5 h-5 text-gray-900" />
         <p className="text-base font-semibold text-[#111827]">AI-резюме</p>
+        <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gray-900 text-white">AI</span>
         <div className="ml-auto flex items-center gap-3">
           {summary && phase === "idle" && (
             <button
@@ -1470,10 +1472,10 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
         ) : (
           <button
             onClick={() => handleGenerate()}
-            className="flex items-center gap-3 text-[15px] text-gray-500 hover:text-[#111827] transition-colors group"
+            className="flex items-center gap-2.5 text-sm font-medium px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
-            <Sparkles className="w-5 h-5 group-hover:text-[#111827] transition-colors" />
-            Сгенерировать резюме
+            <Sparkles className="w-4 h-4" />
+            Сгенерировать AI-резюме
           </button>
         )}
 
@@ -1695,11 +1697,12 @@ function TenderChat({ tenderId }: { tenderId: number }) {
   const questionCount = messages.filter((m) => m.role === "user").length
 
   return (
-    <div className="mb-8 border border-gray-200 bg-white">
+    <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 bg-gradient-to-r from-gray-50 to-white shadow-sm">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200">
         <div className="flex items-center gap-2.5">
-          <Send className="w-4 h-4 text-gray-700" />
+          <Send className="w-4 h-4 text-gray-900" />
           <span className="text-base font-semibold text-gray-900">Вопросы по тендеру</span>
+          <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gray-900 text-white">AI</span>
         </div>
         {questionCount > 0 && (
           <span className="text-sm text-gray-500">{questionCount} вопрос{questionCount === 1 ? "" : questionCount < 5 ? "а" : "ов"}</span>
@@ -1997,7 +2000,7 @@ function TenderDetailPageInner() {
               href={tender.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 h-11 px-5 mb-8 text-base font-medium border border-gray-200 text-gray-700 hover:text-[#111827] hover:border-gray-300 transition-colors"
+              className="inline-flex items-center gap-2.5 h-11 px-5 mb-8 text-base font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
             >
               <ExternalLink className="w-5 h-5" />
               Открыть на площадке
@@ -2176,45 +2179,69 @@ function TenderDetailPageInner() {
           {authed ? (
             <AiSummaryBlock tenderId={tender.id} tender={tender} />
           ) : (
-            <AuthCTA
-              title="AI-анализ"
-              icon={Sparkles}
-              blurContent={
-                <div className="space-y-4">
-                  {["Анализ заказчика", "Описание работ", "Условия оплаты", "Сроки выполнения", "Требования к участникам", "Риски"].map(s => (
-                    <div key={s}>
-                      <div className="text-sm font-medium text-gray-700 mb-2">{s}</div>
-                      <div className="h-3 bg-gray-200 rounded w-full mb-1" />
-                      <div className="h-3 bg-gray-200 rounded w-3/4" />
-                    </div>
-                  ))}
+            <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 rounded-lg overflow-hidden shadow-sm">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <Sparkles className="w-4 h-4 text-gray-900" />
+                <span className="text-sm font-semibold text-gray-800">AI-анализ</span>
+                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gray-900 text-white">AI</span>
+              </div>
+              <div className="relative">
+                <div className="blur-sm pointer-events-none select-none opacity-50 p-6">
+                  <div className="space-y-4">
+                    {["Анализ заказчика", "Описание работ", "Условия оплаты", "Сроки выполнения", "Требования к участникам", "Риски"].map(s => (
+                      <div key={s}>
+                        <div className="text-sm font-medium text-gray-700 mb-2">{s}</div>
+                        <div className="h-3 bg-gray-200 rounded w-full mb-1" />
+                        <div className="h-3 bg-gray-200 rounded w-3/4" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              }
-            />
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  <Link href="/login"
+                    className="inline-flex items-center gap-1.5 text-sm text-white bg-gray-900 border border-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-800 transition-colors">
+                    <Lock className="w-3.5 h-3.5" />
+                    Доступно после регистрации
+                  </Link>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Chat */}
           {authed ? (
             <TenderChat tenderId={tender.id} />
           ) : (
-            <AuthCTA
-              title="Вопросы по тендеру"
-              icon={Send}
-              blurContent={
-                <div className="space-y-3">
-                  <div className="flex gap-2 justify-end">
-                    <div className="bg-gray-100 rounded-lg px-4 py-2 text-sm text-gray-600 max-w-[70%]">Какие требования к участникам?</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-600 max-w-[70%]">Участник должен иметь лицензию и опыт выполнения аналогичных работ...</div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="h-10 flex-1 bg-gray-100 rounded-lg" />
-                    <div className="h-10 w-10 bg-gray-100 rounded-lg" />
+            <div className="mb-8 border border-gray-900 border-l-[3px] border-l-gray-900 rounded-lg overflow-hidden shadow-sm">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <Send className="w-4 h-4 text-gray-900" />
+                <span className="text-sm font-semibold text-gray-800">Вопросы по тендеру</span>
+                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gray-900 text-white">AI</span>
+              </div>
+              <div className="relative">
+                <div className="blur-sm pointer-events-none select-none opacity-50 p-6">
+                  <div className="space-y-3">
+                    <div className="flex gap-2 justify-end">
+                      <div className="bg-gray-100 rounded-lg px-4 py-2 text-sm text-gray-600 max-w-[70%]">Какие требования к участникам?</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-600 max-w-[70%]">Участник должен иметь лицензию и опыт выполнения аналогичных работ...</div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="h-10 flex-1 bg-gray-100 rounded-lg" />
+                      <div className="h-10 w-10 bg-gray-100 rounded-lg" />
+                    </div>
                   </div>
                 </div>
-              }
-            />
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  <Link href="/login"
+                    className="inline-flex items-center gap-1.5 text-sm text-white bg-gray-900 border border-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-800 transition-colors">
+                    <Lock className="w-3.5 h-3.5" />
+                    Доступно после регистрации
+                  </Link>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Similar tenders */}
