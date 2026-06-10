@@ -187,7 +187,7 @@ export function PipelineChat({ tenderId }: { tenderId: number }) {
   }
 
   if (noDocs) {
-    return <p className="text-sm text-gray-400 py-4">Вопросы недоступны: документы не найдены</p>
+    return <p className="text-sm text-gray-400 py-4">Пожалуйста, загрузите документы на вкладке «Документы», чтобы задавать вопросы</p>
   }
 
   return (

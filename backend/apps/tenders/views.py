@@ -326,6 +326,10 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             except QuotaExceeded as e:
                 return Response({"data": None, "error": e.detail}, status=402)
 
+        lock_key = f"summary_gen:{tender.id}:{user.id}"
+        r = self._get_redis()
+        if needs_generation and not r.set(lock_key, "1", nx=True, ex=90):
+            return Response({"data": None, "error": "already_generating"}, status=409)
         try:
             if is_refresh:
                 TenderSummaryV2.objects.filter(tender=tender, user=user).delete()
@@ -333,6 +337,8 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"data": data, "error": None})
         except Exception as e:
             return Response({"data": None, "error": str(e)}, status=500)
+        finally:
+            r.delete(lock_key)
 
     @action(detail=True, methods=["get"], url_path="summary/export")
     def summary_export(self, request, pk=None):
@@ -488,6 +494,13 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
                 for chunk in chat_with_tender_full_context(
                     tender.id, message, history
                 ):
+                    try:
+                        parsed = _json.loads(chunk)
+                        if isinstance(parsed, dict) and "error" in parsed:
+                            yield f"data: {chunk}\n\n"
+                            return
+                    except (ValueError, TypeError):
+                        pass
                     yield f"data: {_json.dumps({'chunk': chunk})}\n\n"
                 yield f"data: {_json.dumps({'done': True})}\n\n"
             except Exception as exc:

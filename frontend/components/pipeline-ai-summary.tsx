@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { client, tendersApi, isV2Summary, type TenderSummaryV2, type TenderDoc, type DocsResponse, type AnySummary } from "@/lib/api"
 import { Sparkles, Loader2, Download, RefreshCw, AlertTriangle, ChevronDown } from "lucide-react"
@@ -218,6 +218,8 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
   const qc = useQueryClient()
   const [phase, setPhase] = useState<Phase>("idle")
   const [error, setError] = useState<string | null>(null)
+  const SS_KEY = `summary_gen:${tenderId}`
+  const generatingRef = useRef(false)
 
   const { data: resp } = useQuery<DocsResponse>({
     queryKey: ["tender-docs", tenderId],
@@ -233,32 +235,64 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
     queryFn: () => tendersApi.getSummary(tenderId),
     staleTime: 5 * 60 * 1000,
     retry: false,
+    refetchInterval: () => {
+      if (typeof window === "undefined") return false
+      const ts = localStorage.getItem(SS_KEY)
+      if (ts && Date.now() - Number(ts) < 90_000) return 3000
+      return false
+    },
   })
 
   const [localSummary, setLocalSummary] = useState<AnySummary | null>(null)
   const effectiveSummary = localSummary ?? cachedSummary ?? null
   const isV2 = effectiveSummary && isV2Summary(effectiveSummary)
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const ts = localStorage.getItem(SS_KEY)
+    if (ts && Date.now() - Number(ts) < 90_000) {
+      setPhase("analyzing")
+      generatingRef.current = true
+    }
+  }, [SS_KEY])
+
+  useEffect(() => {
+    if (!generatingRef.current) return
+    if (cachedSummary) {
+      localStorage.removeItem(SS_KEY)
+      generatingRef.current = false
+      setLocalSummary(cachedSummary as AnySummary)
+      setPhase("idle")
+    }
+  }, [cachedSummary, SS_KEY])
+
   async function generateSummary(refresh = false) {
     setPhase("analyzing")
     setError(null)
+    localStorage.setItem(SS_KEY, String(Date.now()))
     try {
       const data = await tendersApi.getSummary(tenderId, { refresh, generate: true })
       setLocalSummary(data)
       qc.setQueryData(["tender-summary", tenderId], data)
       setPhase("idle")
+      localStorage.removeItem(SS_KEY)
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status
+      const serverError = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      if (status === 409 && serverError === "already_generating") {
+        return
+      }
       if (status === 409) {
         setError("docs_processing")
         setPhase("idle")
+        localStorage.removeItem(SS_KEY)
         return
       }
+      localStorage.removeItem(SS_KEY)
       if (status === 402) {
         setError("quota_exceeded")
       } else {
-        const serverMsg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-        setError(serverMsg || (e instanceof Error ? e.message : "Ошибка генерации"))
+        setError(serverError || (e instanceof Error ? e.message : "Ошибка генерации"))
       }
       setPhase("idle")
     }
@@ -309,7 +343,8 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
             </button>
             <button
               onClick={() => handleGenerate(true)}
-              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+              disabled={phase !== "idle"}
+              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40 disabled:pointer-events-none"
               title="Перегенерировать"
             >
               <RefreshCw className="w-4 h-4" />
@@ -365,7 +400,8 @@ export function PipelineAiSummary({ tenderId }: { tenderId: number }) {
       ) : (
         <button
           onClick={() => handleGenerate()}
-          className="flex items-center gap-2.5 w-full justify-center py-3.5 text-[15px] text-gray-500 hover:text-[#111827] bg-gray-50 hover:bg-gray-100 rounded transition-colors"
+          disabled={phase !== "idle"}
+          className="flex items-center gap-2.5 w-full justify-center py-3.5 text-[15px] text-gray-500 hover:text-[#111827] bg-gray-50 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:pointer-events-none"
         >
           <Sparkles className="w-5 h-5" />
           Сгенерировать резюме

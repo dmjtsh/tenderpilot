@@ -1244,6 +1244,9 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
   const latestFull = legacyExperiments.find((e) => e.strategy === "full")
   const canCompareLegacy = !!latestRag && !!latestFull && namedExperiments.length === 0
 
+  const SS_KEY = `summary_gen:${tenderId}`
+  const generatingRef = useRef(false)
+
   const {
     data: cachedSummary,
     isLoading: loadingCache,
@@ -1252,29 +1255,61 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
     queryFn: () => tendersApi.getSummary(tenderId),
     staleTime: 5 * 60 * 1000,
     retry: false,
+    refetchInterval: () => {
+      if (typeof window === "undefined") return false
+      const ts = localStorage.getItem(SS_KEY)
+      if (ts && Date.now() - Number(ts) < 90_000) return 3000
+      return false
+    },
   })
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const ts = localStorage.getItem(SS_KEY)
+    if (ts && Date.now() - Number(ts) < 90_000) {
+      setPhase("analyzing")
+      generatingRef.current = true
+    }
+  }, [SS_KEY])
+
+  useEffect(() => {
+    if (!generatingRef.current) return
+    if (cachedSummary) {
+      localStorage.removeItem(SS_KEY)
+      generatingRef.current = false
+      setSummary(cachedSummary as AnySummary)
+      setPhase("idle")
+    }
+  }, [cachedSummary, SS_KEY])
 
   async function generateSummary(refresh = false) {
     setPhase("analyzing")
     setError(null)
+    localStorage.setItem(SS_KEY, String(Date.now()))
     try {
       const data = await tendersApi.getSummary(tenderId, { refresh, generate: true })
       setSummary(data)
       queryClient.setQueryData(["tender-summary", tenderId], data)
       setPhase("idle")
+      localStorage.removeItem(SS_KEY)
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status
+      const serverError = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      if (status === 409 && serverError === "already_generating") {
+        return
+      }
       if (status === 409) {
         setPhase("downloading")
         setDownloading(true)
         downloadStartRef.current = Date.now()
+        localStorage.removeItem(SS_KEY)
         return
       }
+      localStorage.removeItem(SS_KEY)
       if (status === 402) {
         setError("quota_exceeded")
       } else {
-        const serverMsg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-        setError(serverMsg || (e instanceof Error ? e.message : "Ошибка генерации"))
+        setError(serverError || (e instanceof Error ? e.message : "Ошибка генерации"))
       }
       setPhase("idle")
     }
@@ -1391,7 +1426,8 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
             <span className="w-px h-4 bg-gray-200" />
             <button
               onClick={() => handleGenerate(true)}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#111827] transition-colors"
+              disabled={phase !== "idle"}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#111827] transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Перегенерировать
@@ -1489,7 +1525,8 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
         ) : (
           <button
             onClick={() => handleGenerate()}
-            className="flex items-center gap-2.5 text-sm font-medium px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            disabled={phase !== "idle"}
+            className="flex items-center gap-2.5 text-sm font-medium px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
           >
             <Sparkles className="w-4 h-4" />
             Сгенерировать AI-резюме
@@ -1601,7 +1638,6 @@ function TenderChat({ tenderId }: { tenderId: number }) {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [streamingText, setStreamingText] = useState("")
-  const [noDocs, setNoDocs] = useState(false)
   const [quotaExceeded, setQuotaExceeded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -1668,8 +1704,14 @@ function TenderChat({ tenderId }: { tenderId: number }) {
           try {
             const data = JSON.parse(line.slice(6))
             if (data.error === "no_docs") {
-              setNoDocs(true)
-              setMessages((prev) => prev.slice(0, -1))
+              fullText = "Пожалуйста, загрузите документы, чтобы задавать вопросы по тендеру."
+              setStreamingText(fullText)
+              setMessages((prev) => {
+                const updated = [...prev]
+                updated[updated.length - 1] = { role: "assistant", text: fullText }
+                return updated
+              })
+              setStreamingText("")
               setLoading(false)
               return
             }
@@ -1734,10 +1776,6 @@ function TenderChat({ tenderId }: { tenderId: number }) {
               Улучшить тариф →
             </a>
           </div>
-        ) : noDocs ? (
-          <p className="text-sm text-gray-400">
-            Вопросы недоступны: документы не найдены на площадке
-          </p>
         ) : (
           <>
             {(messages.length > 0 || streamingText) && (
