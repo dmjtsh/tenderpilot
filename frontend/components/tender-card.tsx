@@ -152,7 +152,7 @@ function StageDropdown({
           }
         `}
       >
-        <span className="truncate">{pipelineStatus ? PIPELINE_LABEL[pipelineStatus] : "Стадия"}</span>
+        <span className="truncate">{pipelineStatus ? PIPELINE_LABEL[pipelineStatus] : "Добавить"}</span>
         <ChevronDown className="w-3 h-3 shrink-0" />
       </button>
 

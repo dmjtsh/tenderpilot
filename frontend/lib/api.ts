@@ -1,5 +1,5 @@
 import axios from "axios"
-import { getToken, clearTokens } from "./auth"
+import { getToken, clearTokens, loginUrl } from "./auth"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1"
 
@@ -25,7 +25,7 @@ client.interceptors.response.use(
           return client.request(cfg)
         }
       }
-      window.location.href = "/login"
+      window.location.href = loginUrl()
     }
     return Promise.reject(error)
   }

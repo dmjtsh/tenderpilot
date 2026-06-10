@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
@@ -16,6 +16,8 @@ const NAV = [
 
 function SidebarContent({ onNavigate, guest }: { onNavigate?: () => void; guest?: boolean }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const searchStr = searchParams.toString()
   const router = useRouter()
   const qc = useQueryClient()
   const { data: me } = useQuery<{ email: string }>({
@@ -39,7 +41,7 @@ function SidebarContent({ onNavigate, guest }: { onNavigate?: () => void; guest?
       {guest && (
         <div className="px-3 pt-3 pb-1 shrink-0">
           <Link
-            href="/login"
+            href={pathname === "/" || pathname.startsWith("/login") ? "/login" : `/login?redirect=${encodeURIComponent(pathname + (searchStr ? `?${searchStr}` : ""))}`}
             onClick={onNavigate}
             className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-[#111827] hover:bg-black transition-colors rounded w-full"
           >

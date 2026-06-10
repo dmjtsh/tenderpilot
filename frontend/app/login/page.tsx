@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -142,13 +142,11 @@ function RegisterTab({ onSuccess }: { onSuccess: () => void }) {
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const qc = useQueryClient()
   const [tab, setTab] = useState<"login" | "register">("login")
 
-  const [redirectTo] = useState(() => {
-    if (typeof window === "undefined") return "/tenders"
-    return new URLSearchParams(window.location.search).get("redirect") || "/tenders"
-  })
+  const redirectTo = searchParams.get("redirect") || "/tenders"
 
   useEffect(() => {
     if (isAuthenticated()) router.replace(redirectTo)

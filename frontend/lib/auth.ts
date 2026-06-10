@@ -24,3 +24,10 @@ export function clearTokens() {
 export function isAuthenticated(): boolean {
   return !!getToken()
 }
+
+export function loginUrl(): string {
+  if (typeof window === "undefined") return "/login"
+  const current = window.location.pathname + window.location.search
+  if (current === "/" || current.startsWith("/login")) return "/login"
+  return `/login?redirect=${encodeURIComponent(current)}`
+}

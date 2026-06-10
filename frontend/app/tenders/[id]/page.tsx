@@ -18,6 +18,9 @@ function AuthCTA({ title, icon: Icon, linkHref, linkText, blurContent }: {
   linkText?: string
   blurContent?: React.ReactNode
 }) {
+  const defaultHref = typeof window !== "undefined"
+    ? `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
+    : "/login"
   return (
     <div className="mb-8 border border-amber-200 rounded-lg overflow-hidden">
       {title && (
@@ -33,7 +36,7 @@ function AuthCTA({ title, icon: Icon, linkHref, linkText, blurContent }: {
           </div>
         )}
         <div className={`${blurContent ? "absolute inset-0" : ""} flex flex-col items-center justify-center p-6`}>
-          <Link href={linkHref ?? "/login"}
+          <Link href={linkHref ?? defaultHref}
             className="inline-flex items-center gap-1.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full hover:bg-amber-100 transition-colors">
             <Lock className="w-3.5 h-3.5" />
             {linkText ?? "Доступно после регистрации"}

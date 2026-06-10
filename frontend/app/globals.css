@@ -121,20 +121,21 @@
 /* ---- Thin scrollbar ---- */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: #d1d5db transparent;
+  scrollbar-color: #9ca3af #f3f4f6;
 }
 .scrollbar-thin::-webkit-scrollbar {
-  height: 6px;
+  height: 10px;
 }
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
+  background: #f3f4f6;
+  border-radius: 5px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
+  background: #9ca3af;
+  border-radius: 5px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #6b7280;
 }
 
 /* ---- Accessibility ---- */
