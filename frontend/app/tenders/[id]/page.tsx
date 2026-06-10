@@ -960,6 +960,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
 
   const noDocs = downloadStatus === "no_docs"
   const isProcessing = docsAreProcessing(docs)
+  const isDownloading = downloading || downloadStatus === "downloading"
 
   async function handleDownload() {
     seenDownloadingRef.current = false
@@ -969,6 +970,10 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
       if (res?.no_docs) {
         setDownloading(false)
         queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
+        return
+      }
+      if (res?.already_downloading) {
+        setDownloading(false)
         return
       }
       setTimeout(() => {
@@ -987,8 +992,11 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
     if (downloadStatus === "downloading") {
       seenDownloadingRef.current = true
     }
-    // Сбрасываем только если уже видели "downloading" — чтобы не реагировать на stale "failed" из кеша
     if (downloadStatus === "no_docs" || (downloadStatus === "failed" && seenDownloadingRef.current)) {
+      setDownloading(false)
+      return
+    }
+    if (seenDownloadingRef.current && downloadStatus !== "downloading" && docs.length === 0) {
       setDownloading(false)
       return
     }
@@ -1015,7 +1023,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
         {docs.length > 0 && (
           <span className="text-sm text-gray-400">{docs.length}</span>
         )}
-        {docs.length > 0 && !isProcessing && !downloading && (
+        {docs.length > 0 && !isProcessing && !isDownloading && (
           <button
             onClick={handleDownload}
             className="ml-auto text-sm text-gray-400 hover:text-[#111827] transition-colors"
@@ -1032,7 +1040,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
           </div>
         ) : noDocs ? (
           <p className="text-[15px] text-gray-400">Документы недоступны на площадке</p>
-        ) : docs.length === 0 && !downloading ? (
+        ) : docs.length === 0 && !isDownloading ? (
           <button
             onClick={handleDownload}
             className="flex items-center gap-3 text-[15px] text-gray-500 hover:text-[#111827] transition-colors group"
@@ -1042,7 +1050,7 @@ function DocumentsBlock({ tenderId }: { tenderId: number }) {
           </button>
         ) : (
           <div className="border border-gray-200 overflow-hidden divide-y divide-gray-200">
-            {downloading && docs.length === 0 && (
+            {isDownloading && docs.length === 0 && (
               <div className="flex items-center gap-3 px-4 py-3 text-[15px] text-gray-500">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
                 Загружаем документы...
@@ -1304,12 +1312,20 @@ function AiSummaryBlock({ tenderId, tender }: { tenderId: number; tender: Tender
       setPhase("downloading")
       setDownloading(true)
       downloadStartRef.current = Date.now()
+
+      if (downloadStatus === "downloading") {
+        return
+      }
+
       try {
         const res = await tendersApi.downloadDocs(tenderId)
         if (res?.no_docs) {
           setDownloading(false)
           setPhase("idle")
           queryClient.invalidateQueries({ queryKey: ["tender-docs", tenderId] })
+          return
+        }
+        if (res?.already_downloading) {
           return
         }
         setTimeout(() => {

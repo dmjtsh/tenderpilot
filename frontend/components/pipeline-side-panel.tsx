@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { client, pipelineApi, tendersApi, type PipelineStatus, type TenderDoc, type DocsResponse } from "@/lib/api"
 import { X, ExternalLink, FileText, Download, Loader2 } from "lucide-react"
@@ -92,18 +92,31 @@ export function PipelineSidePanel({
     enabled: tab === "docs",
     refetchInterval: (query) => {
       const r = query.state.data
-      if (r?.downloadStatus === "downloading") return 3000
-      if (downloading) return 3000
+      if (r?.downloadStatus === "downloading") return 2000
+      if (downloading) return 2000
       return false
     },
   })
   const docs = resp?.docs ?? []
   const downloadStatus = resp?.downloadStatus ?? ""
   const noDocs = downloadStatus === "no_docs"
+  const isDownloading = downloading || downloadStatus === "downloading"
+
+  const seenDownloadingRef = useRef(false)
 
   useEffect(() => {
-    if (!downloading) return
+    if (!downloading) {
+      seenDownloadingRef.current = false
+      return
+    }
+    if (downloadStatus === "downloading") {
+      seenDownloadingRef.current = true
+    }
     if (downloadStatus === "no_docs" || downloadStatus === "failed") {
+      setDownloading(false)
+      return
+    }
+    if (seenDownloadingRef.current && downloadStatus !== "downloading" && docs.length === 0) {
       setDownloading(false)
       return
     }
@@ -117,6 +130,9 @@ export function PipelineSidePanel({
     try {
       const res = await tendersApi.downloadDocs(tenderId)
       if (res?.no_docs) {
+        setDownloading(false)
+      }
+      if (res?.already_downloading) {
         setDownloading(false)
       }
     } catch {
@@ -246,7 +262,7 @@ export function PipelineSidePanel({
 
           {tab === "docs" && (
             <div className="flex flex-col gap-2.5">
-              {docs.length === 0 && !downloading ? (
+              {docs.length === 0 && !isDownloading ? (
                 <div className="py-8 flex flex-col items-center gap-3">
                   {noDocs ? (
                     <p className="text-[15px] text-gray-400">Документы недоступны для этого тендера</p>
@@ -263,7 +279,7 @@ export function PipelineSidePanel({
                     </>
                   )}
                 </div>
-              ) : docs.length === 0 && downloading ? (
+              ) : docs.length === 0 && isDownloading ? (
                 <div className="py-8 flex flex-col items-center gap-3">
                   <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
                   <p className="text-[15px] text-gray-400">Загрузка документов...</p>

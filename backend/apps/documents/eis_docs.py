@@ -83,44 +83,45 @@ def fetch_document_links(purchase_number: str, source_url: str = "") -> list[dic
 def _fetch_notice223_links(purchase_number: str) -> list[dict[str, str]]:
     """
     Двухшаговый парсинг документов 223-ФЗ:
-    1. Получаем noticeInfoId из common-info страницы по regNumber (пробуем оба URL-формата)
-    2. Парсим documents.html?noticeInfoId=XXX
+    1. Получаем ссылку на documents.html из common-info страницы
+    2. Парсим documents.html
     """
     common_info_urls = [
         f"{BASE_URL}/epz/order/notice/notice223/common-info.html?regNumber={purchase_number}",
         f"{BASE_URL}/223/purchase/public/purchase/info/common-info.html?regNumber={purchase_number}",
     ]
-    notice_info_id = None
+    docs_query = None
     for common_info_url in common_info_urls:
         try:
             resp = requests.get(common_info_url, headers=HEADERS, timeout=20, allow_redirects=True)
             if resp.status_code != 200:
                 continue
+            match = re.search(r'documents\.html\?([^"]+)', resp.text)
+            if match:
+                docs_query = match.group(1)
+                break
             match = re.search(r'noticeInfoId=(\d+)', resp.text)
             if match:
-                notice_info_id = match.group(1)
+                docs_query = f"noticeInfoId={match.group(1)}"
                 break
         except Exception as exc:
             logger.warning("Error fetching notice223 common-info %s: %s", common_info_url, exc)
 
-    if not notice_info_id:
-        logger.warning("noticeInfoId not found for 223-FZ tender %s", purchase_number)
+    if not docs_query:
+        logger.warning("documents link not found for 223-FZ tender %s", purchase_number)
         return []
 
-    docs_url = (
-        f"{BASE_URL}/epz/order/notice/notice223/documents.html"
-        f"?noticeInfoId={notice_info_id}"
-    )
+    docs_url = f"{BASE_URL}/epz/order/notice/notice223/documents.html?{docs_query}"
     try:
         resp = requests.get(docs_url, headers=HEADERS, timeout=20, allow_redirects=True)
         if resp.status_code != 200:
-            logger.warning("notice223 documents page returned %d for noticeInfoId=%s", resp.status_code, notice_info_id)
+            logger.warning("notice223 documents page returned %d for %s", resp.status_code, purchase_number)
             return []
         links = _extract_notice223_links(resp.text)
         if links:
             logger.info(
-                "Found %d documents for 223-FZ tender %s (noticeInfoId=%s)",
-                len(links), purchase_number, notice_info_id,
+                "Found %d documents for 223-FZ tender %s",
+                len(links), purchase_number,
             )
         return links
     except Exception as exc:
@@ -134,7 +135,7 @@ def _extract_notice223_links(html_text: str) -> list[dict[str, str]]:
     results: list[dict[str, str]] = []
     seen_urls: set[str] = set()
 
-    for a in tree.xpath('//a[contains(@href, "/223/purchase/public/download/download.html")]'):
+    for a in tree.xpath('//a[contains(@href, "/223/purchase/public/download/download.html") or contains(@href, "/223/filestore/public/")]'):
         href = a.get("href", "").strip()
         if not href:
             continue

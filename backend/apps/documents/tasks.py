@@ -106,11 +106,13 @@ def _is_generic_filename(name: str) -> bool:
     return bool(re.match(r"^Файл\s*\d*$", name)) or not name or name.startswith("doc.")
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=60)
-def download_and_parse_documents(self, tender_id: int) -> str:
+@shared_task(bind=True, max_retries=2, default_retry_delay=60,
+             soft_time_limit=120, time_limit=150)
+def download_and_parse_documents(self, tender_id: int, user_key: str | None = None) -> str:
     try:
         tender = Tender.objects.get(id=tender_id)
     except Tender.DoesNotExist:
+        _release_download_slot(user_key, tender_id)
         return f"tender {tender_id} not found"
 
     Tender.objects.filter(id=tender_id).update(
@@ -124,6 +126,20 @@ def download_and_parse_documents(self, tender_id: int) -> str:
             docs_download_status=Tender.DocsDownloadStatus.FAILED,
         )
         raise
+    finally:
+        _release_download_slot(user_key, tender_id)
+
+
+def _release_download_slot(user_key: str | None, tender_id: int) -> None:
+    if not user_key:
+        return
+    try:
+        import redis as _redis
+        from decouple import config
+        r = _redis.from_url(config("REDIS_URL", default="redis://localhost:6379"), decode_responses=True)
+        r.srem(user_key, str(tender_id))
+    except Exception:
+        pass
 
 
 def _do_download_and_parse(self, tender: Tender) -> str:
@@ -209,9 +225,10 @@ def _do_download_and_parse(self, tender: Tender) -> str:
         for doc_id in created_ids:
             parse_document.delay(doc_id)
 
+    has_docs = created_ids or TenderDocument.objects.filter(tender=tender).exists()
     Tender.objects.filter(id=tender.id).update(
         docs_download_status=Tender.DocsDownloadStatus.DONE
-        if created_ids
+        if has_docs
         else Tender.DocsDownloadStatus.NO_DOCS,
     )
     return f"tender {tender.number}: {len(created_ids)} documents queued"

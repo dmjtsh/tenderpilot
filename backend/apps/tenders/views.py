@@ -1,6 +1,8 @@
 from datetime import timedelta
 
+import redis
 import django_filters
+from decouple import config
 from django.db.models import Count, Q, Sum
 from django.http import StreamingHttpResponse
 from django.utils import timezone
@@ -362,10 +364,20 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
+    STALE_DOWNLOAD_MINUTES = 3
+
     @action(detail=True, methods=["get"], url_path="docs")
     def docs(self, request, pk=None):
         from apps.documents.models import TenderDocument
         tender = self.get_object()
+
+        if (tender.docs_download_status == Tender.DocsDownloadStatus.DOWNLOADING
+                and tender.updated_at < timezone.now() - timedelta(minutes=self.STALE_DOWNLOAD_MINUTES)):
+            Tender.objects.filter(id=tender.id).update(
+                docs_download_status=Tender.DocsDownloadStatus.IDLE,
+            )
+            tender.docs_download_status = Tender.DocsDownloadStatus.IDLE
+
         if tender.law_type == "b2b":
             if not request.user.is_authenticated:
                 return Response({"data": [], "error": None})
@@ -489,6 +501,24 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         response["X-Accel-Buffering"] = "no"
         return response
 
+    MAX_CONCURRENT_DOWNLOADS = 3
+    _redis_client = None
+
+    @classmethod
+    def _get_redis(cls):
+        if cls._redis_client is None:
+            cls._redis_client = redis.from_url(
+                config("REDIS_URL", default="redis://localhost:6379"),
+                decode_responses=True,
+            )
+        return cls._redis_client
+
+    @staticmethod
+    def _rate_limit_key(request) -> str:
+        if request.user and request.user.is_authenticated:
+            return f"active_doc_downloads:{request.user.id}"
+        return f"active_doc_downloads:anon:{request.META.get('REMOTE_ADDR', 'unknown')}"
+
     @action(detail=True, methods=["post"], url_path="download-docs")
     def download_docs(self, request, pk=None):
         from apps.documents.tasks import (
@@ -499,6 +529,20 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         from apps.documents.eis_docs import fetch_document_links
 
         tender = self.get_object()
+
+        stale_cutoff = timezone.now() - timedelta(minutes=self.STALE_DOWNLOAD_MINUTES)
+        if tender.docs_download_status == Tender.DocsDownloadStatus.DOWNLOADING:
+            if tender.updated_at > stale_cutoff:
+                return Response({"data": {"already_downloading": True}, "error": None})
+
+        user_key = self._rate_limit_key(request)
+        r = self._get_redis()
+        active_count = r.scard(user_key) - (1 if r.sismember(user_key, str(tender.id)) else 0)
+        if active_count >= self.MAX_CONCURRENT_DOWNLOADS:
+            return Response(
+                {"data": None, "error": "Максимум 3 загрузки одновременно. Дождитесь завершения текущих."},
+                status=429,
+            )
 
         if tender.source == tender.Source.KOMTENDER:
             has_links = bool(_komtender_doc_links(tender))
@@ -512,9 +556,13 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
             tender.save(update_fields=["docs_download_status"])
             return Response({"data": {"started": False, "no_docs": True}, "error": None})
 
+        r.sadd(user_key, str(tender.id))
+        r.expire(user_key, 600)
+
         tender.docs_download_status = Tender.DocsDownloadStatus.DOWNLOADING
-        tender.save(update_fields=["docs_download_status"])
-        download_and_parse_documents.delay(tender.id)
+        tender.updated_at = timezone.now()
+        tender.save(update_fields=["docs_download_status", "updated_at"])
+        download_and_parse_documents.delay(tender.id, user_key=user_key)
         return Response({"data": {"started": True}, "error": None})
 
     @action(detail=True, methods=["post"], url_path="reindex-docs")
