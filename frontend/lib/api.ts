@@ -36,7 +36,7 @@ export const authApi = {
   login: (email: string, password: string) =>
     client.post("/users/auth/token/", { email, password }).then((r) => r.data),
 
-  register: (data: { email: string; password: string; password2: string; first_name?: string }) =>
+  register: (data: { email: string; password: string; password2: string; first_name?: string; ref_code?: string }) =>
     client.post("/users/register/", data).then((r) => r.data.data),
 
   passwordResetRequest: (email: string) =>
@@ -550,6 +550,29 @@ export const billingApi = {
     client.post("/billing/cancel/").then((r) => r.data.data as { status: string; active_until: string }),
   verify: () =>
     client.post("/billing/verify/").then((r) => r.data.data as UserPlan & { updated: boolean }),
+}
+
+// Referrals
+export interface ReferralInvited {
+  email: string;
+  status: "registered" | "converted";
+  registered_at: string;
+  converted_at: string | null;
+}
+
+export interface ReferralMe {
+  code: string;
+  link: string;
+  invited_count: number;
+  converted_count: number;
+  invited: ReferralInvited[];
+}
+
+export const referralsApi = {
+  getMe: async (): Promise<ReferralMe> => {
+    const r = await client.get("/referrals/me/");
+    return r.data.data;
+  },
 }
 
 // Experiments

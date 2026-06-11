@@ -1,7 +1,11 @@
+import logging
+
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+
+logger = logging.getLogger(__name__)
 from .models import User, CompanyProfile, CompanyDirection
 from .serializers import (
     UserSerializer,
@@ -22,6 +26,14 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        ref_code = (request.data.get("ref_code") or "").strip()
+        if ref_code:
+            try:
+                from apps.referrals.services import register_referral  # noqa: PLC0415
+                register_referral(referred_user=user, ref_code=ref_code)
+            except Exception:
+                logger.exception("Referral registration failed for ref_code=%s", ref_code)
 
         refresh = RefreshToken.for_user(user)
         return Response(

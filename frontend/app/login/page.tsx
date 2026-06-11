@@ -90,7 +90,7 @@ function LoginTab({ onSuccess }: { onSuccess: () => void }) {
   )
 }
 
-function RegisterTab({ onSuccess }: { onSuccess: () => void }) {
+function RegisterTab({ onSuccess, refCode }: { onSuccess: () => void; refCode: string }) {
   const [error, setError] = useState("")
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -99,7 +99,7 @@ function RegisterTab({ onSuccess }: { onSuccess: () => void }) {
   async function onSubmit(data: RegisterForm) {
     setError("")
     try {
-      const res = await authApi.register(data)
+      const res = await authApi.register({ ...data, ...(refCode ? { ref_code: refCode } : {}) })
       setTokens(res.access, res.refresh)
       trackGoal("register_success")
       onSuccess()
@@ -144,7 +144,24 @@ function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const qc = useQueryClient()
-  const [tab, setTab] = useState<"login" | "register">("login")
+
+  const urlRef = searchParams.get("ref")
+  const [refCode, setRefCode] = useState<string>("")
+  const [tab, setTab] = useState<"login" | "register">(() => urlRef ? "register" : "login")
+
+  useEffect(() => {
+    try {
+      if (urlRef) {
+        localStorage.setItem("ref_code", urlRef)
+        setRefCode(urlRef)
+      } else {
+        const stored = localStorage.getItem("ref_code") ?? ""
+        setRefCode(stored)
+      }
+    } catch {
+      // private browsing mode
+    }
+  }, [urlRef])
 
   const redirectTo = searchParams.get("redirect") || "/tenders"
 
@@ -152,7 +169,12 @@ function LoginPageInner() {
     if (isAuthenticated()) router.replace(redirectTo)
   }, [router, redirectTo])
 
-  const handleSuccess = () => { qc.clear(); localStorage.removeItem("onboarding_dismissed"); router.push(redirectTo) }
+  const handleSuccess = () => {
+    qc.clear()
+    localStorage.removeItem("onboarding_dismissed")
+    try { localStorage.removeItem("ref_code") } catch { /* ignore */ }
+    router.push(redirectTo)
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 relative">
@@ -191,7 +213,7 @@ function LoginPageInner() {
         {tab === "login" ? (
           <LoginTab onSuccess={handleSuccess} />
         ) : (
-          <RegisterTab onSuccess={handleSuccess} />
+          <RegisterTab onSuccess={handleSuccess} refCode={refCode} />
         )}
       </div>
     </div>

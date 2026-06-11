@@ -6,11 +6,12 @@ import Link from "next/link"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { clearTokens, isAuthenticated } from "@/lib/auth"
 import { profileApi } from "@/lib/api"
-import { FileText, Columns3, Settings, LogOut, Send, Mail, CreditCard, Menu, X } from "lucide-react"
+import { FileText, Columns3, Settings, LogOut, Send, Mail, CreditCard, Menu, X, Users } from "lucide-react"
 
 const NAV = [
   { href: "/tenders", icon: FileText, label: "Тендеры" },
   { href: "/pipeline", icon: Columns3, label: "Мои тендеры" },
+  { href: "/referrals", icon: Users, label: "Рефералы" },
   { href: "/profile", icon: Settings, label: "Профиль" },
 ]
 

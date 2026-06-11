@@ -165,6 +165,15 @@ def create_checkout(user: "User", plan: str, interval: str) -> dict:
     from .yookassa_client import create_first_payment
 
     amount = get_price(plan, interval)
+
+    try:
+        from apps.referrals.services import get_pending_discount  # noqa: PLC0415
+        discount = get_pending_discount(user)
+        if discount:
+            amount = amount * (100 - discount) // 100
+    except Exception:
+        logger.exception("Referral discount check failed for user=%s", user.id)
+
     return_url = settings.YOOKASSA_RETURN_URL
 
     yoo_payment = create_first_payment(
@@ -257,6 +266,12 @@ def handle_payment_succeeded(yookassa_payment_id: str, yoo_data: dict) -> None:
         user_plan.save(update_fields=["plan", "expires_at", "ai_summaries_used", "rag_questions_used", "reset_at", "updated_at"])
 
         logger.info("Payment succeeded: user=%s plan=%s interval=%s", user.id, plan, interval)
+
+        try:
+            from apps.referrals.services import mark_converted  # noqa: PLC0415
+            mark_converted(user)
+        except Exception:
+            logger.exception("Referral mark_converted failed for user=%s", user.id)
 
 
 def handle_payment_failed(yookassa_payment_id: str) -> None:
