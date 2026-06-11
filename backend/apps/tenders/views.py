@@ -679,10 +679,8 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="search-won-candidates")
     def search_won_candidates(self, request):
-        import re
         from urllib.parse import urlparse, parse_qs
         from .eis_client import fetch_tender_detail as eis_fetch
-        from .tenderguru_client import fetch_tender_by_num, parse_list_item, enrich_from_detail
         from .services import upsert_tender as _upsert
         import logging
         log = logging.getLogger(__name__)
@@ -691,95 +689,42 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         if not q:
             return Response({"data": [], "error": None})
 
-        parsed_url = None
         try:
-            _p = urlparse(q)
-            if _p.scheme in ("http", "https"):
-                parsed_url = _p
+            parsed = urlparse(q)
+            if parsed.scheme in ("http", "https") and "zakupki.gov.ru" in parsed.netloc:
+                params = parse_qs(parsed.query)
+                reg_number = (params.get("regNumber") or params.get("regnum") or [""])[0].strip()
+                if not reg_number:
+                    return Response({"data": [], "error": "Не удалось извлечь номер тендера из ссылки"})
+                if not reg_number.isdigit():
+                    return Response({"data": [], "error": "Некорректный номер тендера в ссылке"})
+
+                tender = Tender.objects.filter(number=reg_number).only("id", "number", "title").first()
+                if tender:
+                    return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
+
+                try:
+                    detail = eis_fetch(reg_number, fallback_url=q)
+                except Exception as exc:
+                    log.warning("EIS fetch failed for %s: %s", reg_number, exc)
+                    detail = {}
+
+                if not detail or not detail.get("number") or not detail.get("title", "").strip():
+                    return Response({"data": [], "error": "Тендер не найден ни в базе, ни на ЕИС"})
+
+                try:
+                    tender = _upsert(detail)
+                except Exception as exc:
+                    log.error("upsert failed for %s: %s", reg_number, exc)
+                    return Response({"data": [], "error": "Ошибка при сохранении тендера"})
+
+                return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
+
+            if parsed.scheme in ("http", "https"):
+                return Response({"data": [], "error": "Принимаются только ссылки с zakupki.gov.ru"})
         except Exception:
             pass
 
-        # ── EIS URL (zakupki.gov.ru) ──────────────────────────────────────────
-        if parsed_url and "zakupki.gov.ru" in parsed_url.netloc:
-            params = parse_qs(parsed_url.query)
-            reg_number = (params.get("regNumber") or params.get("regnum") or [""])[0].strip()
-            if not reg_number:
-                return Response({"data": [], "error": "Не удалось извлечь номер тендера из ссылки"})
-            if not reg_number.isdigit():
-                return Response({"data": [], "error": "Некорректный номер тендера в ссылке"})
-
-            tender = Tender.objects.filter(number=reg_number).only("id", "number", "title").first()
-            if tender:
-                return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
-
-            try:
-                detail = eis_fetch(reg_number, fallback_url=q)
-            except Exception as exc:
-                log.warning("EIS fetch failed for %s: %s", reg_number, exc)
-                detail = {}
-
-            if not detail or not detail.get("number") or not detail.get("title", "").strip():
-                return Response({"data": [], "error": "Тендер не найден ни в базе, ни на ЕИС"})
-
-            try:
-                tender = _upsert(detail)
-            except Exception as exc:
-                log.error("upsert failed for %s: %s", reg_number, exc)
-                return Response({"data": [], "error": "Ошибка при сохранении тендера"})
-
-            return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
-
-        # ── B2B marketplace URL → TenderGuru tend_num lookup ─────────────────
-        if parsed_url:
-            # Extract the longest numeric sequence from path + query (tender numbers
-            # on Russian B2B platforms are typically 8-20 digit strings in the URL).
-            url_text = parsed_url.path + "?" + parsed_url.query
-            candidates = re.findall(r"\d{8,}", url_text)
-            tend_num = max(candidates, key=len) if candidates else None
-
-            if not tend_num:
-                return Response({"data": [], "error": "Не удалось извлечь номер тендера из ссылки"})
-
-            # Check DB first (number stored as "tg-{id}" for TenderGuru tenders,
-            # but EIS-registered B2B tenders may be stored by their raw number).
-            tender = Tender.objects.filter(number=tend_num).only("id", "number", "title").first()
-            if tender:
-                return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
-
-            try:
-                item = fetch_tender_by_num(tend_num)
-            except Exception as exc:
-                log.warning("TenderGuru tend_num=%s failed: %s", tend_num, exc)
-                item = None
-
-            if not item:
-                return Response({"data": [], "error": "Тендер не найден в базе TenderGuru по номеру из ссылки"})
-
-            tg_title = item.get("TenderName", "")
-            # Paywall check: TenderGuru replaces field values with a subscription
-            # message when the API key lacks access.
-            if not tg_title or "tenderguru.ru/tariffs" in tg_title:
-                # We have at least the TG internal ID — try full detail fetch
-                tg_id = item.get("ID")
-                if not tg_id:
-                    return Response({"data": [], "error": "Тендер найден, но недостаточно прав API для получения данных"})
-                return Response({"data": [], "error": "Тендер найден, но недостаточно прав API для получения данных"})
-
-            base = parse_list_item(item)
-            if not base:
-                return Response({"data": [], "error": "Не удалось разобрать данные тендера из TenderGuru"})
-
-            data_dict = enrich_from_detail(base, item)
-
-            try:
-                tender = _upsert(data_dict)
-            except Exception as exc:
-                log.error("upsert TG tend_num=%s failed: %s", tend_num, exc)
-                return Response({"data": [], "error": "Ошибка при сохранении тендера"})
-
-            return Response({"data": [{"id": tender.id, "number": tender.number, "title": tender.title}], "error": None})
-
-        # ── Plain text / number search ────────────────────────────────────────
         if len(q) < 2:
             return Response({"data": [], "error": None})
         qs = Tender.objects.filter(
@@ -787,6 +732,40 @@ class TenderViewSet(viewsets.ReadOnlyModelViewSet):
         ).only("id", "number", "title")[:10]
         data = [{"id": t.id, "number": t.number, "title": t.title[:100]} for t in qs]
         return Response({"data": data, "error": None})
+
+    @action(detail=False, methods=["post"], url_path="create-b2b-won")
+    def create_b2b_won(self, request):
+        """Create a synthetic B2B won tender from title + optional okpd_codes.
+
+        Used to seed the "для вас" embedding when the user won a commercial tender
+        that isn't in EIS. Only title and okpd_codes matter for the embedding;
+        everything else is set to minimal defaults.
+        """
+        import uuid
+        import logging
+        log = logging.getLogger(__name__)
+
+        title = (request.data.get("title") or "").strip()
+        if not title:
+            return Response({"data": None, "error": "Укажите название тендера"})
+        if len(title) < 10:
+            return Response({"data": None, "error": "Название слишком короткое"})
+
+        okpd_codes = request.data.get("okpd_codes") or []
+        if not isinstance(okpd_codes, list):
+            okpd_codes = []
+
+        number = f"b2b-{uuid.uuid4().hex[:12]}"
+        tender = Tender.objects.create(
+            number=number,
+            source=Tender.Source.OTHER,
+            law_type=Tender.LawType.COMMERCIAL,
+            status=Tender.Status.FINISHED,
+            title=title,
+            okpd_codes=okpd_codes,
+        )
+
+        return Response({"data": {"id": tender.id, "number": tender.number, "title": tender.title}, "error": None})
 
 
 class TenderPipelineViewSet(viewsets.ModelViewSet):

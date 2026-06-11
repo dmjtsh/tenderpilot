@@ -323,6 +323,9 @@ export const tendersApi = {
 
   searchWonCandidates: (q: string) =>
     client.get("/tenders/search-won-candidates/", { params: { q } }).then((r) => r.data as { data: WonTenderRef[]; error: string | null }),
+
+  createB2BWon: (title: string, okpd_codes: string[]) =>
+    client.post("/tenders/create-b2b-won/", { title, okpd_codes }).then((r) => r.data as { data: WonTenderRef | null; error: string | null }),
 }
 
 // Search

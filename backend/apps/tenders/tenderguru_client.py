@@ -231,10 +231,21 @@ def fetch_tender_by_num(
     try:
         resp = sess.get(BASE_URL, params=params, timeout=30)
         resp.raise_for_status()
-        data = resp.json()
-    except (requests.RequestException, ValueError) as exc:
-        logger.warning("TenderGuru tend_num=%s failed: %s", tend_num, exc)
+    except requests.RequestException as exc:
+        logger.warning("TenderGuru tend_num=%s request failed: %s", tend_num, exc)
         return None
+
+    try:
+        data = resp.json()
+    except ValueError:
+        # Some platform responses contain control characters — sanitize and retry.
+        import re as _re
+        cleaned = _re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", resp.text)
+        try:
+            data = json.loads(cleaned)
+        except ValueError as exc:
+            logger.warning("TenderGuru tend_num=%s bad JSON: %s", tend_num, exc)
+            return None
 
     # API returns {"status": "error", ...} on quota/auth errors
     if isinstance(data, dict) and data.get("status") == "error":
@@ -245,8 +256,6 @@ def fetch_tender_by_num(
         return None
 
     item = data[0]
-    # Guard: if key fields are replaced with paywall message, the tender was found
-    # but we lack access — treat title as the only reliable field.
     if not isinstance(item, dict):
         return None
 

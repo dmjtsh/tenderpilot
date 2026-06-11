@@ -188,27 +188,29 @@ function WonTendersSection({
   const qc = useQueryClient()
   const [wonIds, setWonIds] = useState<number[]>(profile.won_tender_ids ?? [])
   const [wonTenders, setWonTenders] = useState<WonTenderRef[]>(profile.won_tenders ?? [])
+  const [mode, setMode] = useState<"eis" | "b2b">("eis")
   const [url, setUrl] = useState("")
+  const [b2bTitle, setB2bTitle] = useState("")
+  const [b2bOkpd, setB2bOkpd] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // sync when profile changes (e.g. company switch) or after refetch
   useEffect(() => {
     setWonIds(profile.won_tender_ids ?? [])
     setWonTenders((prev) => {
       const incoming = profile.won_tenders ?? []
-      // merge: keep local state for any ID not yet returned by server
       const byServerId = Object.fromEntries(incoming.map((t) => [t.id, t]))
       return (profile.won_tender_ids ?? []).map(
         (id) => byServerId[id] ?? prev.find((t) => t.id === id) ?? { id, number: String(id), title: "—", is_indexed: false, status: "" }
       )
     })
     setUrl("")
+    setB2bTitle("")
+    setB2bOkpd("")
     setError(null)
   }, [profile.id, profile.won_tenders])
 
-  // poll every 5s while any won tender is still indexing
   const hasUnindexed = wonTenders.some((t) => !t.is_indexed)
   useEffect(() => {
     if (!hasUnindexed) return
@@ -218,36 +220,41 @@ function WonTendersSection({
     return () => clearInterval(timer)
   }, [hasUnindexed, qc])
 
-  async function handleAdd() {
+  async function _commit(t: WonTenderRef) {
+    if (wonIds.includes(t.id)) { setError("Этот тендер уже добавлен"); return }
+    const newIds = [...wonIds, t.id]
+    setWonIds(newIds)
+    setWonTenders((prev) => [...prev, t])
+    setUrl(""); setB2bTitle(""); setB2bOkpd("")
+    setSaving(true)
+    try { await onSave(newIds) } finally { setSaving(false) }
+  }
+
+  async function handleAddEis() {
     const val = url.trim()
     if (!val) return
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     try {
       const res = await tendersApi.searchWonCandidates(val)
       if (res.error) { setError(res.error); return }
-      if (res.data.length === 0) {
-        setError("Тендер не найден. Убедитесь что ссылка корректна.")
-        return
-      }
-      const t = res.data[0]
-      if (wonIds.includes(t.id)) {
-        setError("Этот тендер уже добавлен")
-        return
-      }
-      const newIds = [...wonIds, t.id]
-      const newTenders = [...wonTenders, t]
-      setWonIds(newIds)
-      setWonTenders(newTenders)
-      setUrl("")
-      setSaving(true)
-      await onSave(newIds)
-    } catch {
-      setError("Ошибка при добавлении")
-    } finally {
-      setLoading(false)
-      setSaving(false)
-    }
+      if (res.data.length === 0) { setError("Тендер не найден. Убедитесь что ссылка корректна."); return }
+      await _commit(res.data[0])
+    } catch { setError("Ошибка при добавлении") }
+    finally { setLoading(false) }
+  }
+
+  async function handleAddB2b() {
+    const title = b2bTitle.trim()
+    if (!title) return
+    setLoading(true); setError(null)
+    try {
+      const okpd = b2bOkpd.trim() ? b2bOkpd.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean) : []
+      const res = await tendersApi.createB2BWon(title, okpd)
+      if (res.error) { setError(res.error); return }
+      if (!res.data) { setError("Ошибка при создании тендера"); return }
+      await _commit({ ...res.data, is_indexed: false, status: "" })
+    } catch { setError("Ошибка при добавлении") }
+    finally { setLoading(false) }
   }
 
   async function handleRemove(id: number) {
@@ -272,7 +279,6 @@ function WonTendersSection({
       </div>
 
       <div className="px-6 py-5 space-y-4">
-        {/* Chips */}
         {wonIds.length > 0 && (
           <div className="space-y-2">
             {wonIds.map((id) => {
@@ -290,11 +296,8 @@ function WonTendersSection({
                       индексируется
                     </span>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(id)}
-                    className="shrink-0 p-1 text-violet-300 hover:text-violet-600 transition-colors self-center"
-                  >
+                  <button type="button" onClick={() => handleRemove(id)}
+                    className="shrink-0 p-1 text-violet-300 hover:text-violet-600 transition-colors self-center">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -303,29 +306,63 @@ function WonTendersSection({
           </div>
         )}
 
-        {/* URL input */}
         {canAdd ? (
-          <div>
-            <p className="text-[15px] text-[#111827] mb-2">Вставьте ссылку на тендер (zakupki.gov.ru или любая B2B площадка)</p>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 h-10 bg-gray-50 border border-gray-200 px-3 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
-                placeholder="https://zakupki.gov.ru/... или https://www.roseltorg.ru/..."
-                value={url}
-                onChange={(e) => { setUrl(e.target.value); setError(null) }}
-                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              />
-              <button
-                type="button"
-                onClick={handleAdd}
-                disabled={loading || !url.trim()}
-                className="h-10 px-4 text-sm font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Добавить
+          <div className="space-y-3">
+            {/* Mode toggle */}
+            <div className="flex gap-0 border border-gray-200 w-fit">
+              <button type="button" onClick={() => { setMode("eis"); setError(null) }}
+                className={`px-4 py-1.5 text-xs font-medium transition-colors ${mode === "eis" ? "bg-[#111827] text-white" : "bg-white text-gray-500 hover:text-gray-800"}`}>
+                ЕИС (госзакупки)
+              </button>
+              <button type="button" onClick={() => { setMode("b2b"); setError(null) }}
+                className={`px-4 py-1.5 text-xs font-medium transition-colors ${mode === "b2b" ? "bg-[#111827] text-white" : "bg-white text-gray-500 hover:text-gray-800"}`}>
+                Б2Б (коммерческий)
               </button>
             </div>
-            {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+
+            {mode === "eis" ? (
+              <div>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 h-10 bg-gray-50 border border-gray-200 px-3 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
+                    placeholder="https://zakupki.gov.ru/...?regNumber=..."
+                    value={url}
+                    onChange={(e) => { setUrl(e.target.value); setError(null) }}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddEis()}
+                  />
+                  <button type="button" onClick={handleAddEis} disabled={loading || !url.trim()}
+                    className="h-10 px-4 text-sm font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Добавить
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 h-10 bg-gray-50 border border-gray-200 px-3 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
+                    placeholder="Название тендера"
+                    value={b2bTitle}
+                    onChange={(e) => { setB2bTitle(e.target.value); setError(null) }}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddB2b()}
+                  />
+                  <button type="button" onClick={handleAddB2b} disabled={loading || !b2bTitle.trim()}
+                    className="h-10 px-4 text-sm font-medium bg-[#111827] text-white hover:bg-[#1f2937] transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Добавить
+                  </button>
+                </div>
+                <input
+                  className="w-full h-9 bg-gray-50 border border-gray-200 px-3 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
+                  placeholder="Коды ОКПД2 (необязательно, через запятую)"
+                  value={b2bOkpd}
+                  onChange={(e) => setB2bOkpd(e.target.value)}
+                />
+              </div>
+            )}
+
+            {error && <p className="text-xs text-red-500">{error}</p>}
           </div>
         ) : (
           <p className="text-xs text-gray-400">Максимум 3 тендера добавлено</p>
