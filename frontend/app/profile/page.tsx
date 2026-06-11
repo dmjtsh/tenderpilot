@@ -227,7 +227,7 @@ function WonTendersSection({
       const res = await tendersApi.searchWonCandidates(val)
       if (res.error) { setError(res.error); return }
       if (res.data.length === 0) {
-        setError("Тендер не найден в базе. Убедитесь что ссылка с zakupki.gov.ru и тендер у нас проиндексирован.")
+        setError("Тендер не найден. Убедитесь что ссылка корректна.")
         return
       }
       const t = res.data[0]
@@ -306,11 +306,11 @@ function WonTendersSection({
         {/* URL input */}
         {canAdd ? (
           <div>
-            <p className="text-[15px] text-[#111827] mb-2">Вставьте ссылку на тендер с zakupki.gov.ru</p>
+            <p className="text-[15px] text-[#111827] mb-2">Вставьте ссылку на тендер (zakupki.gov.ru или любая B2B площадка)</p>
             <div className="flex gap-2">
               <input
                 className="flex-1 h-10 bg-gray-50 border border-gray-200 px-3 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-gray-300 transition-colors"
-                placeholder="https://zakupki.gov.ru/...?regNumber=..."
+                placeholder="https://zakupki.gov.ru/... или https://www.roseltorg.ru/..."
                 value={url}
                 onChange={(e) => { setUrl(e.target.value); setError(null) }}
                 onKeyDown={(e) => e.key === "Enter" && handleAdd()}

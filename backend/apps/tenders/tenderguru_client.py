@@ -208,6 +208,51 @@ def fetch_tender_detail(
     return data[0]
 
 
+def fetch_tender_by_num(
+    tend_num: str,
+    *,
+    session: requests.Session | None = None,
+    api_key: str | None = None,
+) -> dict | None:
+    """Lookup a tender by its external marketplace/EIS number (tend_num parameter).
+
+    Returns a combined list+detail record on success, or None if not found / API error.
+    The response has the same shape as fetch_tender_detail.
+    """
+    key = api_key or _get_api_key()
+    params: dict[str, str] = {
+        "dtype": "json",
+        "tend_num": tend_num,
+    }
+    if key:
+        params["api_code"] = key
+
+    sess = session or _session()
+    try:
+        resp = sess.get(BASE_URL, params=params, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning("TenderGuru tend_num=%s failed: %s", tend_num, exc)
+        return None
+
+    # API returns {"status": "error", ...} on quota/auth errors
+    if isinstance(data, dict) and data.get("status") == "error":
+        logger.warning("TenderGuru tend_num=%s error: %s", tend_num, data.get("message"))
+        return None
+
+    if not isinstance(data, list) or not data:
+        return None
+
+    item = data[0]
+    # Guard: if key fields are replaced with paywall message, the tender was found
+    # but we lack access — treat title as the only reliable field.
+    if not isinstance(item, dict):
+        return None
+
+    return item
+
+
 # ---------------------------------------------------------------------------
 # Parsing
 # ---------------------------------------------------------------------------
