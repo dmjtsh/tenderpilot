@@ -240,5 +240,15 @@ python manage.py run_experiment --config=experiment_models.yaml --tender-ids=108
 ### Продакшн
 
 - Сервер: Ubuntu 22.04, `root@147.45.141.195`, путь `/opt/tenderpilot`
+- venv: `/opt/tenderpilot/venv/` (НЕ `.venv`, а `../venv/bin/python` из backend/)
 - Деплой: `./deploy.sh` (git pull, pip install, migrate, build, systemd restart)
 - Подробности — в [docs/INFRA.md](docs/INFRA.md)
+
+#### Диагностика на проде
+- **Логи worker**: `tail -100 /var/log/tenderpilot/celery-worker.log` (НЕ journalctl — worker пишет в файл через `--logfile`)
+- **Логи web**: `journalctl -u tenderpilot-web --since "1 hour ago" --no-pager`
+- **Логи beat**: `journalctl -u tenderpilot-beat --since "1 hour ago" --no-pager`
+- **Systemd сервисы**: `tenderpilot-web`, `tenderpilot-worker`, `tenderpilot-beat`, `tenderpilot-frontend`
+- **Celery ping**: `DJANGO_SETTINGS_MODULE=config.settings ../venv/bin/celery -A config inspect ping`
+- **Django shell**: `cd /opt/tenderpilot/backend && DJANGO_SETTINGS_MODULE=config.settings ../venv/bin/python -c "..."`
+- **Worker concurrency=2**: один процесс на синк (ЕИС/TenderGuru), один на пользовательские задачи (доки, парсинг)
