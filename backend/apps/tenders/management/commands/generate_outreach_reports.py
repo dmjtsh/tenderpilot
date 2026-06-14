@@ -260,7 +260,11 @@ class Command(BaseCommand):
         self.stdout.write(f"  HyDE: {time.monotonic()-t0:.1f}s")
 
         # ── 3. Поиск кандидатов в Qdrant — берём 10, не 20 ───────────
-        candidates = qdrant.search_tenders(avg_vector, limit=10, status="active")
+        COMPETITIVE_PROCEDURES = ["auction", "contest", "request_quotations", "request_proposals", "other"]
+        candidates = qdrant.search_tenders(
+            avg_vector, limit=10, status="active",
+            procedure_types=COMPETITIVE_PROCEDURES,
+        )
         self.stdout.write(f"  Кандидатов: {len(candidates)}")
 
         # ── 4. Итерируем, ищем 3 тендера с документами + AI-резюме ───

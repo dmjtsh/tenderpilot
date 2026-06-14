@@ -180,7 +180,10 @@ class QdrantService:
                     FieldCondition(key="industry", match=MatchAny(any=industries))
                 )
 
-            direction_filter = Filter(must=conditions) if conditions else None
+            must_not = [
+                FieldCondition(key="procedure_type", match=MatchValue(value="single_source")),
+            ]
+            direction_filter = Filter(must=conditions, must_not=must_not) if conditions else Filter(must_not=must_not)
 
             # 1. Hyde search
             hyde_results = self.client.query_points(

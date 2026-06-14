@@ -43,3 +43,6 @@ backend/test_experiment*.txt
 
 # Claude Code
 .claude/settings.local.json
+
+# Smart parser (lead gen tooling, not part of main product)
+smart_parser/

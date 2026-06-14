@@ -257,6 +257,12 @@ export function TenderCard({ tender, pipelineStatus, pipelineEntryId, onSetPipel
           </div>
         </div>
 
+        {tender.procedure_type === "single_source" && (
+          <div className="mt-3 px-2.5 py-1.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+            Закупка у единственного поставщика: участие невозможно
+          </div>
+        )}
+
         {/* Divider */}
         <div className="border-t border-gray-100 my-3" />
 
