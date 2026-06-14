@@ -48,11 +48,20 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True)
 
 
+class VerifyEmailSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+
+
+class ResendVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "email", "username", "first_name", "last_name", "date_joined", "is_staff"]
-        read_only_fields = ["id", "date_joined", "is_staff"]
+        fields = ["id", "email", "username", "first_name", "last_name", "date_joined", "is_staff", "email_verified"]
+        read_only_fields = ["id", "date_joined", "is_staff", "email_verified"]
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):

@@ -44,6 +44,12 @@ export const authApi = {
 
   passwordResetConfirm: (uid: string, token: string, new_password: string) =>
     client.post("/users/password-reset/confirm/", { uid, token, new_password }).then((r) => r.data),
+
+  verifyEmail: (uid: string, token: string) =>
+    client.post("/users/verify-email/", { uid, token }).then((r) => r.data.data),
+
+  resendVerification: (email: string) =>
+    client.post("/users/resend-verification/", { email }).then((r) => r.data),
 }
 
 // Tenders

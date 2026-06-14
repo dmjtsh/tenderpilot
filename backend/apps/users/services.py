@@ -11,6 +11,47 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from .models import User
 
 
+def send_verification_email(user: User) -> None:
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    verify_url = f"{settings.FRONTEND_BASE_URL}/verify-email?uid={uid}&token={token}"
+
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        send_mail(
+            subject="Подтверждение email: TendeRoll",
+            message=(
+                f"Здравствуйте!\n\n"
+                f"Для подтверждения email перейдите по ссылке:\n{verify_url}\n\n"
+                f"Ссылка действительна 1 час.\n\n"
+                f"Если вы не регистрировались в TendeRoll, просто проигнорируйте это письмо."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+        )
+    except Exception:
+        logger.exception("Failed to send verification email to %s", user.email)
+
+
+def confirm_email_verification(uid: str, token: str) -> User:
+    try:
+        pk = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=pk)
+    except (User.DoesNotExist, ValueError, OverflowError, TypeError):
+        raise ValidationError("Недействительная или устаревшая ссылка.")
+
+    if user.email_verified:
+        return user
+
+    if not default_token_generator.check_token(user, token):
+        raise ValidationError("Недействительная или устаревшая ссылка.")
+
+    user.email_verified = True
+    user.save(update_fields=["email_verified"])
+    return user
+
+
 def send_password_reset_email(email: str) -> None:
     try:
         user = User.objects.get(email__iexact=email)

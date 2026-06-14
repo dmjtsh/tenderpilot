@@ -4,6 +4,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 logger = logging.getLogger(__name__)
 from .models import User, CompanyProfile, CompanyDirection
@@ -15,6 +16,8 @@ from .serializers import (
     ChangePasswordSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
+    VerifyEmailSerializer,
+    ResendVerificationSerializer,
 )
 
 
@@ -35,18 +38,81 @@ class RegisterView(generics.CreateAPIView):
             except Exception:
                 logger.exception("Referral registration failed for ref_code=%s", ref_code)
 
-        refresh = RefreshToken.for_user(user)
+        from .services import send_verification_email
+        send_verification_email(user)
+
         return Response(
             {
-                "data": {
-                    "user": UserSerializer(user).data,
-                    "access": str(refresh.access_token),
-                    "refresh": str(refresh),
-                },
+                "data": {"detail": "Письмо для подтверждения отправлено на " + user.email},
                 "error": None,
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        from .services import confirm_email_verification
+        from django.core.exceptions import ValidationError
+        try:
+            user = confirm_email_verification(
+                uid=serializer.validated_data["uid"],
+                token=serializer.validated_data["token"],
+            )
+        except ValidationError as e:
+            messages = e.messages if hasattr(e, "messages") else [str(e.message)]
+            return Response(
+                {"data": None, "error": "; ".join(messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "data": {
+                "user": UserSerializer(user).data,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            },
+            "error": None,
+        })
+
+
+class ResendVerificationView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = ResendVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            user = None
+        if user and not user.email_verified:
+            from .services import send_verification_email
+            send_verification_email(user)
+        return Response({
+            "data": {"detail": "Если аккаунт существует и не подтверждён, письмо отправлено."},
+            "error": None,
+        })
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email", "")
+        try:
+            user = User.objects.get(email__iexact=email)
+            if not user.email_verified:
+                return Response(
+                    {"data": None, "error": "Email не подтверждён", "code": "email_not_verified"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        except User.DoesNotExist:
+            pass
+        return super().post(request, *args, **kwargs)
 
 
 class MeView(generics.RetrieveUpdateAPIView):

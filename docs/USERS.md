@@ -1,13 +1,14 @@
 # Пользователи — apps/users
 
-Дата обновления: 28 мая 2026
+Дата обновления: 14 июня 2026
 
 ## Модели
 
 ### User (AbstractUser)
 ```python
-email    EmailField(unique)  # USERNAME_FIELD
-username CharField           # REQUIRED_FIELD (inherited)
+email           EmailField(unique)  # USERNAME_FIELD
+email_verified  BooleanField(default=False)  # подтверждение email при регистрации
+username        CharField           # REQUIRED_FIELD (inherited)
 ```
 
 ### CompanyProfile
@@ -65,8 +66,10 @@ created_at, updated_at DateTimeField
 ## API Endpoints
 
 ```
-POST /api/v1/users/register/                — регистрация
-POST /api/v1/users/auth/token/              — JWT (email + password → access + refresh)
+POST /api/v1/users/register/                — регистрация (отправляет verification email, НЕ выдаёт токены)
+POST /api/v1/users/verify-email/            — подтверждение email (uid + token → access + refresh)
+POST /api/v1/users/resend-verification/     — повторная отправка письма верификации
+POST /api/v1/users/auth/token/              — JWT (email + password → access + refresh, проверяет email_verified)
 POST /api/v1/users/auth/token/refresh/      — refresh token
 GET  /api/v1/users/me/                      — текущий юзер
 PATCH /api/v1/users/me/                     — обновление

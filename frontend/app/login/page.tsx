@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { authApi } from "@/lib/api"
 import { setTokens, isAuthenticated } from "@/lib/auth"
 import { trackGoal } from "@/lib/analytics"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Mail } from "lucide-react"
 
 const loginSchema = z.object({
   email: z.string().email("Некорректный email"),
@@ -45,24 +45,72 @@ const inputCls = "w-full h-8 rounded-md bg-secondary border border-border px-3 t
 
 function LoginTab({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState("")
+  const [unverifiedEmail, setUnverifiedEmail] = useState("")
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   })
 
   async function onSubmit(data: LoginForm) {
     setError("")
+    setUnverifiedEmail("")
     try {
       const res = await authApi.login(data.email, data.password)
       setTokens(res.access, res.refresh)
       onSuccess()
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { detail?: string } }; code?: string }
+      const err = e as { response?: { status?: number; data?: { detail?: string; code?: string; error?: string } }; code?: string }
       if (!err.response) {
         setError("Сервер недоступен. Запустите backend (manage.py runserver 8080)")
+      } else if (err.response.status === 403 && err.response.data?.code === "email_not_verified") {
+        setUnverifiedEmail(data.email)
       } else {
         setError(err.response.data?.detail ?? "Неверный email или пароль")
       }
     }
+  }
+
+  async function handleResend() {
+    if (!unverifiedEmail || resending) return
+    setResending(true)
+    try {
+      await authApi.resendVerification(unverifiedEmail)
+      setResent(true)
+    } catch {
+      setError("Не удалось отправить письмо")
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (unverifiedEmail) {
+    return (
+      <div className="text-center space-y-4 py-4">
+        <div className="mx-auto w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
+          <Mail className="w-5 h-5 text-amber-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-foreground">Email не подтверждён</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Проверьте почту <span className="font-medium">{unverifiedEmail}</span> и перейдите по ссылке для подтверждения
+          </p>
+        </div>
+        <button
+          onClick={handleResend}
+          disabled={resending || resent}
+          className="text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+        >
+          {resent ? "Письмо отправлено" : resending ? "Отправка..." : "Отправить письмо повторно"}
+        </button>
+        <button
+          onClick={() => { setUnverifiedEmail(""); setResent(false) }}
+          className="block mx-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Назад к входу
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -90,8 +138,11 @@ function LoginTab({ onSuccess }: { onSuccess: () => void }) {
   )
 }
 
-function RegisterTab({ onSuccess, refCode }: { onSuccess: () => void; refCode: string }) {
+function RegisterTab({ refCode }: { refCode: string }) {
   const [error, setError] = useState("")
+  const [registeredEmail, setRegisteredEmail] = useState("")
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   })
@@ -99,10 +150,9 @@ function RegisterTab({ onSuccess, refCode }: { onSuccess: () => void; refCode: s
   async function onSubmit(data: RegisterForm) {
     setError("")
     try {
-      const res = await authApi.register({ ...data, ...(refCode ? { ref_code: refCode } : {}) })
-      setTokens(res.access, res.refresh)
+      await authApi.register({ ...data, ...(refCode ? { ref_code: refCode } : {}) })
       trackGoal("register_success")
-      onSuccess()
+      setRegisteredEmail(data.email)
     } catch (e: unknown) {
       const err = e as { response?: { data?: Record<string, string[]> } }
       if (!err.response) {
@@ -112,6 +162,43 @@ function RegisterTab({ onSuccess, refCode }: { onSuccess: () => void; refCode: s
         setError(d ? Object.values(d).flat().join("; ") : "Ошибка регистрации")
       }
     }
+  }
+
+  async function handleResend() {
+    if (!registeredEmail || resending) return
+    setResending(true)
+    try {
+      await authApi.resendVerification(registeredEmail)
+      setResent(true)
+      setTimeout(() => setResent(false), 60_000)
+    } catch {
+      setError("Не удалось отправить письмо")
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (registeredEmail) {
+    return (
+      <div className="text-center space-y-4 py-4">
+        <div className="mx-auto w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center">
+          <Mail className="w-5 h-5 text-violet-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-foreground">Проверьте почту</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Мы отправили письмо на <span className="font-medium">{registeredEmail}</span>. Перейдите по ссылке для подтверждения.
+          </p>
+        </div>
+        <button
+          onClick={handleResend}
+          disabled={resending || resent}
+          className="text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+        >
+          {resent ? "Письмо отправлено" : resending ? "Отправка..." : "Отправить повторно"}
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -213,7 +300,7 @@ function LoginPageInner() {
         {tab === "login" ? (
           <LoginTab onSuccess={handleSuccess} />
         ) : (
-          <RegisterTab onSuccess={handleSuccess} refCode={refCode} />
+          <RegisterTab refCode={refCode} />
         )}
       </div>
     </div>
